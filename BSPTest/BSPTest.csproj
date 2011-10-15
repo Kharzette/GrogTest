@@ -65,39 +65,6 @@
     <PlatformTarget>x86</PlatformTarget>
     <XnaCompressContent>True</XnaCompressContent>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'BSPBuilderDebug|x86'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\x86\BSPBuilderDebug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE;WINDOWS</DefineConstants>
-    <NoStdLib>true</NoStdLib>
-    <DebugType>full</DebugType>
-    <PlatformTarget>x86</PlatformTarget>
-    <UseVSHostingProcess>false</UseVSHostingProcess>
-    <ErrorReport>prompt</ErrorReport>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'BSPTestDebug|x86'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\x86\BSPTestDebug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE;WINDOWS</DefineConstants>
-    <NoStdLib>true</NoStdLib>
-    <DebugType>full</DebugType>
-    <PlatformTarget>x86</PlatformTarget>
-    <UseVSHostingProcess>false</UseVSHostingProcess>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisIgnoreBuiltInRuleSets>false</CodeAnalysisIgnoreBuiltInRuleSets>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'ColladaConvertDebug|x86'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\x86\ColladaConvertDebug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE;WINDOWS</DefineConstants>
-    <NoStdLib>true</NoStdLib>
-    <DebugType>full</DebugType>
-    <PlatformTarget>x86</PlatformTarget>
-    <UseVSHostingProcess>false</UseVSHostingProcess>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
-    <CodeAnalysisFailOnMissingRules>false</CodeAnalysisFailOnMissingRules>
-  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86" />
     <Reference Include="Microsoft.Xna.Framework.Game, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86" />
@@ -138,26 +105,26 @@
     </NestedContentProject>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\MaterialLib\MaterialLib.csproj">
+    <ProjectReference Include="..\..\Libs\BSPZone\BSPZone.csproj">
+      <Project>{AC062C9A-21A8-4B6B-83D9-3BF6DFE5337C}</Project>
+      <Name>BSPZone</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Libs\MaterialLib\MaterialLib.csproj">
       <Project>{E6EAA6B0-1140-4BE3-AEFD-0DF83A7A705B}</Project>
       <Name>MaterialLib</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Libs\MeshLib\MeshLib.csproj">
+      <Project>{EEC34A30-ACD3-4240-A4FE-5A3F8D5D7B13}</Project>
+      <Name>MeshLib</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Libs\UtilityLib\UtilityLib.csproj">
+      <Project>{BB91910C-2595-4EB6-B48C-30BCC41457F6}</Project>
+      <Name>UtilityLib</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\SharedContent\SharedContent.contentproj">
       <Project>{9E3808C2-1EF9-49BC-BCD6-5B80C519BC19}</Project>
       <Name>SharedContent</Name>
       <XnaReferenceType>Content</XnaReferenceType>
-    </ProjectReference>
-    <ProjectReference Include="..\..\UtilityLib\UtilityLib.csproj">
-      <Project>{BB91910C-2595-4EB6-B48C-30BCC41457F6}</Project>
-      <Name>UtilityLib</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\BSPZone\BSPZone.csproj">
-      <Project>{AC062C9A-21A8-4B6B-83D9-3BF6DFE5337C}</Project>
-      <Name>BSPZone</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\MeshLib\MeshLib.csproj">
-      <Project>{EEC34A30-ACD3-4240-A4FE-5A3F8D5D7B13}</Project>
-      <Name>MeshLib</Name>
     </ProjectReference>
     <ProjectReference Include="Content\BSPTestContent.contentproj">
       <Project>{A85BCE7C-C0BE-422C-95D8-9B1CA8DC1B72}</Project>

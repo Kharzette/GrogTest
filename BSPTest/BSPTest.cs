@@ -21,18 +21,17 @@ namespace BSPTest
 		ContentManager			mSharedCM;
 		SpriteFont				mKoot;
 
-		Zone					mZone;
-		MeshLib.IndoorMesh		mLevel;
-		UtilityLib.GameCamera	mGameCam;
-		MaterialLib.MaterialLib	mMatLib;
+		Zone						mZone;
+		MeshLib.IndoorMesh			mLevel;
+		UtilityLib.GameCamera		mGameCam;
+		UtilityLib.PlayerSteering	mPlayerControl;
+		UtilityLib.Input			mInput;
+		MaterialLib.MaterialLib		mMatLib;
 
 		Vector3		mVelocity;
 		BoundingBox	mCharBox;
 		bool		mbOnGround;
 		bool		mbFlyMode;
-
-		GamePadState	mOldGPS	=new GamePadState();
-		KeyboardState	mOldKBS	=new KeyboardState();
 
 		const float MidAirMoveScale	=0.4f;
 
@@ -52,7 +51,7 @@ namespace BSPTest
 			mGameCam	=new UtilityLib.GameCamera(
 				mGDM.GraphicsDevice.Viewport.Width,
 				mGDM.GraphicsDevice.Viewport.Height,
-				mGDM.GraphicsDevice.Viewport.AspectRatio);
+				mGDM.GraphicsDevice.Viewport.AspectRatio, 1.0f, 4000.0f);
 
 			//70, 32 is the general character size
 
@@ -64,6 +63,13 @@ namespace BSPTest
 			mCharBox.Max	=Vector3.UnitX * 16;
 			mCharBox.Max	+=Vector3.UnitZ * 16;
 			mCharBox.Max	+=Vector3.UnitY * 70;
+
+			mInput			=new UtilityLib.Input();
+			mPlayerControl	=new UtilityLib.PlayerSteering(mGDM.GraphicsDevice.Viewport.Width,
+								mGDM.GraphicsDevice.Viewport.Height);
+
+			mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.TwinStick;
+			mPlayerControl.Speed	=3.0f;
 
 			base.Initialize();
 		}
@@ -89,7 +95,8 @@ namespace BSPTest
 //			mZone.Read("Content/eels.Zone", false);
 //			mLevel.Read(GraphicsDevice, "Content/eels.ZoneDraw", false);
 
-			mGameCam.CamPos	=-(mZone.GetPlayerStartPos() + (Vector3.Up * 66.0f));
+			mPlayerControl.Position	=-mZone.GetPlayerStartPos();
+//			mPlayerControl.Position	=-(mZone.GetPlayerStartPos() + (Vector3.Up * 66.0f));
 
 			mMatLib.SetParameterOnAll("mLight0Color", Vector3.One);
 			mMatLib.SetParameterOnAll("mLightRange", 200.0f);
@@ -111,46 +118,52 @@ namespace BSPTest
 
 			float	msDelta	=gameTime.ElapsedGameTime.Milliseconds;
 
-			GamePadState	gps	=GamePad.GetState(PlayerIndex.One);
-			KeyboardState	kbs	=Keyboard.GetState();
+			mInput.Update(msDelta);
 
-			if(gps.IsButtonDown(Buttons.A) || kbs.IsKeyDown(Keys.G))
+			UtilityLib.Input.PlayerInput	pi	=mInput.Player1;
+
+			if(pi.mGPS.IsButtonDown(Buttons.A) ||
+				pi.mKBS.IsKeyDown(Keys.G))
 			{
-				Vector3	dynamicLight	=-mGameCam.CamPos;
+				Vector3	dynamicLight	=-mPlayerControl.Position;
 				mMatLib.SetParameterOnAll("mLight0Position", dynamicLight);
 			}
 
-			if(kbs.IsKeyUp(Keys.F))
+			if(pi.mKBS.IsKeyUp(Keys.F))
 			{
-				if(mOldKBS.IsKeyDown(Keys.F))
+				if(pi.mLastKBS.IsKeyDown(Keys.F))
 				{
 					mbFlyMode	=!mbFlyMode;
 				}
 			}
-			if(gps.IsButtonUp(Buttons.LeftShoulder))
+
+			if(pi.mGPS.IsButtonUp(Buttons.LeftShoulder))
 			{
-				if(mOldGPS.IsButtonDown(Buttons.LeftShoulder))
+				if(pi.mLastGPS.IsButtonDown(Buttons.LeftShoulder))
 				{
 					mbFlyMode	=!mbFlyMode;
 				}
 			}
+
+			Vector3	startPos	=-mPlayerControl.Position;
+
+			if(mbFlyMode)
+			{
+				mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.Fly;
+			}
+			else
+			{
+				mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.TwinStick;
+			}
+			
+			mPlayerControl.Update(msDelta, mGameCam.View, pi.mKBS, pi.mMS, pi.mGPS);
+			
+			Vector3	endPos		=-mPlayerControl.Position;
+			Vector3	moveDelta	=endPos - startPos;
+			Vector3	camPos		=Vector3.Zero;
 
 			if(!mbFlyMode)
 			{
-				//lower ray pos down to foot level
-				Vector3	startPos	=-mGameCam.CamPos;
-				startPos			-=Vector3.UnitY * 65.0f;
-
-				//set for a movement update (will move this eventually)
-				mGameCam.CamPos	=-startPos;
-
-				//do a movement update
-				mGameCam.Update(msDelta, kbs, Mouse.GetState(), GamePad.GetState(0));
-
-				//use the result for the raycast
-				Vector3	endPos		=-mGameCam.CamPos;
-				Vector3	moveDelta	=endPos - startPos;
-
 				//flatten movement
 				moveDelta.Y	=0;
 				mVelocity	+=moveDelta;
@@ -179,24 +192,24 @@ namespace BSPTest
 					mVelocity	=endPos - startPos;
 					mbOnGround	=false;
 				}
+				Vector3	ofs	=Vector3.Zero;
+				ofs.X	=mGameCam.View.M13;
+				ofs.Y	=mGameCam.View.M23;
+				ofs.Z	=mGameCam.View.M33;
 
-				//bump position back to eye height
-				endPos			+=Vector3.UnitY * 65.0f;
-				mGameCam.CamPos	=-endPos;
+				ofs	*=150.0f;
 
-				mGameCam.UpdateMatrices();
+				camPos	=endPos + ofs;
 			}
 			else
 			{
-				//do a movement update
-				mGameCam.Update(msDelta, kbs, Mouse.GetState(), GamePad.GetState(0));
+				camPos	=-mPlayerControl.Position;
 			}
 
+			mGameCam.Update(msDelta, -camPos, mPlayerControl.Pitch, mPlayerControl.Yaw, mPlayerControl.Roll);
+			
 			mLevel.Update(msDelta);
-			mMatLib.UpdateWVP(mGameCam.World, mGameCam.View, mGameCam.Projection, -mGameCam.CamPos);
-
-			mOldGPS	=gps;
-			mOldKBS	=kbs;
+			mMatLib.UpdateWVP(mGameCam.World, mGameCam.View, mGameCam.Projection, -camPos);
 
 			base.Update(gameTime);
 		}
@@ -209,19 +222,19 @@ namespace BSPTest
 			g.Clear(Color.CornflowerBlue);
 
 			//spritebatch turns this off
-//			g.RenderState.DepthBufferEnable	=true;
+			g.DepthStencilState	=DepthStencilState.Default;
 
-			mLevel.Draw(g, mGameCam, mZone.IsMaterialVisibleFromPos);
+			mLevel.Draw(g, mGameCam, mPlayerControl.Position, mZone.IsMaterialVisibleFromPos);
 
 			mSB.Begin();
 			if(mbFlyMode)
 			{
-				mSB.DrawString(mKoot, "FlyMode Coords: " + -mGameCam.CamPos,
+				mSB.DrawString(mKoot, "FlyMode Coords: " + -mPlayerControl.Position,
 					Vector2.One * 20.0f, Color.Yellow);
 			}
 			else
 			{
-				mSB.DrawString(mKoot, "Coords: " + -mGameCam.CamPos,
+				mSB.DrawString(mKoot, "Coords: " + -mPlayerControl.Position,
 					Vector2.One * 20.0f, Color.Yellow);
 			}
 			mSB.End();
