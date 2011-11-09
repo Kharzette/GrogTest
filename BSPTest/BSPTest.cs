@@ -27,11 +27,15 @@ namespace BSPTest
 		UtilityLib.PlayerSteering	mPlayerControl;
 		UtilityLib.Input			mInput;
 		MaterialLib.MaterialLib		mMatLib;
+		VertexBuffer				mLineVB;
+		BasicEffect					mBFX;
 
+		//movement stuff
 		Vector3		mVelocity;
 		BoundingBox	mCharBox;
 		bool		mbOnGround;
 		bool		mbFlyMode;
+		Vector3		mEyeHeight;
 
 		const float MidAirMoveScale	=0.4f;
 
@@ -54,6 +58,7 @@ namespace BSPTest
 				mGDM.GraphicsDevice.Viewport.AspectRatio, 1.0f, 4000.0f);
 
 			//70, 32 is the general character size
+			mEyeHeight		=Vector3.UnitY * 65.0f;
 
 			//bottom
 			mCharBox.Min	=-Vector3.UnitX * 16;
@@ -68,7 +73,7 @@ namespace BSPTest
 			mPlayerControl	=new UtilityLib.PlayerSteering(mGDM.GraphicsDevice.Viewport.Width,
 								mGDM.GraphicsDevice.Viewport.Height);
 
-			mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.TwinStick;
+			mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.FirstPerson;
 			mPlayerControl.Speed	=3.0f;
 
 			base.Initialize();
@@ -80,18 +85,25 @@ namespace BSPTest
 			mSB			=new SpriteBatch(GraphicsDevice);
 			mSharedCM	=new ContentManager(Services, "SharedContent");
 			mKoot		=mSharedCM.Load<SpriteFont>("Fonts/Koot20");
+			mBFX		=new BasicEffect(mGDM.GraphicsDevice);
+
+			mBFX.VertexColorEnabled	=true;
+			mBFX.LightingEnabled	=false;
+			mBFX.TextureEnabled		=false;
 
 			mMatLib	=new MaterialLib.MaterialLib(GraphicsDevice,
 				Content, mSharedCM, false);
 
-			mMatLib.ReadFromFile("Content/dm2.MatLib", false);
+			mMatLib.ReadFromFile("Content/dm2NoTex.MatLib", false);
 //			mMatLib.ReadFromFile("Content/eels.MatLib", false);
 
 			mZone	=new Zone();
 			mLevel	=new MeshLib.IndoorMesh(GraphicsDevice, mMatLib);
 			
+//			mZone.Read("Content/end.Zone", false);
 			mZone.Read("Content/dm2.Zone", false);
-			mLevel.Read(GraphicsDevice, "Content/dm2.ZoneDraw", false);
+//			mLevel.Read(GraphicsDevice, "Content/end.ZoneDraw", true);
+			mLevel.Read(GraphicsDevice, "Content/dm2.ZoneDraw", true);
 //			mZone.Read("Content/eels.Zone", false);
 //			mLevel.Read(GraphicsDevice, "Content/eels.ZoneDraw", false);
 
@@ -100,7 +112,20 @@ namespace BSPTest
 
 			mMatLib.SetParameterOnAll("mLight0Color", Vector3.One);
 			mMatLib.SetParameterOnAll("mLightRange", 200.0f);
-			mMatLib.SetParameterOnAll("mLightFalloffRange", 50.0f);
+			mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
+
+			List<Vector3>	lines	=mLevel.GetNormals();
+
+			mLineVB	=new VertexBuffer(mGDM.GraphicsDevice, typeof(VertexPositionColor), lines.Count, BufferUsage.WriteOnly);
+
+			VertexPositionColor	[]normVerts	=new VertexPositionColor[lines.Count];
+			for(int i=0;i < lines.Count;i++)
+			{
+				normVerts[i].Position	=lines[i];
+				normVerts[i].Color		=Color.Green;
+			}
+
+			mLineVB.SetData<VertexPositionColor>(normVerts);
 		}
 
 
@@ -122,13 +147,6 @@ namespace BSPTest
 
 			UtilityLib.Input.PlayerInput	pi	=mInput.Player1;
 
-			if(pi.mGPS.IsButtonDown(Buttons.A) ||
-				pi.mKBS.IsKeyDown(Keys.G))
-			{
-				Vector3	dynamicLight	=-mPlayerControl.Position;
-				mMatLib.SetParameterOnAll("mLight0Position", dynamicLight);
-			}
-
 			if(pi.mKBS.IsKeyUp(Keys.F))
 			{
 				if(pi.mLastKBS.IsKeyDown(Keys.F))
@@ -145,6 +163,27 @@ namespace BSPTest
 				}
 			}
 
+			//jump
+			if((pi.mKBS.IsKeyDown(Keys.Space)
+				|| pi.mGPS.IsButtonDown(Buttons.Y)) && mbOnGround)
+			{
+				mVelocity	+=Vector3.UnitY * 5.0f;
+			}
+
+			if(pi.mGPS.IsButtonDown(Buttons.A) ||
+				pi.mKBS.IsKeyDown(Keys.G))
+			{
+				Vector3	dynamicLight	=-mPlayerControl.Position;
+				if(!mbFlyMode)
+				{
+					dynamicLight	+=mEyeHeight;
+				}
+				mMatLib.SetParameterOnAll("mLight0Position", dynamicLight);
+				mMatLib.SetParameterOnAll("mLight0Color", Vector3.One);
+				mMatLib.SetParameterOnAll("mLightRange", 200.0f);
+				mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
+			}
+
 			Vector3	startPos	=-mPlayerControl.Position;
 
 			if(mbFlyMode)
@@ -153,7 +192,7 @@ namespace BSPTest
 			}
 			else
 			{
-				mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.TwinStick;
+				mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.FirstPerson;
 			}
 			
 			mPlayerControl.Update(msDelta, mGameCam.View, pi.mKBS, pi.mMS, pi.mGPS);
@@ -192,14 +231,11 @@ namespace BSPTest
 					mVelocity	=endPos - startPos;
 					mbOnGround	=false;
 				}
-				Vector3	ofs	=Vector3.Zero;
-				ofs.X	=mGameCam.View.M13;
-				ofs.Y	=mGameCam.View.M23;
-				ofs.Z	=mGameCam.View.M33;
 
-				ofs	*=150.0f;
+				mPlayerControl.Position	=-endPos;
 
-				camPos	=endPos + ofs;
+				//pop up to eye height
+				camPos	=endPos + mEyeHeight;
 			}
 			else
 			{
@@ -210,6 +246,9 @@ namespace BSPTest
 			
 			mLevel.Update(msDelta);
 			mMatLib.UpdateWVP(mGameCam.World, mGameCam.View, mGameCam.Projection, -camPos);
+			mBFX.World		=mGameCam.World;
+			mBFX.View		=mGameCam.View;
+			mBFX.Projection	=mGameCam.Projection;
 
 			base.Update(gameTime);
 		}
@@ -225,6 +264,15 @@ namespace BSPTest
 			g.DepthStencilState	=DepthStencilState.Default;
 
 			mLevel.Draw(g, mGameCam, mPlayerControl.Position, mZone.IsMaterialVisibleFromPos);
+
+			if(mLineVB != null)
+			{
+				g.SetVertexBuffer(mLineVB);
+
+				mBFX.CurrentTechnique.Passes[0].Apply();
+
+				g.DrawPrimitives(PrimitiveType.LineList, 0, mLineVB.VertexCount / 2);
+			}
 
 			mSB.Begin();
 			if(mbFlyMode)
