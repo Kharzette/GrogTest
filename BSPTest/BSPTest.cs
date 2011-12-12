@@ -94,7 +94,7 @@ namespace BSPTest
 			mMatLib	=new MaterialLib.MaterialLib(GraphicsDevice,
 				Content, mSharedCM, false);
 
-			mMatLib.ReadFromFile("Content/dm2NoTex.MatLib", false);
+			mMatLib.ReadFromFile("Content/dm2.MatLib", false);
 //			mMatLib.ReadFromFile("Content/eels.MatLib", false);
 
 			mZone	=new Zone();
@@ -114,7 +114,8 @@ namespace BSPTest
 			mMatLib.SetParameterOnAll("mLightRange", 200.0f);
 			mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
 
-			List<Vector3>	lines	=mLevel.GetNormals();
+//			List<Vector3>	lines	=mLevel.GetNormals();
+			List<Vector3>	lines	=mZone.GetLeafSideNormals();
 
 			mLineVB	=new VertexBuffer(mGDM.GraphicsDevice, typeof(VertexPositionColor), lines.Count, BufferUsage.WriteOnly);
 
@@ -189,10 +190,12 @@ namespace BSPTest
 			if(mbFlyMode)
 			{
 				mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.Fly;
+				mPlayerControl.Speed	=0.1f;
 			}
 			else
 			{
 				mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.FirstPerson;
+				mPlayerControl.Speed	=3.0f;
 			}
 			
 			mPlayerControl.Update(msDelta, mGameCam.View, pi.mKBS, pi.mMS, pi.mGPS);
@@ -267,6 +270,7 @@ namespace BSPTest
 
 			if(mLineVB != null)
 			{
+				g.DepthStencilState	=DepthStencilState.None;
 				g.SetVertexBuffer(mLineVB);
 
 				mBFX.CurrentTechnique.Passes[0].Apply();
