@@ -27,8 +27,12 @@ namespace BSPTest
 		UtilityLib.PlayerSteering	mPlayerControl;
 		UtilityLib.Input			mInput;
 		MaterialLib.MaterialLib		mMatLib;
-		VertexBuffer				mLineVB;
-		BasicEffect					mBFX;
+
+		//debug stuff
+		VertexBuffer	mLineVB;
+		BasicEffect		mBFX;
+		bool			mbFreezeVis;
+		Vector3			mVisPos;
 
 		//movement stuff
 		Vector3		mVelocity;
@@ -115,8 +119,7 @@ namespace BSPTest
 			mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
 
 //			List<Vector3>	lines	=mLevel.GetNormals();
-			List<Vector3>	lines	=mZone.GetLeafSideNormals();
-
+/*
 			mLineVB	=new VertexBuffer(mGDM.GraphicsDevice, typeof(VertexPositionColor), lines.Count, BufferUsage.WriteOnly);
 
 			VertexPositionColor	[]normVerts	=new VertexPositionColor[lines.Count];
@@ -126,7 +129,7 @@ namespace BSPTest
 				normVerts[i].Color		=Color.Green;
 			}
 
-			mLineVB.SetData<VertexPositionColor>(normVerts);
+			mLineVB.SetData<VertexPositionColor>(normVerts);*/
 		}
 
 
@@ -153,6 +156,14 @@ namespace BSPTest
 				if(pi.mLastKBS.IsKeyDown(Keys.F))
 				{
 					mbFlyMode	=!mbFlyMode;
+				}
+			}
+
+			if(pi.mKBS.IsKeyUp(Keys.R))
+			{
+				if(pi.mLastKBS.IsKeyDown(Keys.R))
+				{
+					mbFreezeVis	=!mbFreezeVis;
 				}
 			}
 
@@ -245,6 +256,11 @@ namespace BSPTest
 				camPos	=-mPlayerControl.Position;
 			}
 
+			if(!mbFreezeVis)
+			{
+				mVisPos	=camPos;
+			}
+
 			mGameCam.Update(msDelta, -camPos, mPlayerControl.Pitch, mPlayerControl.Yaw, mPlayerControl.Roll);
 			
 			mLevel.Update(msDelta);
@@ -266,7 +282,7 @@ namespace BSPTest
 			//spritebatch turns this off
 			g.DepthStencilState	=DepthStencilState.Default;
 
-			mLevel.Draw(g, mGameCam, mPlayerControl.Position, mZone.IsMaterialVisibleFromPos);
+			mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos);
 
 			if(mLineVB != null)
 			{
