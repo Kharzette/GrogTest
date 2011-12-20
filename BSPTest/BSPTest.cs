@@ -29,16 +29,19 @@ namespace BSPTest
 		MaterialLib.MaterialLib		mMatLib;
 
 		//debug stuff
-		VertexBuffer	mLineVB;
+		VertexBuffer	mLineVB, mVisVB;
+		IndexBuffer		mVisIB;
 		BasicEffect		mBFX;
 		bool			mbFreezeVis;
 		Vector3			mVisPos;
+		Random			mRand	=new Random();
 
 		//movement stuff
 		Vector3		mVelocity;
 		BoundingBox	mCharBox;
 		bool		mbOnGround;
 		bool		mbFlyMode;
+		bool		mbVisMode;
 		Vector3		mEyeHeight;
 
 		const float MidAirMoveScale	=0.4f;
@@ -99,20 +102,23 @@ namespace BSPTest
 			mMatLib	=new MaterialLib.MaterialLib(GraphicsDevice,
 				Content, mSharedCM, false);
 
-			mMatLib.ReadFromFile("Content/dm2.MatLib", false);
+			mMatLib.ReadFromFile("Content/VisTest.MatLib", false);
+//			mMatLib.ReadFromFile("Content/dm2.MatLib", false);
 //			mMatLib.ReadFromFile("Content/eels.MatLib", false);
 
 			mZone	=new Zone();
 			mLevel	=new MeshLib.IndoorMesh(GraphicsDevice, mMatLib);
 			
+			mZone.Read("Content/VisTest.Zone", false);
 //			mZone.Read("Content/end.Zone", false);
-			mZone.Read("Content/dm2.Zone", false);
+//			mZone.Read("Content/dm2.Zone", false);
+			mLevel.Read(GraphicsDevice, "Content/VisTest.ZoneDraw", true);
 //			mLevel.Read(GraphicsDevice, "Content/end.ZoneDraw", true);
-			mLevel.Read(GraphicsDevice, "Content/dm2.ZoneDraw", true);
+//			mLevel.Read(GraphicsDevice, "Content/dm2.ZoneDraw", true);
 //			mZone.Read("Content/eels.Zone", false);
 //			mLevel.Read(GraphicsDevice, "Content/eels.ZoneDraw", false);
 
-			mPlayerControl.Position	=mZone.GetPlayerStartPos();
+			mPlayerControl.Position	=mZone.GetPlayerStartPos() + Vector3.Up;
 //			mPlayerControl.Position	=-(mZone.GetPlayerStartPos() + (Vector3.Up * 66.0f));
 
 			mMatLib.SetParameterOnAll("mLight0Color", Vector3.One);
@@ -165,6 +171,22 @@ namespace BSPTest
 				if(pi.mLastKBS.IsKeyDown(Keys.R))
 				{
 					mbFreezeVis	=!mbFreezeVis;
+				}
+			}
+
+			if(pi.mKBS.IsKeyUp(Keys.T))
+			{
+				if(pi.mLastKBS.IsKeyDown(Keys.T))
+				{
+					mbVisMode	=!mbVisMode;
+					if(mbVisMode)
+					{
+						List<Vector3>	verts	=new List<Vector3>();
+						List<Int32>		inds	=new List<Int32>();
+						mZone.GetVisibleGeometry(mVisPos, verts, inds);
+
+						BuildDebugVisDrawData(verts, inds);
+					}
 				}
 			}
 
@@ -281,7 +303,22 @@ namespace BSPTest
 			//spritebatch turns this off
 			g.DepthStencilState	=DepthStencilState.Default;
 
-			mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos);
+			if(!mbVisMode)
+			{
+				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos);
+			}
+			else
+			{
+				if(mVisVB != null)
+				{
+					g.SetVertexBuffer(mVisVB);
+					g.Indices	=mVisIB;
+
+					mBFX.CurrentTechnique.Passes[0].Apply();
+
+					g.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, mVisVB.VertexCount, 0, mVisIB.IndexCount / 3);
+				}
+			}
 
 			if(mLineVB != null)
 			{
@@ -307,6 +344,42 @@ namespace BSPTest
 			mSB.End();
 
 			base.Draw(gameTime);
+		}
+
+
+		void BuildDebugVisDrawData(List<Vector3> verts, List<Int32> inds)
+		{
+			if(verts.Count == 0)
+			{
+				mVisVB	=null;
+				mVisIB	=null;
+				return;
+			}
+			mVisVB	=new VertexBuffer(mGDM.GraphicsDevice,
+				typeof(VertexPositionColor), verts.Count, BufferUsage.WriteOnly);
+
+			VertexPositionColor	[]vpc	=new VertexPositionColor[verts.Count];
+
+			for(int i=0;i < verts.Count;i++)
+			{
+				vpc[i].Position	=verts[i];
+				vpc[i].Color	=UtilityLib.Mathery.RandomColor(mRand);
+			}
+
+			for(int i=0;i < inds.Count;i+=3)
+			{
+				Color	randColor		=UtilityLib.Mathery.RandomColor(mRand);
+				vpc[inds[i]].Color		=randColor;
+				vpc[inds[i + 1]].Color	=randColor;
+				vpc[inds[i + 2]].Color	=randColor;
+			}
+
+			mVisVB.SetData<VertexPositionColor>(vpc);
+
+			mVisIB	=new IndexBuffer(mGDM.GraphicsDevice, IndexElementSize.ThirtyTwoBits,
+				inds.Count, BufferUsage.WriteOnly);
+
+			mVisIB.SetData<Int32>(inds.ToArray());
 		}
 	}
 }
