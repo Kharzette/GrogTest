@@ -105,6 +105,10 @@
     </NestedContentProject>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Libs\BSPVis\BSPVis32.csproj">
+      <Project>{5DBC6D17-4312-420F-8CE3-65AAE94328EA}</Project>
+      <Name>BSPVis32</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Libs\BSPZone\BSPZone.csproj">
       <Project>{AC062C9A-21A8-4B6B-83D9-3BF6DFE5337C}</Project>
       <Name>BSPZone</Name>

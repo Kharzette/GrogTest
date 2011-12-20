@@ -29,12 +29,14 @@ namespace BSPTest
 		MaterialLib.MaterialLib		mMatLib;
 
 		//debug stuff
-		VertexBuffer	mLineVB, mVisVB;
-		IndexBuffer		mVisIB;
+		VertexBuffer	mLineVB, mVisVB, mClustVB;
+		IndexBuffer		mVisIB, mClustIB;
 		BasicEffect		mBFX;
-		bool			mbFreezeVis;
+		bool			mbFreezeVis, mbClusterMode;
 		Vector3			mVisPos;
 		Random			mRand	=new Random();
+		BSPVis.VisMap	mVisMap;
+		int				mCurCluster, mNumClustPortals;
 
 		//movement stuff
 		Vector3		mVelocity;
@@ -137,6 +139,10 @@ namespace BSPTest
 			}
 
 			mLineVB.SetData<VertexPositionColor>(normVerts);*/
+
+			mVisMap	=new BSPVis.VisMap();
+			mVisMap.LoadVisData("Content/VisTest.VisData");
+			mVisMap.LoadPortalFile("Content/VisTest.gpf", false);
 		}
 
 
@@ -174,6 +180,45 @@ namespace BSPTest
 				}
 			}
 
+			if(pi.mKBS.IsKeyUp(Keys.C))
+			{
+				if(pi.mLastKBS.IsKeyDown(Keys.C))
+				{
+					mbClusterMode	=!mbClusterMode;
+					if(mbClusterMode)
+					{
+						List<Vector3>	verts	=new List<Vector3>();
+						List<UInt32>	inds	=new List<UInt32>();
+						mNumClustPortals	=mVisMap.GetDebugClusterGeometry(mCurCluster, verts, inds);
+						BuildDebugDrawData(verts, inds);
+					}
+				}
+			}
+
+			if(pi.mKBS.IsKeyUp(Keys.Add))
+			{
+				if(pi.mLastKBS.IsKeyDown(Keys.Add))
+				{
+					mCurCluster++;
+					List<Vector3>	verts	=new List<Vector3>();
+					List<UInt32>	inds	=new List<UInt32>();
+					mNumClustPortals	=mVisMap.GetDebugClusterGeometry(mCurCluster, verts, inds);
+					BuildDebugDrawData(verts, inds);
+				}
+			}
+
+			if(pi.mKBS.IsKeyUp(Keys.Subtract))
+			{
+				if(pi.mLastKBS.IsKeyDown(Keys.Subtract))
+				{
+					mCurCluster--;
+					List<Vector3>	verts	=new List<Vector3>();
+					List<UInt32>	inds	=new List<UInt32>();
+					mNumClustPortals	=mVisMap.GetDebugClusterGeometry(mCurCluster, verts, inds);
+					BuildDebugDrawData(verts, inds);
+				}
+			}
+
 			if(pi.mKBS.IsKeyUp(Keys.T))
 			{
 				if(pi.mLastKBS.IsKeyDown(Keys.T))
@@ -182,10 +227,10 @@ namespace BSPTest
 					if(mbVisMode)
 					{
 						List<Vector3>	verts	=new List<Vector3>();
-						List<Int32>		inds	=new List<Int32>();
+						List<UInt32>	inds	=new List<UInt32>();
 						mZone.GetVisibleGeometry(mVisPos, verts, inds);
 
-						BuildDebugVisDrawData(verts, inds);
+						BuildDebugDrawData(verts, inds);
 					}
 				}
 			}
@@ -303,11 +348,7 @@ namespace BSPTest
 			//spritebatch turns this off
 			g.DepthStencilState	=DepthStencilState.Default;
 
-			if(!mbVisMode)
-			{
-				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos);
-			}
-			else
+			if(mbVisMode)
 			{
 				if(mVisVB != null)
 				{
@@ -318,6 +359,27 @@ namespace BSPTest
 
 					g.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, mVisVB.VertexCount, 0, mVisIB.IndexCount / 3);
 				}
+			}
+			else if(mbClusterMode)
+			{
+				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos);
+				if(mVisVB != null)
+				{
+					g.RasterizerState	=RasterizerState.CullNone;
+
+					g.SetVertexBuffer(mVisVB);
+					g.Indices	=mVisIB;
+
+					mBFX.CurrentTechnique.Passes[0].Apply();
+
+					g.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, mVisVB.VertexCount, 0, mVisIB.IndexCount / 3);
+
+					g.RasterizerState	=RasterizerState.CullCounterClockwise;
+				}
+			}
+			else
+			{
+				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos);
 			}
 
 			if(mLineVB != null)
@@ -331,6 +393,15 @@ namespace BSPTest
 			}
 
 			mSB.Begin();
+
+			if(mbClusterMode)
+			{
+				mSB.DrawString(mKoot, "Cur Clust: " + mCurCluster +
+					", NumClustPortals: " + mNumClustPortals,
+					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
+					Color.Green);
+			}
+
 			if(mbFlyMode)
 			{
 				mSB.DrawString(mKoot, "FlyMode Coords: " + mPlayerControl.Position,
@@ -347,7 +418,7 @@ namespace BSPTest
 		}
 
 
-		void BuildDebugVisDrawData(List<Vector3> verts, List<Int32> inds)
+		void BuildDebugDrawData(List<Vector3> verts, List<UInt32> inds)
 		{
 			if(verts.Count == 0)
 			{
@@ -379,7 +450,7 @@ namespace BSPTest
 			mVisIB	=new IndexBuffer(mGDM.GraphicsDevice, IndexElementSize.ThirtyTwoBits,
 				inds.Count, BufferUsage.WriteOnly);
 
-			mVisIB.SetData<Int32>(inds.ToArray());
+			mVisIB.SetData<UInt32>(inds.ToArray());
 		}
 	}
 }

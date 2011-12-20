@@ -58,6 +58,14 @@
       <Name>end</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="vistest.gpf">
+      <Name>vistest</Name>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="vistest.VisData">
+      <Name>vistest</Name>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="VisTest.Zone">
       <Name>VisTest</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
