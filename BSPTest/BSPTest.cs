@@ -42,6 +42,7 @@ namespace BSPTest
 		Vector3		mEyeHeight;
 
 		const float MidAirMoveScale	=0.4f;
+		const float	PlayerSpeed		=0.3f;
 
 
 		public BSPTest()
@@ -78,7 +79,7 @@ namespace BSPTest
 								mGDM.GraphicsDevice.Viewport.Height);
 
 			mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.FirstPerson;
-			mPlayerControl.Speed	=3.0f;
+			mPlayerControl.Speed	=PlayerSpeed;
 
 			base.Initialize();
 		}
@@ -111,7 +112,7 @@ namespace BSPTest
 //			mZone.Read("Content/eels.Zone", false);
 //			mLevel.Read(GraphicsDevice, "Content/eels.ZoneDraw", false);
 
-			mPlayerControl.Position	=-mZone.GetPlayerStartPos();
+			mPlayerControl.Position	=mZone.GetPlayerStartPos();
 //			mPlayerControl.Position	=-(mZone.GetPlayerStartPos() + (Vector3.Up * 66.0f));
 
 			mMatLib.SetParameterOnAll("mLight0Color", Vector3.One);
@@ -185,33 +186,31 @@ namespace BSPTest
 			if(pi.mGPS.IsButtonDown(Buttons.A) ||
 				pi.mKBS.IsKeyDown(Keys.G))
 			{
-				Vector3	dynamicLight	=-mPlayerControl.Position;
+				Vector3	dynamicLight	=mPlayerControl.Position;
 				if(!mbFlyMode)
 				{
 					dynamicLight	+=mEyeHeight;
 				}
 				mMatLib.SetParameterOnAll("mLight0Position", dynamicLight);
 				mMatLib.SetParameterOnAll("mLight0Color", Vector3.One);
-				mMatLib.SetParameterOnAll("mLightRange", 200.0f);
+				mMatLib.SetParameterOnAll("mLightRange", 300.0f);
 				mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
 			}
 
-			Vector3	startPos	=-mPlayerControl.Position;
+			Vector3	startPos	=mPlayerControl.Position;
 
 			if(mbFlyMode)
 			{
 				mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.Fly;
-				mPlayerControl.Speed	=0.1f;
 			}
 			else
 			{
 				mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.FirstPerson;
-				mPlayerControl.Speed	=3.0f;
 			}
 			
 			mPlayerControl.Update(msDelta, mGameCam.View, pi.mKBS, pi.mMS, pi.mGPS);
 			
-			Vector3	endPos		=-mPlayerControl.Position;
+			Vector3	endPos		=mPlayerControl.Position;
 			Vector3	moveDelta	=endPos - startPos;
 			Vector3	camPos		=Vector3.Zero;
 
@@ -246,10 +245,10 @@ namespace BSPTest
 					mbOnGround	=false;
 				}
 
-				mPlayerControl.Position	=-endPos;
+				mPlayerControl.Position	=endPos;
 
 				//pop up to eye height
-				camPos	=endPos + mEyeHeight;
+				camPos	=-(endPos + mEyeHeight);
 			}
 			else
 			{
@@ -261,7 +260,7 @@ namespace BSPTest
 				mVisPos	=camPos;
 			}
 
-			mGameCam.Update(msDelta, -camPos, mPlayerControl.Pitch, mPlayerControl.Yaw, mPlayerControl.Roll);
+			mGameCam.Update(msDelta, camPos, mPlayerControl.Pitch, mPlayerControl.Yaw, mPlayerControl.Roll);
 			
 			mLevel.Update(msDelta);
 			mMatLib.UpdateWVP(mGameCam.World, mGameCam.View, mGameCam.Projection, -camPos);
@@ -297,12 +296,12 @@ namespace BSPTest
 			mSB.Begin();
 			if(mbFlyMode)
 			{
-				mSB.DrawString(mKoot, "FlyMode Coords: " + -mPlayerControl.Position,
+				mSB.DrawString(mKoot, "FlyMode Coords: " + mPlayerControl.Position,
 					Vector2.One * 20.0f, Color.Yellow);
 			}
 			else
 			{
-				mSB.DrawString(mKoot, "Coords: " + -mPlayerControl.Position,
+				mSB.DrawString(mKoot, "Coords: " + mPlayerControl.Position,
 					Vector2.One * 20.0f, Color.Yellow);
 			}
 			mSB.End();
