@@ -29,14 +29,16 @@ namespace BSPTest
 		MaterialLib.MaterialLib		mMatLib;
 
 		//debug stuff
-		VertexBuffer	mLineVB, mVisVB, mClustVB;
-		IndexBuffer		mVisIB, mClustIB;
+		VertexBuffer	mLineVB, mVisVB;
+		IndexBuffer		mVisIB;
 		BasicEffect		mBFX;
 		bool			mbFreezeVis, mbClusterMode;
 		Vector3			mVisPos;
 		Random			mRand	=new Random();
 		BSPVis.VisMap	mVisMap;
 		int				mCurCluster, mNumClustPortals;
+		List<Int32>		mPortNums	=new List<Int32>();
+		Vector3			mClustCenter;
 
 		//movement stuff
 		Vector3		mVelocity;
@@ -187,10 +189,7 @@ namespace BSPTest
 					mbClusterMode	=!mbClusterMode;
 					if(mbClusterMode)
 					{
-						List<Vector3>	verts	=new List<Vector3>();
-						List<UInt32>	inds	=new List<UInt32>();
-						mNumClustPortals	=mVisMap.GetDebugClusterGeometry(mCurCluster, verts, inds);
-						BuildDebugDrawData(verts, inds);
+						MakeClusterDebugInfo();
 					}
 				}
 			}
@@ -200,10 +199,7 @@ namespace BSPTest
 				if(pi.mLastKBS.IsKeyDown(Keys.Add))
 				{
 					mCurCluster++;
-					List<Vector3>	verts	=new List<Vector3>();
-					List<UInt32>	inds	=new List<UInt32>();
-					mNumClustPortals	=mVisMap.GetDebugClusterGeometry(mCurCluster, verts, inds);
-					BuildDebugDrawData(verts, inds);
+					MakeClusterDebugInfo();
 				}
 			}
 
@@ -212,10 +208,7 @@ namespace BSPTest
 				if(pi.mLastKBS.IsKeyDown(Keys.Subtract))
 				{
 					mCurCluster--;
-					List<Vector3>	verts	=new List<Vector3>();
-					List<UInt32>	inds	=new List<UInt32>();
-					mNumClustPortals	=mVisMap.GetDebugClusterGeometry(mCurCluster, verts, inds);
-					BuildDebugDrawData(verts, inds);
+					MakeClusterDebugInfo();
 				}
 			}
 
@@ -324,7 +317,7 @@ namespace BSPTest
 
 			if(!mbFreezeVis)
 			{
-				mVisPos	=camPos;
+				mVisPos	=-camPos;
 			}
 
 			mGameCam.Update(msDelta, camPos, mPlayerControl.Pitch, mPlayerControl.Yaw, mPlayerControl.Roll);
@@ -384,7 +377,7 @@ namespace BSPTest
 
 			if(mLineVB != null)
 			{
-				g.DepthStencilState	=DepthStencilState.None;
+//				g.DepthStencilState	=DepthStencilState.None;
 				g.SetVertexBuffer(mLineVB);
 
 				mBFX.CurrentTechnique.Passes[0].Apply();
@@ -400,6 +393,18 @@ namespace BSPTest
 					", NumClustPortals: " + mNumClustPortals,
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
+				mSB.DrawString(mKoot, "Port Nums: ",
+					(Vector2.UnitY * 90.0f) + (Vector2.UnitX * 20.0f),
+					Color.Green);
+				for(int i=0;i < mPortNums.Count;i++)
+				{
+					mSB.DrawString(mKoot, "" + mPortNums[i],
+						(Vector2.UnitY * 90.0f) + (Vector2.UnitX * (180.0f + (60.0f * i))),
+						Color.Red);
+				}
+				mSB.DrawString(mKoot, "ClustCenter: " + mClustCenter,
+					(Vector2.UnitY * 130.0f) + (Vector2.UnitX * 20.0f),
+					Color.PowderBlue);
 			}
 
 			if(mbFlyMode)
@@ -415,6 +420,39 @@ namespace BSPTest
 			mSB.End();
 
 			base.Draw(gameTime);
+		}
+
+
+		void MakeClusterDebugInfo()
+		{
+			List<Vector3>	verts		=new List<Vector3>();
+			List<Vector3>	norms		=new List<Vector3>();
+			List<UInt32>	inds		=new List<UInt32>();
+
+			mPortNums.Clear();
+
+			mNumClustPortals	=mVisMap.GetDebugClusterGeometry(mCurCluster,
+				verts, inds, norms, mPortNums);
+
+			if(norms.Count == 0)
+			{
+				return;
+			}
+
+			BuildDebugDrawData(verts, inds);
+
+			mLineVB	=new VertexBuffer(mGDM.GraphicsDevice, typeof(VertexPositionColor), norms.Count, BufferUsage.WriteOnly);
+
+			VertexPositionColor	[]normVerts	=new VertexPositionColor[norms.Count];
+			for(int i=0;i < norms.Count;i++)
+			{
+				normVerts[i].Position	=norms[i];
+				normVerts[i].Color		=Color.Green;
+			}
+
+			mLineVB.SetData<VertexPositionColor>(normVerts);
+
+			mClustCenter	=mZone.GetClusterCenter(mCurCluster);
 		}
 
 
