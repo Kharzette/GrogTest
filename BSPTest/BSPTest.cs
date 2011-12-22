@@ -148,6 +148,11 @@ namespace BSPTest
 			mVisMap	=new BSPVis.VisMap();
 			mVisMap.LoadVisData("Content/e2m1.VisData");
 			mVisMap.LoadPortalFile("Content/e2m1.gpf", false);
+
+			int	diff	=mVisMap.CompareVisData("Content/e2m1Unsafe.VisData", "Content/e2m1ThreadUnsafe.VisData", false);
+			diff	=mVisMap.CompareVisData("Content/e2m1NoThreadNonStatic.VisData", "Content/e2m1NoThread.VisData", false);
+			diff	=mVisMap.CompareVisData("Content/e2m1Unsafe.VisData", "Content/e2m1NoThread.VisData", false);
+			diff	=mVisMap.CompareVisData("Content/e2m1.VisData", "Content/e2m1Unsafe.VisData", false);
 		}
 
 
