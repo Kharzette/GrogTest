@@ -59,6 +59,9 @@ namespace BSPTest
 			Content.RootDirectory	="Content";
 
 			IsFixedTimeStep	=false;
+
+			mGDM.PreferredBackBufferWidth	=1280;
+			mGDM.PreferredBackBufferHeight	=720;
 		}
 
 
@@ -106,20 +109,20 @@ namespace BSPTest
 			mMatLib	=new MaterialLib.MaterialLib(GraphicsDevice,
 				Content, mSharedCM, false);
 
-			mMatLib.ReadFromFile("Content/E2M1.MatLib", false);
-//			mMatLib.ReadFromFile("Content/VisTest.MatLib", false);
+//			mMatLib.ReadFromFile("Content/E2M1.MatLib", false);
+			mMatLib.ReadFromFile("Content/VisTest.MatLib", false);
 //			mMatLib.ReadFromFile("Content/dm2.MatLib", false);
 //			mMatLib.ReadFromFile("Content/eels.MatLib", false);
 
 			mZone	=new Zone();
 			mLevel	=new MeshLib.IndoorMesh(GraphicsDevice, mMatLib);
 			
-			mZone.Read("Content/E2M1.Zone", false);
-//			mZone.Read("Content/VisTest.Zone", false);
+//			mZone.Read("Content/E2M1.Zone", false);
+			mZone.Read("Content/VisTest.Zone", false);
 //			mZone.Read("Content/end.Zone", false);
 //			mZone.Read("Content/dm2.Zone", false);
-			mLevel.Read(GraphicsDevice, "Content/E2M1.ZoneDraw", true);
-//			mLevel.Read(GraphicsDevice, "Content/VisTest.ZoneDraw", true);
+//			mLevel.Read(GraphicsDevice, "Content/E2M1.ZoneDraw", true);
+			mLevel.Read(GraphicsDevice, "Content/VisTest.ZoneDraw", true);
 //			mLevel.Read(GraphicsDevice, "Content/end.ZoneDraw", true);
 //			mLevel.Read(GraphicsDevice, "Content/dm2.ZoneDraw", true);
 //			mZone.Read("Content/eels.Zone", false);
@@ -146,13 +149,8 @@ namespace BSPTest
 			mLineVB.SetData<VertexPositionColor>(normVerts);*/
 
 			mVisMap	=new BSPVis.VisMap();
-			mVisMap.LoadVisData("Content/e2m1.VisData");
-			mVisMap.LoadPortalFile("Content/e2m1.gpf", false);
-
-			int	diff	=mVisMap.CompareVisData("Content/e2m1Unsafe.VisData", "Content/e2m1ThreadUnsafe.VisData", false);
-			diff	=mVisMap.CompareVisData("Content/e2m1NoThreadNonStatic.VisData", "Content/e2m1NoThread.VisData", false);
-			diff	=mVisMap.CompareVisData("Content/e2m1Unsafe.VisData", "Content/e2m1NoThread.VisData", false);
-			diff	=mVisMap.CompareVisData("Content/e2m1.VisData", "Content/e2m1Unsafe.VisData", false);
+			mVisMap.LoadVisData("Content/vistest.VisData");
+			mVisMap.LoadPortalFile("Content/vistest.gpf", false);
 		}
 
 

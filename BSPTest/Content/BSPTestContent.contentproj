@@ -66,22 +66,6 @@
       <Name>E2M1</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="e2m1NoThread.VisData">
-      <Name>e2m1NoThread</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="e2m1NoThreadNonStatic.VisData">
-      <Name>e2m1NoThreadNonStatic</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="e2m1ThreadUnsafe.VisData">
-      <Name>e2m1ThreadUnsafe</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="e2m1Unsafe.VisData">
-      <Name>e2m1Unsafe</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Include="end.MatLib">
       <Name>end</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
