@@ -37,6 +37,7 @@ namespace BSPTest
 		Random			mRand	=new Random();
 		BSPVis.VisMap	mVisMap;
 		int				mCurCluster, mNumClustPortals;
+		int				mLastNode, mNumLeafsVisible;
 		List<Int32>		mPortNums	=new List<Int32>();
 		Vector3			mClustCenter;
 
@@ -109,34 +110,23 @@ namespace BSPTest
 			mMatLib	=new MaterialLib.MaterialLib(GraphicsDevice,
 				Content, mSharedCM, false);
 
-//			mMatLib.ReadFromFile("Content/E2M1.MatLib", false);
-			mMatLib.ReadFromFile("Content/VisTest.MatLib", false);
-//			mMatLib.ReadFromFile("Content/dm2.MatLib", false);
-//			mMatLib.ReadFromFile("Content/eels.MatLib", false);
+			mMatLib.ReadFromFile("Content/dm2.MatLib", false);
 
 			mZone	=new Zone();
 			mLevel	=new MeshLib.IndoorMesh(GraphicsDevice, mMatLib);
 			
-//			mZone.Read("Content/E2M1.Zone", false);
-			mZone.Read("Content/VisTest.Zone", false);
-//			mZone.Read("Content/end.Zone", false);
-//			mZone.Read("Content/dm2.Zone", false);
-//			mLevel.Read(GraphicsDevice, "Content/E2M1.ZoneDraw", true);
-			mLevel.Read(GraphicsDevice, "Content/VisTest.ZoneDraw", true);
-//			mLevel.Read(GraphicsDevice, "Content/end.ZoneDraw", true);
-//			mLevel.Read(GraphicsDevice, "Content/dm2.ZoneDraw", true);
-//			mZone.Read("Content/eels.Zone", false);
-//			mLevel.Read(GraphicsDevice, "Content/eels.ZoneDraw", false);
+			mZone.Read("Content/dm2.Zone", false);
+			mLevel.Read(GraphicsDevice, "Content/dm2.ZoneDraw", true);
 
 			mPlayerControl.Position	=mZone.GetPlayerStartPos() + Vector3.Up;
-//			mPlayerControl.Position	=-(mZone.GetPlayerStartPos() + (Vector3.Up * 66.0f));
 
 			mMatLib.SetParameterOnAll("mLight0Color", Vector3.One);
 			mMatLib.SetParameterOnAll("mLightRange", 200.0f);
 			mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
 
-//			List<Vector3>	lines	=mLevel.GetNormals();
-/*
+			//draw vert normals
+			/*
+			List<Vector3>	lines	=mLevel.GetNormals();
 			mLineVB	=new VertexBuffer(mGDM.GraphicsDevice, typeof(VertexPositionColor), lines.Count, BufferUsage.WriteOnly);
 
 			VertexPositionColor	[]normVerts	=new VertexPositionColor[lines.Count];
@@ -149,8 +139,8 @@ namespace BSPTest
 			mLineVB.SetData<VertexPositionColor>(normVerts);*/
 
 			mVisMap	=new BSPVis.VisMap();
-			mVisMap.LoadVisData("Content/vistest.VisData");
-			mVisMap.LoadPortalFile("Content/vistest.gpf", false);
+			mVisMap.LoadVisData("Content/dm2.VisData");
+			mVisMap.LoadPortalFile("Content/dm2.gpf", false);
 		}
 
 
@@ -227,7 +217,8 @@ namespace BSPTest
 					{
 						List<Vector3>	verts	=new List<Vector3>();
 						List<UInt32>	inds	=new List<UInt32>();
-						mZone.GetVisibleGeometry(mVisPos, verts, inds);
+
+						mNumLeafsVisible	=mZone.GetVisibleGeometry(mVisPos, verts, inds);
 
 						BuildDebugDrawData(verts, inds);
 					}
@@ -324,6 +315,21 @@ namespace BSPTest
 			if(!mbFreezeVis)
 			{
 				mVisPos	=-camPos;
+				if(mbVisMode)
+				{
+					int	curNode	=mZone.FindNodeLandedIn(0, mVisPos);
+					if(curNode != mLastNode)
+					{
+						List<Vector3>	verts	=new List<Vector3>();
+						List<UInt32>	inds	=new List<UInt32>();
+
+						mNumLeafsVisible	=mZone.GetVisibleGeometry(mVisPos, verts, inds);
+
+						BuildDebugDrawData(verts, inds);
+
+						mLastNode	=curNode;
+					}
+				}
 			}
 
 			mGameCam.Update(msDelta, camPos, mPlayerControl.Pitch, mPlayerControl.Yaw, mPlayerControl.Roll);
@@ -411,6 +417,12 @@ namespace BSPTest
 				mSB.DrawString(mKoot, "ClustCenter: " + mClustCenter,
 					(Vector2.UnitY * 130.0f) + (Vector2.UnitX * 20.0f),
 					Color.PowderBlue);
+			}
+			else if(mbVisMode)
+			{
+				mSB.DrawString(mKoot, "NumLeafsVisible: " + mNumLeafsVisible,
+					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
+					Color.Green);
 			}
 
 			if(mbFlyMode)

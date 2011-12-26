@@ -30,72 +30,68 @@
     <Reference Include="Microsoft.Xna.Framework.Content.Pipeline.TextureImporter, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="dm2.MatLib">
-      <Name>dm2</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Include="dm2.Zone">
       <Name>dm2</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="dm2.ZoneDraw">
       <Name>dm2</Name>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="dm2.MatLib">
+      <Name>dm2</Name>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="dm2.gpf">
+      <Name>dm2</Name>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="dm2.VisData">
+      <Name>dm2</Name>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="DM5.MatLib">
+      <Name>DM5</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="dm2NoTex.MatLib">
-      <Name>dm2NoTex</Name>
+    <None Include="DM5.Zone">
+      <Name>DM5</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="e2m1.gpf">
-      <Name>e2m1</Name>
+    <None Include="DM5.ZoneDraw">
+      <Name>DM5</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="E2M1.MatLib">
-      <Name>E2M1</Name>
+    <None Include="e1m2ish.gpf">
+      <Name>e1m2ish</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="e2m1.VisData">
-      <Name>e2m1</Name>
+    <None Include="e1m2ish.MatLib">
+      <Name>e1m2ish</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="E2M1.Zone">
-      <Name>E2M1</Name>
+    <None Include="e1m2ish.VisData">
+      <Name>e1m2ish</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="E2M1.ZoneDraw">
-      <Name>E2M1</Name>
+    <None Include="e1m2ish.Zone">
+      <Name>e1m2ish</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="end.MatLib">
-      <Name>end</Name>
+    <None Include="e1m2ish.ZoneDraw">
+      <Name>e1m2ish</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="end.Zone">
-      <Name>end</Name>
+    <None Include="E3M1.MatLib">
+      <Name>E3M1</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="end.ZoneDraw">
-      <Name>end</Name>
+    <None Include="E3M1.Zone">
+      <Name>E3M1</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="vistest.gpf">
-      <Name>vistest</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="vistest.VisData">
-      <Name>vistest</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="VisTest.Zone">
-      <Name>VisTest</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="VisTest.ZoneDraw">
-      <Name>VisTest</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="VisTest.MatLib">
-      <Name>VisTest</Name>
+    <None Include="E3M1.ZoneDraw">
+      <Name>E3M1</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
