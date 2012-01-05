@@ -38,6 +38,7 @@ namespace BSPTest
 		BSPVis.VisMap	mVisMap;
 		int				mCurCluster, mNumClustPortals;
 		int				mLastNode, mNumLeafsVisible;
+		int				mNumMatsVisible, mNumMaterials;
 		List<Int32>		mPortNums	=new List<Int32>();
 		Vector3			mClustCenter;
 
@@ -141,6 +142,8 @@ namespace BSPTest
 			mVisMap	=new BSPVis.VisMap();
 			mVisMap.LoadVisData("Content/dm2.VisData");
 			mVisMap.LoadPortalFile("Content/dm2.gpf", false);
+
+			mNumMaterials	=mMatLib.GetMaterials().Count;
 		}
 
 
@@ -330,6 +333,15 @@ namespace BSPTest
 						mLastNode	=curNode;
 					}
 				}
+
+				mNumMatsVisible	=0;
+				for(int i=0;i < mNumMaterials;i++)
+				{
+					if(mZone.IsMaterialVisibleFromPos(mVisPos, i))
+					{
+						mNumMatsVisible++;
+					}
+				}
 			}
 
 			mGameCam.Update(msDelta, camPos, mPlayerControl.Pitch, mPlayerControl.Yaw, mPlayerControl.Roll);
@@ -421,6 +433,12 @@ namespace BSPTest
 			else if(mbVisMode)
 			{
 				mSB.DrawString(mKoot, "NumLeafsVisible: " + mNumLeafsVisible,
+					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
+					Color.Green);
+			}
+			else
+			{
+				mSB.DrawString(mKoot, "NumMaterialsVisible: " + mNumMatsVisible,
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
 			}
