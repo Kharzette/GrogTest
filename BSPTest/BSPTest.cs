@@ -74,17 +74,17 @@ namespace BSPTest
 				mGDM.GraphicsDevice.Viewport.Height,
 				mGDM.GraphicsDevice.Viewport.AspectRatio, 1.0f, 4000.0f);
 
-			//70, 32 is the general character size
-			mEyeHeight		=Vector3.UnitY * 65.0f;
+			//56, 24 is the general character size
+			mEyeHeight		=Vector3.UnitY * 50.0f;
 
 			//bottom
-			mCharBox.Min	=-Vector3.UnitX * 16;
-			mCharBox.Min	+=-Vector3.UnitZ * 16;
+			mCharBox.Min	=-Vector3.UnitX * 12;
+			mCharBox.Min	+=-Vector3.UnitZ * 12;
 
 			//top
-			mCharBox.Max	=Vector3.UnitX * 16;
-			mCharBox.Max	+=Vector3.UnitZ * 16;
-			mCharBox.Max	+=Vector3.UnitY * 70;
+			mCharBox.Max	=Vector3.UnitX * 12;
+			mCharBox.Max	+=Vector3.UnitZ * 12;
+			mCharBox.Max	+=Vector3.UnitY * 56;
 
 			mInput			=new UtilityLib.Input();
 			mPlayerControl	=new UtilityLib.PlayerSteering(mGDM.GraphicsDevice.Viewport.Width,
@@ -111,13 +111,13 @@ namespace BSPTest
 			mMatLib	=new MaterialLib.MaterialLib(GraphicsDevice,
 				Content, mSharedCM, false);
 
-			mMatLib.ReadFromFile("Content/dm2.MatLib", false);
+			mMatLib.ReadFromFile("Content/e2m1.MatLib", false);
 
 			mZone	=new Zone();
 			mLevel	=new MeshLib.IndoorMesh(GraphicsDevice, mMatLib);
 			
-			mZone.Read("Content/dm2.Zone", false);
-			mLevel.Read(GraphicsDevice, "Content/dm2.ZoneDraw", true);
+			mZone.Read("Content/e2m1.Zone", false);
+			mLevel.Read(GraphicsDevice, "Content/e2m1.ZoneDraw", true);
 
 			mPlayerControl.Position	=mZone.GetPlayerStartPos() + Vector3.Up;
 
@@ -140,10 +140,22 @@ namespace BSPTest
 			mLineVB.SetData<VertexPositionColor>(normVerts);*/
 
 			mVisMap	=new BSPVis.VisMap();
-			mVisMap.LoadVisData("Content/dm2.VisData");
-			mVisMap.LoadPortalFile("Content/dm2.gpf", false);
+			mVisMap.LoadVisData("Content/e2m1.VisData");
+			mVisMap.LoadPortalFile("Content/e2m1.gpf", false);
 
 			mNumMaterials	=mMatLib.GetMaterials().Count;
+
+			mZone.eTriggerHit	+=OnTriggerHit;
+
+			List<ZoneEntity>	switchedOn	=mZone.GetSwitchedOnLights();
+			foreach(ZoneEntity ze in switchedOn)
+			{
+				int	switchNum;
+				if(ze.GetInt("LightSwitchNum", out switchNum))
+				{
+					mLevel.SwitchLight(switchNum, true);
+				}
+			}
 		}
 
 
@@ -309,6 +321,9 @@ namespace BSPTest
 
 				//pop up to eye height
 				camPos	=-(endPos + mEyeHeight);
+
+				//do a trigger check
+				mZone.BoxTriggerCheck(mCharBox, startPos, endPos);
 			}
 			else
 			{
@@ -489,6 +504,48 @@ namespace BSPTest
 			mLineVB.SetData<VertexPositionColor>(normVerts);
 
 			mClustCenter	=mZone.GetClusterCenter(mCurCluster);
+		}
+
+
+		void OnTriggerHit(object sender, EventArgs ea)
+		{
+			ZoneEntity	ze	=sender as ZoneEntity;
+			if(ze == null)
+			{
+				return;
+			}
+
+			string	targ	=ze.GetTarget();
+			if(targ == "")
+			{
+				return;
+			}
+
+			List<ZoneEntity>	targs	=mZone.GetEntitiesByTargetName(targ);
+			foreach(ZoneEntity zet in targs)
+			{
+				int	switchNum;
+				if(!zet.GetInt("LightSwitchNum", out switchNum))
+				{
+					continue;
+				}
+
+				//see if already on
+				bool	bOn	=true;
+
+				int	spawnFlags;
+				if(zet.GetInt("spawnflags", out spawnFlags))
+				{
+					if(UtilityLib.Misc.bFlagSet(spawnFlags, 1))
+					{
+						bOn	=false;
+					}
+				}
+
+				//switch!
+				bOn	=!bOn;
+				mLevel.SwitchLight(switchNum, bOn);
+			}
 		}
 
 
