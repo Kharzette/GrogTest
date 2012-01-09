@@ -30,7 +30,7 @@ namespace BSPTest
 
 		//debug stuff
 		VertexBuffer	mLineVB, mVisVB;
-		IndexBuffer		mVisIB;
+		IndexBuffer		mLineIB, mVisIB;
 		BasicEffect		mBFX;
 		bool			mbFreezeVis, mbClusterMode;
 		Vector3			mVisPos;
@@ -125,19 +125,24 @@ namespace BSPTest
 			mMatLib.SetParameterOnAll("mLightRange", 200.0f);
 			mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
 
-			//draw vert normals
-			/*
-			List<Vector3>	lines	=mLevel.GetNormals();
-			mLineVB	=new VertexBuffer(mGDM.GraphicsDevice, typeof(VertexPositionColor), lines.Count, BufferUsage.WriteOnly);
+			//draw trigger boxes
+			List<Vector3>	verts	=new List<Vector3>();
+			List<Int32>		inds	=new List<Int32>();
+			mZone.GetTriggerGeometry(verts, inds);
 
-			VertexPositionColor	[]normVerts	=new VertexPositionColor[lines.Count];
-			for(int i=0;i < lines.Count;i++)
+			mLineVB	=new VertexBuffer(mGDM.GraphicsDevice, typeof(VertexPositionColor), verts.Count, BufferUsage.WriteOnly);
+
+			VertexPositionColor	[]normVerts	=new VertexPositionColor[verts.Count];
+			for(int i=0;i < verts.Count;i++)
 			{
-				normVerts[i].Position	=lines[i];
+				normVerts[i].Position	=verts[i];
 				normVerts[i].Color		=Color.Green;
 			}
 
-			mLineVB.SetData<VertexPositionColor>(normVerts);*/
+			mLineVB.SetData<VertexPositionColor>(normVerts);
+
+			mLineIB	=new IndexBuffer(mGDM.GraphicsDevice, IndexElementSize.ThirtyTwoBits, inds.Count, BufferUsage.WriteOnly);
+			mLineIB.SetData<Int32>(inds.ToArray());
 
 			mVisMap	=new BSPVis.VisMap();
 			mVisMap.LoadVisData("Content/e2m1.VisData");
@@ -418,10 +423,11 @@ namespace BSPTest
 			{
 //				g.DepthStencilState	=DepthStencilState.None;
 				g.SetVertexBuffer(mLineVB);
+				g.Indices	=mLineIB;
 
 				mBFX.CurrentTechnique.Passes[0].Apply();
 
-				g.DrawPrimitives(PrimitiveType.LineList, 0, mLineVB.VertexCount / 2);
+				g.DrawIndexedPrimitives(PrimitiveType.LineList, 0, 0, mLineVB.VertexCount, 0, mLineIB.IndexCount / 2);
 			}
 
 			mSB.Begin();
@@ -507,6 +513,44 @@ namespace BSPTest
 		}
 
 
+		void TriggerLight(ZoneEntity zet)
+		{
+			int	switchNum;
+			if(!zet.GetInt("LightSwitchNum", out switchNum))
+			{
+				return;
+			}
+
+			//see if already on
+			bool	bOn	=true;
+
+			int	spawnFlags;
+			if(zet.GetInt("spawnflags", out spawnFlags))
+			{
+				if(UtilityLib.Misc.bFlagSet(spawnFlags, 1))
+				{
+					bOn	=false;
+				}
+			}
+
+			//switch!
+			bOn	=!bOn;
+			mLevel.SwitchLight(switchNum, bOn);
+		}
+
+
+		void TriggerTeleport(ZoneEntity ent)
+		{
+			Vector3	dest;
+			if(!ent.GetOrigin(out dest))
+			{
+				return;
+			}
+
+			mPlayerControl.Position	=dest;
+		}
+
+
 		void OnTriggerHit(object sender, EventArgs ea)
 		{
 			ZoneEntity	ze	=sender as ZoneEntity;
@@ -524,27 +568,16 @@ namespace BSPTest
 			List<ZoneEntity>	targs	=mZone.GetEntitiesByTargetName(targ);
 			foreach(ZoneEntity zet in targs)
 			{
-				int	switchNum;
-				if(!zet.GetInt("LightSwitchNum", out switchNum))
+				string	className	=zet.GetValue("classname");
+
+				if(className.StartsWith("light") || className.StartsWith("_light"))
 				{
-					continue;
+					TriggerLight(zet);
 				}
-
-				//see if already on
-				bool	bOn	=true;
-
-				int	spawnFlags;
-				if(zet.GetInt("spawnflags", out spawnFlags))
+				else if(className.Contains("teleport_destination"))
 				{
-					if(UtilityLib.Misc.bFlagSet(spawnFlags, 1))
-					{
-						bOn	=false;
-					}
+					TriggerTeleport(zet);
 				}
-
-				//switch!
-				bOn	=!bOn;
-				mLevel.SwitchLight(switchNum, bOn);
 			}
 		}
 

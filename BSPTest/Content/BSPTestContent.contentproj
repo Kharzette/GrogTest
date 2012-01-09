@@ -30,6 +30,26 @@
     <Reference Include="Microsoft.Xna.Framework.Content.Pipeline.TextureImporter, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="apsp2.gpf">
+      <Name>apsp2</Name>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="apsp2.MatLib">
+      <Name>apsp2</Name>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="apsp2.VisData">
+      <Name>apsp2</Name>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="apsp2.Zone">
+      <Name>apsp2</Name>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="apsp2.ZoneDraw">
+      <Name>apsp2</Name>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="dm2.Zone">
       <Name>dm2</Name>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -50,56 +70,24 @@
       <Name>dm2</Name>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="DM5.MatLib">
-      <Name>DM5</Name>
+    <None Include="dm6.gpf">
+      <Name>dm6</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="DM5.Zone">
-      <Name>DM5</Name>
+    <None Include="dm6.MatLib">
+      <Name>dm6</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="DM5.ZoneDraw">
-      <Name>DM5</Name>
+    <None Include="dm6.VisData">
+      <Name>dm6</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="e1m1.gpf">
-      <Name>e1m1</Name>
+    <None Include="dm6.Zone">
+      <Name>dm6</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="E1M1.MatLib">
-      <Name>E1M1</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="e1m1.VisData">
-      <Name>e1m1</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="E1M1.Zone">
-      <Name>E1M1</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="E1M1.ZoneDraw">
-      <Name>E1M1</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="e1m2ish.gpf">
-      <Name>e1m2ish</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="e1m2ish.MatLib">
-      <Name>e1m2ish</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="e1m2ish.VisData">
-      <Name>e1m2ish</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="e1m2ish.Zone">
-      <Name>e1m2ish</Name>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="e1m2ish.ZoneDraw">
-      <Name>e1m2ish</Name>
+    <None Include="dm6.ZoneDraw">
+      <Name>dm6</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="e2m1.gpf">
@@ -122,7 +110,15 @@
       <Name>E2M1</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="E3M1.gpf">
+      <Name>E3M1</Name>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="E3M1.MatLib">
+      <Name>E3M1</Name>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="E3M1.VisData">
       <Name>E3M1</Name>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
