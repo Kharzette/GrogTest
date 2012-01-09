@@ -18,8 +18,9 @@ namespace BSPTest
 	{
 		GraphicsDeviceManager	mGDM;
 		SpriteBatch				mSB;
-		ContentManager			mSharedCM;
-		SpriteFont				mKoot;
+		ContentManager			mGameCM;
+		ContentManager			mShaderCM;
+		SpriteFont				mKoot20, mPesc12;
 
 		Zone						mZone;
 		MeshLib.IndoorMesh			mLevel;
@@ -58,7 +59,7 @@ namespace BSPTest
 		{
 			mGDM	=new GraphicsDeviceManager(this);
 
-			Content.RootDirectory	="Content";
+			Content.RootDirectory	="Content";	//don't use this
 
 			IsFixedTimeStep	=false;
 
@@ -99,25 +100,37 @@ namespace BSPTest
 
 		protected override void LoadContent()
 		{
-			mSB			=new SpriteBatch(GraphicsDevice);
-			mSharedCM	=new ContentManager(Services, "SharedContent");
-			mKoot		=mSharedCM.Load<SpriteFont>("Fonts/Koot20");
-			mBFX		=new BasicEffect(mGDM.GraphicsDevice);
+			//spritebatch for text
+			mSB	=new SpriteBatch(GraphicsDevice);
 
+			//two content managers, one for the gamewide data, another
+			//for a shader lib that I share among all games (lives in libs)
+			mGameCM		=new ContentManager(Services, "GameContent");
+			mShaderCM	=new ContentManager(Services, "ShaderLib");
+
+			//fonts for printing debug stuff
+			mKoot20		=mGameCM.Load<SpriteFont>("Fonts/Koot20");
+			mPesc12		=mGameCM.Load<SpriteFont>("Fonts/Pescadero12");
+
+			//basic effect, lazy built in shader stuff
+			mBFX					=new BasicEffect(mGDM.GraphicsDevice);
 			mBFX.VertexColorEnabled	=true;
 			mBFX.LightingEnabled	=false;
 			mBFX.TextureEnabled		=false;
 
+			//material libs hold textures and shaders
+			//and the parameters fed to the shaders
+			//as well as vid hardware states and such
 			mMatLib	=new MaterialLib.MaterialLib(GraphicsDevice,
-				Content, mSharedCM, false);
+				mGameCM, mShaderCM, false);
+			mMatLib.ReadFromFile("GameContent/Levels/eels.MatLib", false);
 
-			mMatLib.ReadFromFile("Content/e2m1.MatLib", false);
-
+			//levels consist of a zone, which is collision and visibility and
+			//entity info, and the zonedraw which is just an indoor mesh
 			mZone	=new Zone();
-			mLevel	=new MeshLib.IndoorMesh(GraphicsDevice, mMatLib);
-			
-			mZone.Read("Content/e2m1.Zone", false);
-			mLevel.Read(GraphicsDevice, "Content/e2m1.ZoneDraw", true);
+			mLevel	=new MeshLib.IndoorMesh(GraphicsDevice, mMatLib);			
+			mZone.Read("GameContent/Levels/eels.Zone", false);
+			mLevel.Read(GraphicsDevice, "GameContent/Levels/eels.ZoneDraw", true);
 
 			mPlayerControl.Position	=mZone.GetPlayerStartPos() + Vector3.Up;
 
@@ -125,28 +138,9 @@ namespace BSPTest
 			mMatLib.SetParameterOnAll("mLightRange", 200.0f);
 			mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
 
-			//draw trigger boxes
-			List<Vector3>	verts	=new List<Vector3>();
-			List<Int32>		inds	=new List<Int32>();
-			mZone.GetTriggerGeometry(verts, inds);
-
-			mLineVB	=new VertexBuffer(mGDM.GraphicsDevice, typeof(VertexPositionColor), verts.Count, BufferUsage.WriteOnly);
-
-			VertexPositionColor	[]normVerts	=new VertexPositionColor[verts.Count];
-			for(int i=0;i < verts.Count;i++)
-			{
-				normVerts[i].Position	=verts[i];
-				normVerts[i].Color		=Color.Green;
-			}
-
-			mLineVB.SetData<VertexPositionColor>(normVerts);
-
-			mLineIB	=new IndexBuffer(mGDM.GraphicsDevice, IndexElementSize.ThirtyTwoBits, inds.Count, BufferUsage.WriteOnly);
-			mLineIB.SetData<Int32>(inds.ToArray());
-
 			mVisMap	=new BSPVis.VisMap();
-			mVisMap.LoadVisData("Content/e2m1.VisData");
-			mVisMap.LoadPortalFile("Content/e2m1.gpf", false);
+			mVisMap.LoadVisData("GameContent/Levels/eels.VisData");
+			mVisMap.LoadPortalFile("GameContent/Levels/eels.gpf", false);
 
 			mNumMaterials	=mMatLib.GetMaterials().Count;
 
@@ -402,16 +396,13 @@ namespace BSPTest
 				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos);
 				if(mVisVB != null)
 				{
-					g.RasterizerState	=RasterizerState.CullNone;
-
+					g.DepthStencilState	=DepthStencilState.Default;
 					g.SetVertexBuffer(mVisVB);
 					g.Indices	=mVisIB;
 
 					mBFX.CurrentTechnique.Passes[0].Apply();
 
 					g.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, mVisVB.VertexCount, 0, mVisIB.IndexCount / 3);
-
-					g.RasterizerState	=RasterizerState.CullCounterClockwise;
 				}
 			}
 			else
@@ -421,57 +412,72 @@ namespace BSPTest
 
 			if(mLineVB != null)
 			{
-//				g.DepthStencilState	=DepthStencilState.None;
+				g.DepthStencilState	=DepthStencilState.Default;
 				g.SetVertexBuffer(mLineVB);
-				g.Indices	=mLineIB;
+
+				//might not need indexes
+				if(mLineIB != null)
+				{
+					g.Indices	=mLineIB;
+				}
 
 				mBFX.CurrentTechnique.Passes[0].Apply();
 
-				g.DrawIndexedPrimitives(PrimitiveType.LineList, 0, 0, mLineVB.VertexCount, 0, mLineIB.IndexCount / 2);
+				if(mLineIB != null)
+				{
+					g.DrawIndexedPrimitives(PrimitiveType.LineList, 0, 0, mLineVB.VertexCount, 0, mLineIB.IndexCount / 2);
+				}
+				else
+				{
+					g.DrawPrimitives(PrimitiveType.LineList, 0, mLineVB.VertexCount / 2);
+				}
 			}
 
 			mSB.Begin();
 
 			if(mbClusterMode)
 			{
-				mSB.DrawString(mKoot, "Cur Clust: " + mCurCluster +
+				mSB.DrawString(mKoot20, "Cur Clust: " + mCurCluster +
 					", NumClustPortals: " + mNumClustPortals,
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
-				mSB.DrawString(mKoot, "Port Nums: ",
+				mSB.DrawString(mKoot20, "Port Nums: ",
 					(Vector2.UnitY * 90.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
+				string	portNumString	="";
 				for(int i=0;i < mPortNums.Count;i++)
 				{
-					mSB.DrawString(mKoot, "" + mPortNums[i],
-						(Vector2.UnitY * 90.0f) + (Vector2.UnitX * (180.0f + (60.0f * i))),
-						Color.Red);
+					portNumString	+="" + mPortNums[i] + ", ";
 				}
-				mSB.DrawString(mKoot, "ClustCenter: " + mClustCenter,
+				//chop off , on the end
+				portNumString	=portNumString.Substring(0, portNumString.Length - 2);
+				mSB.DrawString(mPesc12, portNumString,
+					(Vector2.UnitY * 100.0f) + (Vector2.UnitX * (170.0f)), Color.Red);
+				mSB.DrawString(mKoot20, "ClustCenter: " + mClustCenter,
 					(Vector2.UnitY * 130.0f) + (Vector2.UnitX * 20.0f),
 					Color.PowderBlue);
 			}
 			else if(mbVisMode)
 			{
-				mSB.DrawString(mKoot, "NumLeafsVisible: " + mNumLeafsVisible,
+				mSB.DrawString(mKoot20, "NumLeafsVisible: " + mNumLeafsVisible,
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
 			}
 			else
 			{
-				mSB.DrawString(mKoot, "NumMaterialsVisible: " + mNumMatsVisible,
+				mSB.DrawString(mKoot20, "NumMaterialsVisible: " + mNumMatsVisible,
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
 			}
 
 			if(mbFlyMode)
 			{
-				mSB.DrawString(mKoot, "FlyMode Coords: " + mPlayerControl.Position,
+				mSB.DrawString(mKoot20, "FlyMode Coords: " + mPlayerControl.Position,
 					Vector2.One * 20.0f, Color.Yellow);
 			}
 			else
 			{
-				mSB.DrawString(mKoot, "Coords: " + mPlayerControl.Position,
+				mSB.DrawString(mKoot20, "Coords: " + mPlayerControl.Position,
 					Vector2.One * 20.0f, Color.Yellow);
 			}
 			mSB.End();
@@ -510,6 +516,8 @@ namespace BSPTest
 			mLineVB.SetData<VertexPositionColor>(normVerts);
 
 			mClustCenter	=mZone.GetClusterCenter(mCurCluster);
+
+			mLineIB	=null;	//donut need indexes for this
 		}
 
 
@@ -579,6 +587,30 @@ namespace BSPTest
 					TriggerTeleport(zet);
 				}
 			}
+		}
+
+
+		void BuildTriggerBoxDrawData()
+		{
+			List<Vector3>	verts	=new List<Vector3>();
+			List<Int32>		inds	=new List<Int32>();
+			mZone.GetTriggerGeometry(verts, inds);
+
+			mLineVB	=new VertexBuffer(mGDM.GraphicsDevice,
+				typeof(VertexPositionColor),
+				verts.Count, BufferUsage.WriteOnly);
+
+			VertexPositionColor	[]normVerts	=new VertexPositionColor[verts.Count];
+			for(int i=0;i < verts.Count;i++)
+			{
+				normVerts[i].Position	=verts[i];
+				normVerts[i].Color		=Color.Green;
+			}
+
+			mLineVB.SetData<VertexPositionColor>(normVerts);
+
+			mLineIB	=new IndexBuffer(mGDM.GraphicsDevice, IndexElementSize.ThirtyTwoBits, inds.Count, BufferUsage.WriteOnly);
+			mLineIB.SetData<Int32>(inds.ToArray());
 		}
 
 
