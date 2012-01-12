@@ -33,7 +33,7 @@ namespace BSPTest
 		VertexBuffer	mLineVB, mVisVB;
 		IndexBuffer		mLineIB, mVisIB;
 		BasicEffect		mBFX;
-		bool			mbFreezeVis, mbClusterMode;
+		bool			mbFreezeVis, mbClusterMode, mbDisplayHelp;
 		Vector3			mVisPos;
 		Random			mRand	=new Random();
 		BSPVis.VisMap	mVisMap;
@@ -176,85 +176,75 @@ namespace BSPTest
 
 			UtilityLib.Input.PlayerInput	pi	=mInput.Player1;
 
-			if(pi.mKBS.IsKeyUp(Keys.F))
+			if(pi.WasKeyPressed(Keys.F1) || pi.WasButtonPressed(Buttons.Start))
 			{
-				if(pi.mLastKBS.IsKeyDown(Keys.F))
-				{
-					mbFlyMode	=!mbFlyMode;
-				}
+				mbDisplayHelp	=!mbDisplayHelp;
 			}
 
-			if(pi.mKBS.IsKeyUp(Keys.R))
+			if(pi.WasKeyPressed(Keys.F) || pi.WasButtonPressed(Buttons.LeftShoulder))
 			{
-				if(pi.mLastKBS.IsKeyDown(Keys.R))
-				{
-					mbFreezeVis	=!mbFreezeVis;
-				}
+				mbFlyMode	=!mbFlyMode;
 			}
 
-			if(pi.mKBS.IsKeyUp(Keys.C))
+			if(pi.WasKeyPressed(Keys.R) || pi.WasButtonPressed(Buttons.X))
 			{
-				if(pi.mLastKBS.IsKeyDown(Keys.C))
-				{
-					mbClusterMode	=!mbClusterMode;
-					if(mbClusterMode)
-					{
-						MakeClusterDebugInfo();
-					}
-				}
+				mbFreezeVis	=!mbFreezeVis;
 			}
 
-			if(pi.mKBS.IsKeyUp(Keys.Add))
+			if(pi.WasKeyPressed(Keys.C) || pi.WasButtonPressed(Buttons.B))
 			{
-				if(pi.mLastKBS.IsKeyDown(Keys.Add))
+				mbClusterMode	=!mbClusterMode;
+				if(mbClusterMode)
 				{
-					mCurCluster++;
+					mbVisMode	=false;
 					MakeClusterDebugInfo();
 				}
-			}
-
-			if(pi.mKBS.IsKeyUp(Keys.Subtract))
-			{
-				if(pi.mLastKBS.IsKeyDown(Keys.Subtract))
+				else
 				{
-					mCurCluster--;
-					MakeClusterDebugInfo();
+					mLineVB	=null;
+					mLineIB	=null;
 				}
 			}
 
-			if(pi.mKBS.IsKeyUp(Keys.T))
+			if(pi.WasKeyPressed(Keys.Add) || pi.WasButtonPressed(Buttons.DPadUp))
 			{
-				if(pi.mLastKBS.IsKeyDown(Keys.T))
+				mCurCluster++;
+				MakeClusterDebugInfo();
+			}
+
+			if(pi.WasKeyPressed(Keys.Subtract) || pi.WasButtonPressed(Buttons.DPadDown))
+			{
+				mCurCluster--;
+				MakeClusterDebugInfo();
+			}
+
+			if(pi.WasKeyPressed(Keys.T) || pi.WasButtonPressed(Buttons.RightShoulder))
+			{
+				mbVisMode	=!mbVisMode;
+				if(mbVisMode)
 				{
-					mbVisMode	=!mbVisMode;
-					if(mbVisMode)
-					{
-						List<Vector3>	verts	=new List<Vector3>();
-						List<UInt32>	inds	=new List<UInt32>();
+					List<Vector3>	verts	=new List<Vector3>();
+					List<UInt32>	inds	=new List<UInt32>();
 
-						mNumLeafsVisible	=mZone.GetVisibleGeometry(mVisPos, verts, inds);
+					mNumLeafsVisible	=mZone.GetVisibleGeometry(mVisPos, verts, inds);
 
-						BuildDebugDrawData(verts, inds);
-					}
+					BuildDebugDrawData(verts, inds);
+
+					mbClusterMode	=false;
+					mLineVB			=null;
+					mLineIB			=null;
 				}
 			}
 
-			if(pi.mGPS.IsButtonUp(Buttons.LeftShoulder))
-			{
-				if(pi.mLastGPS.IsButtonDown(Buttons.LeftShoulder))
-				{
-					mbFlyMode	=!mbFlyMode;
-				}
-			}
-
-			//jump
+			//jump, no need for press & release, can hold it down
 			if((pi.mKBS.IsKeyDown(Keys.Space)
-				|| pi.mGPS.IsButtonDown(Buttons.Y)) && mbOnGround)
+				|| pi.mGPS.IsButtonDown(Buttons.A)) && mbOnGround)
 			{
 				mVelocity	+=Vector3.UnitY * 5.0f;
 			}
 
-			if(pi.mGPS.IsButtonDown(Buttons.A) ||
+			//dynamic light, can hold
+			if(pi.mGPS.IsButtonDown(Buttons.Y) ||
 				pi.mKBS.IsKeyDown(Keys.G))
 			{
 				Vector3	dynamicLight	=mPlayerControl.Position;
@@ -462,12 +452,37 @@ namespace BSPTest
 				mSB.DrawString(mKoot20, "NumLeafsVisible: " + mNumLeafsVisible,
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
+
+				if(mbFreezeVis)
+				{
+					mSB.DrawString(mKoot20, "Vis Point Frozen at: " + mVisPos,
+						(Vector2.UnitY * 90.0f) + (Vector2.UnitX * 20.0f),
+						Color.Magenta);
+				}
 			}
 			else
 			{
 				mSB.DrawString(mKoot20, "NumMaterialsVisible: " + mNumMatsVisible,
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
+			}
+
+			if(mbDisplayHelp)
+			{
+				DisplayHelp();
+			}
+			else
+			{
+				if(mInput.Player1.mGPS.IsConnected)
+				{
+					mSB.DrawString(mPesc12, "Press Start to display help",
+						(Vector2.UnitY * 700) + (Vector2.UnitX * 20.0f), Color.Yellow);
+				}
+				else
+				{
+					mSB.DrawString(mPesc12, "Press F1 to display help",
+						(Vector2.UnitY * 700) + (Vector2.UnitX * 20.0f), Color.Yellow);
+				}
 			}
 
 			if(mbFlyMode)
@@ -483,6 +498,72 @@ namespace BSPTest
 			mSB.End();
 
 			base.Draw(gameTime);
+		}
+
+
+		//assumes begin has been called, and in draw
+		void DisplayHelp()
+		{
+			if(mInput.Player1.mGPS.IsConnected)
+			{
+				mSB.DrawString(mPesc12, "List of controller buttons:",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 330.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "Start : Toggle help",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 350.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "Left Shoulder : Toggle flymode",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 370.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "X : Freeze Vis point at current camera location",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 390.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "B : Toggle cluster display mode",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 410.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "DPad Up/Down : Cycle through cluster number in cluster mode",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 430.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "Right Shoulder : Toggle visible geometry display mode",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 450.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "A : Jump if not in fly mode",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 470.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "Y : Place a dynamic light, or hold for a following light",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 490.0f),
+					Color.Yellow);
+			}
+			else
+			{
+				mSB.DrawString(mPesc12, "List of hotkeys:",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 330.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "F1 : Toggle help",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 350.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "f : Toggle flymode",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 370.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "r : Freeze Vis point at current camera location",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 390.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "c : Toggle cluster display mode",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 410.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "+/- : Cycle through cluster number in cluster mode",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 430.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "t : Toggle visible geometry display mode",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 450.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "spacebar : Jump if not in fly mode",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 470.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "g : Place a dynamic light, or hold for a following light",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 490.0f),
+					Color.Yellow);
+			}
 		}
 
 
