@@ -36,12 +36,14 @@ namespace BSPTest
 		bool			mbFreezeVis, mbClusterMode, mbDisplayHelp;
 		Vector3			mVisPos;
 		Random			mRand	=new Random();
-		BSPVis.VisMap	mVisMap;
 		int				mCurCluster, mNumClustPortals;
 		int				mLastNode, mNumLeafsVisible;
 		int				mNumMatsVisible, mNumMaterials;
 		List<Int32>		mPortNums	=new List<Int32>();
 		Vector3			mClustCenter;
+#if !XBOX
+		BSPVis.VisMap	mVisMap;
+#endif
 
 		//movement stuff
 		Vector3		mVelocity;
@@ -58,6 +60,10 @@ namespace BSPTest
 		public BSPTest()
 		{
 			mGDM	=new GraphicsDeviceManager(this);
+
+#if XBOX
+			Components.Add(new GamerServicesComponent(this));
+#endif
 
 			Content.RootDirectory	="Content";	//don't use this
 
@@ -138,9 +144,11 @@ namespace BSPTest
 			mMatLib.SetParameterOnAll("mLightRange", 200.0f);
 			mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
 
+#if !XBOX
 			mVisMap	=new BSPVis.VisMap();
 			mVisMap.LoadVisData("GameContent/Levels/eels.VisData");
 			mVisMap.LoadPortalFile("GameContent/Levels/eels.gpf", false);
+#endif
 
 			mNumMaterials	=mMatLib.GetMaterials().Count;
 
@@ -434,18 +442,21 @@ namespace BSPTest
 				mSB.DrawString(mKoot20, "Port Nums: ",
 					(Vector2.UnitY * 90.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
-				string	portNumString	="";
-				for(int i=0;i < mPortNums.Count;i++)
+				if(mPortNums.Count > 0)
 				{
-					portNumString	+="" + mPortNums[i] + ", ";
+					string	portNumString	="";
+					for(int i=0;i < mPortNums.Count;i++)
+					{
+						portNumString	+="" + mPortNums[i] + ", ";
+					}
+					//chop off , on the end
+					portNumString	=portNumString.Substring(0, portNumString.Length - 2);
+					mSB.DrawString(mPesc12, portNumString,
+						(Vector2.UnitY * 100.0f) + (Vector2.UnitX * (170.0f)), Color.Red);
+					mSB.DrawString(mKoot20, "ClustCenter: " + mClustCenter,
+						(Vector2.UnitY * 130.0f) + (Vector2.UnitX * 20.0f),
+						Color.PowderBlue);
 				}
-				//chop off , on the end
-				portNumString	=portNumString.Substring(0, portNumString.Length - 2);
-				mSB.DrawString(mPesc12, portNumString,
-					(Vector2.UnitY * 100.0f) + (Vector2.UnitX * (170.0f)), Color.Red);
-				mSB.DrawString(mKoot20, "ClustCenter: " + mClustCenter,
-					(Vector2.UnitY * 130.0f) + (Vector2.UnitX * 20.0f),
-					Color.PowderBlue);
 			}
 			else if(mbVisMode)
 			{
@@ -574,10 +585,10 @@ namespace BSPTest
 			List<UInt32>	inds		=new List<UInt32>();
 
 			mPortNums.Clear();
-
+#if !XBOX
 			mNumClustPortals	=mVisMap.GetDebugClusterGeometry(mCurCluster,
 				verts, inds, norms, mPortNums);
-
+#endif
 			if(norms.Count == 0)
 			{
 				return;
