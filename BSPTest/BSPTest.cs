@@ -129,40 +129,15 @@ namespace BSPTest
 			//as well as vid hardware states and such
 			mMatLib	=new MaterialLib.MaterialLib(GraphicsDevice,
 				mGameCM, mShaderCM, false);
-			mMatLib.ReadFromFile("GameContent/Levels/eels.MatLib", false);
 
 			//levels consist of a zone, which is collision and visibility and
 			//entity info, and the zonedraw which is just an indoor mesh
 			mZone	=new Zone();
-			mLevel	=new MeshLib.IndoorMesh(GraphicsDevice, mMatLib);			
-			mZone.Read("GameContent/Levels/eels.Zone", false);
-			mLevel.Read(GraphicsDevice, "GameContent/Levels/eels.ZoneDraw", true);
-
-			mPlayerControl.Position	=mZone.GetPlayerStartPos() + Vector3.Up;
-
-			mMatLib.SetParameterOnAll("mLight0Color", Vector3.One);
-			mMatLib.SetParameterOnAll("mLightRange", 200.0f);
-			mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
-
-#if !XBOX
-			mVisMap	=new BSPVis.VisMap();
-			mVisMap.LoadVisData("GameContent/Levels/eels.VisData");
-			mVisMap.LoadPortalFile("GameContent/Levels/eels.gpf", false);
-#endif
-
-			mNumMaterials	=mMatLib.GetMaterials().Count;
+			mLevel	=new MeshLib.IndoorMesh(GraphicsDevice, mMatLib);
 
 			mZone.eTriggerHit	+=OnTriggerHit;
 
-			List<ZoneEntity>	switchedOn	=mZone.GetSwitchedOnLights();
-			foreach(ZoneEntity ze in switchedOn)
-			{
-				int	switchNum;
-				if(ze.GetInt("LightSwitchNum", out switchNum))
-				{
-					mLevel.SwitchLight(switchNum, true);
-				}
-			}
+			ChangeLevel("eels");
 		}
 
 
@@ -703,6 +678,39 @@ namespace BSPTest
 
 			mLineIB	=new IndexBuffer(mGDM.GraphicsDevice, IndexElementSize.ThirtyTwoBits, inds.Count, BufferUsage.WriteOnly);
 			mLineIB.SetData<Int32>(inds.ToArray());
+		}
+
+
+		void ChangeLevel(string baseName)
+		{
+			mMatLib.ReadFromFile("GameContent/Levels/" + baseName + ".MatLib", false, mGDM.GraphicsDevice);
+			mZone.Read("GameContent/Levels/" + baseName + ".Zone", false);
+			mLevel.Read(GraphicsDevice, "GameContent/Levels/" + baseName + ".ZoneDraw", true);
+
+			mPlayerControl.Position	=mZone.GetPlayerStartPos() + Vector3.Up;
+
+			mMatLib.SetParameterOnAll("mLight0Color", Vector3.One);
+			mMatLib.SetParameterOnAll("mLightRange", 200.0f);
+			mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
+
+#if !XBOX
+			mVisMap	=new BSPVis.VisMap();
+			mVisMap.LoadVisData("GameContent/Levels/" + baseName + ".VisData");
+			mVisMap.LoadPortalFile("GameContent/Levels/" + baseName + ".gpf", false);
+#endif
+
+			mNumMaterials	=mMatLib.GetMaterials().Count;
+
+
+			List<ZoneEntity>	switchedOn	=mZone.GetSwitchedOnLights();
+			foreach(ZoneEntity ze in switchedOn)
+			{
+				int	switchNum;
+				if(ze.GetInt("LightSwitchNum", out switchNum))
+				{
+					mLevel.SwitchLight(switchNum, true);
+				}
+			}
 		}
 
 
