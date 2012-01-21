@@ -34,6 +34,7 @@ namespace BSPTest
 		IndexBuffer		mLineIB, mVisIB;
 		BasicEffect		mBFX;
 		bool			mbFreezeVis, mbClusterMode, mbDisplayHelp;
+		bool			mbTexturesOn	=true;
 		Vector3			mVisPos;
 		Random			mRand	=new Random();
 		int				mCurCluster, mNumClustPortals;
@@ -172,6 +173,11 @@ namespace BSPTest
 			if(pi.WasKeyPressed(Keys.R) || pi.WasButtonPressed(Buttons.X))
 			{
 				mbFreezeVis	=!mbFreezeVis;
+			}
+
+			if(pi.WasKeyPressed(Keys.X) || pi.WasButtonPressed(Buttons.LeftStick))
+			{
+				ToggleTextures();
 			}
 
 			if(pi.WasKeyPressed(Keys.C) || pi.WasButtonPressed(Buttons.B))
@@ -519,6 +525,9 @@ namespace BSPTest
 				mSB.DrawString(mPesc12, "Y : Place a dynamic light, or hold for a following light",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 490.0f),
 					Color.Yellow);
+				mSB.DrawString(mPesc12, "Left Stick Button : Toggle textures on/off",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 510.0f),
+					Color.Yellow);
 			}
 			else
 			{
@@ -548,6 +557,9 @@ namespace BSPTest
 					Color.Yellow);
 				mSB.DrawString(mPesc12, "g : Place a dynamic light, or hold for a following light",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 490.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "x : Toggle textures on/off",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 510.0f),
 					Color.Yellow);
 			}
 		}
@@ -711,6 +723,13 @@ namespace BSPTest
 					mLevel.SwitchLight(switchNum, true);
 				}
 			}
+		}
+
+
+		void ToggleTextures()
+		{
+			mbTexturesOn	=!mbTexturesOn;
+			mMatLib.SetParameterOnAll("mbTextureEnabled", mbTexturesOn);
 		}
 
 
