@@ -29,6 +29,9 @@ namespace BSPTest
 		UtilityLib.Input			mInput;
 		MaterialLib.MaterialLib		mMatLib;
 
+		List<string>	mLevels		=new List<string>();
+		int				mCurLevel	=-1;
+
 		//debug stuff
 		VertexBuffer	mLineVB, mVisVB;
 		IndexBuffer		mLineIB, mVisIB;
@@ -72,6 +75,11 @@ namespace BSPTest
 
 			mGDM.PreferredBackBufferWidth	=1280;
 			mGDM.PreferredBackBufferHeight	=720;
+
+			mLevels.Add("e3m3");
+			mLevels.Add("eels");
+			mLevels.Add("e4m1");
+			mLevels.Add("e3m2");
 		}
 
 
@@ -125,20 +133,7 @@ namespace BSPTest
 			mBFX.LightingEnabled	=false;
 			mBFX.TextureEnabled		=false;
 
-			//material libs hold textures and shaders
-			//and the parameters fed to the shaders
-			//as well as vid hardware states and such
-			mMatLib	=new MaterialLib.MaterialLib(GraphicsDevice,
-				mGameCM, mShaderCM, false);
-
-			//levels consist of a zone, which is collision and visibility and
-			//entity info, and the zonedraw which is just an indoor mesh
-			mZone	=new Zone();
-			mLevel	=new MeshLib.IndoorMesh(GraphicsDevice, mMatLib);
-
-			mZone.eTriggerHit	+=OnTriggerHit;
-
-			ChangeLevel("eels");
+			NextLevel();
 		}
 
 
@@ -178,6 +173,11 @@ namespace BSPTest
 			if(pi.WasKeyPressed(Keys.X) || pi.WasButtonPressed(Buttons.LeftStick))
 			{
 				ToggleTextures();
+			}
+
+			if(pi.WasKeyPressed(Keys.L) || pi.WasButtonPressed(Buttons.RightStick))
+			{
+				NextLevel();
 			}
 
 			if(pi.WasKeyPressed(Keys.C) || pi.WasButtonPressed(Buttons.B))
@@ -444,19 +444,19 @@ namespace BSPTest
 				mSB.DrawString(mKoot20, "NumLeafsVisible: " + mNumLeafsVisible,
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
-
-				if(mbFreezeVis)
-				{
-					mSB.DrawString(mKoot20, "Vis Point Frozen at: " + mVisPos,
-						(Vector2.UnitY * 90.0f) + (Vector2.UnitX * 20.0f),
-						Color.Magenta);
-				}
 			}
 			else
 			{
 				mSB.DrawString(mKoot20, "NumMaterialsVisible: " + mNumMatsVisible,
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
+			}
+
+			if(mbFreezeVis)
+			{
+				mSB.DrawString(mKoot20, "Vis Point Frozen at: " + mVisPos,
+					(Vector2.UnitY * 90.0f) + (Vector2.UnitX * 520.0f),
+					Color.Magenta);
 			}
 
 			if(mbDisplayHelp)
@@ -528,38 +528,47 @@ namespace BSPTest
 				mSB.DrawString(mPesc12, "Left Stick Button : Toggle textures on/off",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 510.0f),
 					Color.Yellow);
+				mSB.DrawString(mPesc12, "Right Stick Button : Next level",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 530.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "Back : Exit",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 550.0f),
+					Color.Yellow);
 			}
 			else
 			{
-				mSB.DrawString(mPesc12, "List of hotkeys:",
+				mSB.DrawString(mPesc12, "List of hotkeys: (Hold right mouse to turn!)",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 330.0f),
 					Color.Yellow);
 				mSB.DrawString(mPesc12, "F1 : Toggle help",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 350.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "f : Toggle flymode",
+				mSB.DrawString(mPesc12, "F : Toggle flymode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 370.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "r : Freeze Vis point at current camera location",
+				mSB.DrawString(mPesc12, "R : Freeze Vis point at current camera location",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 390.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "c : Toggle cluster display mode",
+				mSB.DrawString(mPesc12, "C : Toggle cluster display mode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 410.0f),
 					Color.Yellow);
 				mSB.DrawString(mPesc12, "+/- : Cycle through cluster number in cluster mode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 430.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "t : Toggle visible geometry display mode",
+				mSB.DrawString(mPesc12, "T : Toggle visible geometry display mode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 450.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "spacebar : Jump if not in fly mode",
+				mSB.DrawString(mPesc12, "Spacebar : Jump if not in fly mode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 470.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "g : Place a dynamic light, or hold for a following light",
+				mSB.DrawString(mPesc12, "G : Place a dynamic light, or hold for a following light",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 490.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "x : Toggle textures on/off",
+				mSB.DrawString(mPesc12, "X : Toggle textures on/off",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 510.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "L : Next level",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 530.0f),
 					Color.Yellow);
 			}
 		}
@@ -695,6 +704,24 @@ namespace BSPTest
 
 		void ChangeLevel(string baseName)
 		{
+			if(mZone != null)
+			{
+				mZone.eTriggerHit	-=OnTriggerHit;	//unwire if alive
+			}
+
+			//material libs hold textures and shaders
+			//and the parameters fed to the shaders
+			//as well as vid hardware states and such
+			mMatLib	=new MaterialLib.MaterialLib(GraphicsDevice,
+				mGameCM, mShaderCM, false);
+
+			//levels consist of a zone, which is collision and visibility and
+			//entity info, and the zonedraw which is just an indoor mesh
+			mZone	=new Zone();
+			mLevel	=new MeshLib.IndoorMesh(GraphicsDevice, mMatLib);
+
+			mZone.eTriggerHit	+=OnTriggerHit;
+
 			mMatLib.ReadFromFile("GameContent/Levels/" + baseName + ".MatLib", false, mGDM.GraphicsDevice);
 			mZone.Read("GameContent/Levels/" + baseName + ".Zone", false);
 			mLevel.Read(GraphicsDevice, "GameContent/Levels/" + baseName + ".ZoneDraw", true);
@@ -730,6 +757,19 @@ namespace BSPTest
 		{
 			mbTexturesOn	=!mbTexturesOn;
 			mMatLib.SetParameterOnAll("mbTextureEnabled", mbTexturesOn);
+		}
+
+
+		void NextLevel()
+		{
+			mCurLevel++;
+
+			if(mCurLevel >= mLevels.Count)
+			{
+				mCurLevel	=0;
+			}
+
+			ChangeLevel(mLevels[mCurLevel]);
 		}
 
 
