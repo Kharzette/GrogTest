@@ -242,7 +242,7 @@ namespace BSPTest
 					dynamicLight	+=mEyeHeight;
 				}
 				mMatLib.SetParameterOnAll("mLight0Position", dynamicLight);
-				mMatLib.SetParameterOnAll("mLight0Color", Vector3.One);
+				mMatLib.SetParameterOnAll("mLight0Color", Vector3.One * 50.0f);
 				mMatLib.SetParameterOnAll("mLightRange", 300.0f);
 				mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
 			}
