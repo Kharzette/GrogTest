@@ -31,6 +31,7 @@ namespace BSPTest
 
 		List<string>	mLevels		=new List<string>();
 		int				mCurLevel	=-1;
+		float			mWarpFactor;
 
 		//debug stuff
 		VertexBuffer	mLineVB, mVisVB;
@@ -150,6 +151,13 @@ namespace BSPTest
 			}
 
 			float	msDelta	=gameTime.ElapsedGameTime.Milliseconds;
+
+			mWarpFactor	+=msDelta / 1000.0f;
+			while(mWarpFactor > MathHelper.TwoPi)
+			{
+				mWarpFactor	-=MathHelper.TwoPi;
+			}
+			mMatLib.SetParameterOnAll("mWarpFactor", mWarpFactor);
 
 			mInput.Update(msDelta);
 
