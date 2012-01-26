@@ -39,6 +39,7 @@ namespace BSPTest
 		BasicEffect		mBFX;
 		bool			mbFreezeVis, mbClusterMode, mbDisplayHelp;
 		bool			mbTexturesOn	=true;
+		bool			mbPushingForward;	//autorun toggle for collision testing
 		Vector3			mVisPos;
 		Random			mRand	=new Random();
 		int				mCurCluster, mNumClustPortals;
@@ -58,8 +59,9 @@ namespace BSPTest
 		bool		mbVisMode;
 		Vector3		mEyeHeight;
 
-		const float MidAirMoveScale	=0.4f;
-		const float	PlayerSpeed		=0.3f;
+		const float MidAirMoveScale	=0.01f;
+		const float	PlayerSpeed		=0.15f;
+		const float	JumpVelocity	=4.0f;
 
 
 		public BSPTest()
@@ -81,6 +83,7 @@ namespace BSPTest
 			mLevels.Add("eels");
 			mLevels.Add("e4m1");
 			mLevels.Add("e3m2");
+			mLevels.Add("e2m5");
 		}
 
 
@@ -173,6 +176,11 @@ namespace BSPTest
 				mbFlyMode	=!mbFlyMode;
 			}
 
+			if(pi.WasKeyPressed(Keys.M))
+			{
+				mbPushingForward	=!mbPushingForward;
+			}
+
 			if(pi.WasKeyPressed(Keys.R) || pi.WasButtonPressed(Buttons.X))
 			{
 				mbFreezeVis	=!mbFreezeVis;
@@ -237,7 +245,7 @@ namespace BSPTest
 			if((pi.mKBS.IsKeyDown(Keys.Space)
 				|| pi.mGPS.IsButtonDown(Buttons.A)) && mbOnGround)
 			{
-				mVelocity	+=Vector3.UnitY * 5.0f;
+				mVelocity	+=Vector3.UnitY * JumpVelocity;
 			}
 
 			//dynamic light, can hold
@@ -267,8 +275,16 @@ namespace BSPTest
 			}
 			
 			mPlayerControl.Update(msDelta, mGameCam.View, pi.mKBS, pi.mMS, pi.mGPS);
-			
+
 			Vector3	endPos		=mPlayerControl.Position;
+
+			if(mbPushingForward)
+			{
+				endPos.X	-=msDelta * PlayerSpeed * mGameCam.View.M13;
+				endPos.Y	-=msDelta * PlayerSpeed * mGameCam.View.M23;
+				endPos.Z	-=msDelta * PlayerSpeed * mGameCam.View.M33;
+			}
+			
 			Vector3	moveDelta	=endPos - startPos;
 			Vector3	camPos		=Vector3.Zero;
 
@@ -276,26 +292,31 @@ namespace BSPTest
 			{
 				//flatten movement
 				moveDelta.Y	=0;
-				mVelocity	+=moveDelta;
 
 				//if not on the ground, limit midair movement
 				if(!mbOnGround)
 				{
-					mVelocity.X	*=MidAirMoveScale;
-					mVelocity.Z	*=MidAirMoveScale;
+					moveDelta.X	*=MidAirMoveScale;
+					moveDelta.Z	*=MidAirMoveScale;
 				}
 
 				mVelocity.Y	-=((9.8f / 1000.0f) * msDelta);	//gravity
 
 				//get ideal final position
-				endPos	=startPos + mVelocity;
+				endPos	=startPos + mVelocity + moveDelta;
 
 				//move it through the bsp
-				if(mZone.BipedMoveBox(mCharBox, startPos, endPos, ref endPos))
+				bool	bUsedStairs	=false;
+				if(mZone.BipedMoveBox(mCharBox, startPos, endPos, mbOnGround, ref endPos, ref bUsedStairs))
 				{
-					//on ground, zero out velocity
-					mVelocity	=Vector3.Zero;
+					//on ground, friction velocity
+					mVelocity	=endPos - startPos;
+					mVelocity	*=0.6f;
 					mbOnGround	=true;
+					if(bUsedStairs)
+					{
+						mVelocity.Y	=0.0f;
+					}
 				}
 				else
 				{
@@ -492,7 +513,7 @@ namespace BSPTest
 			}
 			else
 			{
-				mSB.DrawString(mKoot20, "Coords: " + mPlayerControl.Position,
+				mSB.DrawString(mKoot20, "Coords: " + mVelocity, //mPlayerControl.Position,
 					Vector2.One * 20.0f, Color.Yellow);
 			}
 			mSB.End();
