@@ -312,6 +312,21 @@ namespace BSPTest
 					//on ground, friction velocity
 					mVelocity	=endPos - startPos;
 					mVelocity	*=0.6f;
+
+					//clamp really small velocities
+					if(mVelocity.X < 0.001f && mVelocity.X > -0.001f)
+					{
+						mVelocity.X	=0.0f;
+					}
+					if(mVelocity.Y < 0.001f && mVelocity.Y > -0.001f)
+					{
+						mVelocity.Y	=0.0f;
+					}
+					if(mVelocity.Z < 0.001f && mVelocity.Z > -0.001f)
+					{
+						mVelocity.Z	=0.0f;
+					}
+
 					mbOnGround	=true;
 					if(bUsedStairs)
 					{
@@ -513,7 +528,7 @@ namespace BSPTest
 			}
 			else
 			{
-				mSB.DrawString(mKoot20, "Coords: " + mVelocity, //mPlayerControl.Position,
+				mSB.DrawString(mKoot20, "Coords: " + mPlayerControl.Position,
 					Vector2.One * 20.0f, Color.Yellow);
 			}
 			mSB.End();
@@ -598,6 +613,9 @@ namespace BSPTest
 					Color.Yellow);
 				mSB.DrawString(mPesc12, "L : Next level",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 530.0f),
+					Color.Yellow);
+				mSB.DrawString(mPesc12, "M : Autorun forward (for debugging physics)",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 550.0f),
 					Color.Yellow);
 			}
 		}
