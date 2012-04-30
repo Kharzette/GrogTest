@@ -29,6 +29,9 @@ namespace BSPTest
 		UtilityLib.Input			mInput;
 		MaterialLib.MaterialLib		mMatLib;
 
+		MeshLib.StaticMeshObject	mCyl;
+		MaterialLib.MaterialLib		mCylLib;
+
 		List<string>	mLevels		=new List<string>();
 		int				mCurLevel	=-1;
 		float			mWarpFactor;
@@ -79,11 +82,7 @@ namespace BSPTest
 			mGDM.PreferredBackBufferWidth	=1280;
 			mGDM.PreferredBackBufferHeight	=720;
 
-			mLevels.Add("e3m3");
-			mLevels.Add("eels");
-			mLevels.Add("e4m1");
-			mLevels.Add("e3m2");
-			mLevels.Add("e2m5");
+			mLevels.Add("Test");
 		}
 
 
@@ -137,6 +136,11 @@ namespace BSPTest
 			mBFX.LightingEnabled	=false;
 			mBFX.TextureEnabled		=false;
 
+			mCylLib	=new MaterialLib.MaterialLib(GraphicsDevice, mGameCM, mShaderCM, false);
+			mCylLib.ReadFromFile(mGameCM.RootDirectory + "/MatLibs/TestCyl.MatLib", false, GraphicsDevice);
+			mCyl	=new MeshLib.StaticMeshObject(mCylLib);
+			mCyl.ReadFromFile(mGameCM.RootDirectory + "/Meshes/TestCyl.Static", GraphicsDevice, false);
+
 			NextLevel();
 		}
 
@@ -153,7 +157,7 @@ namespace BSPTest
 				this.Exit();
 			}
 
-			float	msDelta	=gameTime.ElapsedGameTime.Milliseconds;
+			int	msDelta	=gameTime.ElapsedGameTime.Milliseconds;
 
 			mWarpFactor	+=msDelta / 1000.0f;
 			while(mWarpFactor > MathHelper.TwoPi)
@@ -162,7 +166,7 @@ namespace BSPTest
 			}
 			mMatLib.SetParameterOnAll("mWarpFactor", mWarpFactor);
 
-			mInput.Update(msDelta);
+			mInput.Update();
 
 			UtilityLib.Input.PlayerInput	pi	=mInput.Player1;
 
@@ -274,7 +278,7 @@ namespace BSPTest
 				mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.FirstPerson;
 			}
 			
-			mPlayerControl.Update(msDelta, mGameCam.View, pi.mKBS, pi.mMS, pi.mGPS);
+			mPlayerControl.Update(msDelta, mGameCam, pi.mKBS, pi.mMS, pi.mGPS);
 
 			Vector3	endPos		=mPlayerControl.Position;
 
@@ -381,11 +385,12 @@ namespace BSPTest
 				}
 			}
 
-			mGameCam.Update(msDelta, camPos, mPlayerControl.Pitch, mPlayerControl.Yaw, mPlayerControl.Roll);
+			mGameCam.Update(camPos, mPlayerControl.Pitch, mPlayerControl.Yaw, mPlayerControl.Roll);
 			
 			mLevel.Update(msDelta);
-			mMatLib.UpdateWVP(mGameCam.World, mGameCam.View, mGameCam.Projection, -camPos);
-			mBFX.World		=mGameCam.World;
+			mMatLib.UpdateWVP(Matrix.Identity, mGameCam.View, mGameCam.Projection, -camPos);
+			mCylLib.UpdateWVP(Matrix.Identity, mGameCam.View, mGameCam.Projection, -camPos);
+			mBFX.World		=Matrix.Identity;
 			mBFX.View		=mGameCam.View;
 			mBFX.Projection	=mGameCam.Projection;
 
@@ -431,6 +436,7 @@ namespace BSPTest
 			else
 			{
 				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos);
+				mCyl.Draw(g);
 			}
 
 			if(mLineVB != null)
@@ -769,9 +775,9 @@ namespace BSPTest
 
 			mZone.eTriggerHit	+=OnTriggerHit;
 
-			mMatLib.ReadFromFile("GameContent/Levels/" + baseName + ".MatLib", false, mGDM.GraphicsDevice);
-			mZone.Read("GameContent/Levels/" + baseName + ".Zone", false);
-			mLevel.Read(GraphicsDevice, "GameContent/Levels/" + baseName + ".ZoneDraw", true);
+			mMatLib.ReadFromFile("GameContent/ZoneMaps/" + baseName + ".MatLib", false, mGDM.GraphicsDevice);
+			mZone.Read("GameContent/ZoneMaps/" + baseName + ".Zone", false);
+			mLevel.Read(GraphicsDevice, "GameContent/ZoneMaps/" + baseName + ".ZoneDraw", true);
 
 			mPlayerControl.Position	=mZone.GetPlayerStartPos() + Vector3.Up;
 
@@ -781,8 +787,8 @@ namespace BSPTest
 
 #if !XBOX
 			mVisMap	=new BSPVis.VisMap();
-			mVisMap.LoadVisData("GameContent/Levels/" + baseName + ".VisData");
-			mVisMap.LoadPortalFile("GameContent/Levels/" + baseName + ".gpf", false);
+			mVisMap.LoadVisData("GameContent/ZoneMaps/" + baseName + ".VisData");
+			mVisMap.LoadPortalFile("GameContent/ZoneMaps/" + baseName + ".gpf", false);
 #endif
 
 			mNumMaterials	=mMatLib.GetMaterials().Count;
