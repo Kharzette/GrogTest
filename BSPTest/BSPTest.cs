@@ -28,6 +28,7 @@ namespace BSPTest
 		UtilityLib.PlayerSteering	mPlayerControl;
 		UtilityLib.Input			mInput;
 		MaterialLib.MaterialLib		mMatLib;
+		TriggerHelper				mTHelper	=new TriggerHelper();
 
 		MeshLib.StaticMeshObject	mCyl;
 		MaterialLib.MaterialLib		mCylLib;
@@ -82,7 +83,7 @@ namespace BSPTest
 			mGDM.PreferredBackBufferWidth	=1280;
 			mGDM.PreferredBackBufferHeight	=720;
 
-			mLevels.Add("Test");
+			mLevels.Add("TestMap");
 		}
 
 
@@ -96,14 +97,7 @@ namespace BSPTest
 			//56, 24 is the general character size
 			mEyeHeight		=Vector3.UnitY * 50.0f;
 
-			//bottom
-			mCharBox.Min	=-Vector3.UnitX * 12;
-			mCharBox.Min	+=-Vector3.UnitZ * 12;
-
-			//top
-			mCharBox.Max	=Vector3.UnitX * 12;
-			mCharBox.Max	+=Vector3.UnitZ * 12;
-			mCharBox.Max	+=Vector3.UnitY * 56;
+			mCharBox	=UtilityLib.Misc.MakeBox(24.0f, 56.0f);
 
 			mInput			=new UtilityLib.Input();
 			mPlayerControl	=new UtilityLib.PlayerSteering(mGDM.GraphicsDevice.Viewport.Width,
@@ -136,10 +130,10 @@ namespace BSPTest
 			mBFX.LightingEnabled	=false;
 			mBFX.TextureEnabled		=false;
 
-			mCylLib	=new MaterialLib.MaterialLib(GraphicsDevice, mGameCM, mShaderCM, false);
-			mCylLib.ReadFromFile(mGameCM.RootDirectory + "/MatLibs/TestCyl.MatLib", false, GraphicsDevice);
-			mCyl	=new MeshLib.StaticMeshObject(mCylLib);
-			mCyl.ReadFromFile(mGameCM.RootDirectory + "/Meshes/TestCyl.Static", GraphicsDevice, false);
+//			mCylLib	=new MaterialLib.MaterialLib(GraphicsDevice, mGameCM, mShaderCM, false);
+//			mCylLib.ReadFromFile(mGameCM.RootDirectory + "/MatLibs/TestCyl.MatLib", false, GraphicsDevice);
+//			mCyl	=new MeshLib.StaticMeshObject(mCylLib);
+//			mCyl.ReadFromFile(mGameCM.RootDirectory + "/Meshes/TestCyl.Static", GraphicsDevice, false);
 
 			NextLevel();
 		}
@@ -349,7 +343,7 @@ namespace BSPTest
 				camPos	=-(endPos + mEyeHeight);
 
 				//do a trigger check
-				mZone.BoxTriggerCheck(mCharBox, startPos, endPos);
+				mTHelper.CheckPlayer(mCharBox, startPos, endPos, msDelta);
 			}
 			else
 			{
@@ -389,7 +383,7 @@ namespace BSPTest
 			
 			mLevel.Update(msDelta);
 			mMatLib.UpdateWVP(Matrix.Identity, mGameCam.View, mGameCam.Projection, -camPos);
-			mCylLib.UpdateWVP(Matrix.Identity, mGameCam.View, mGameCam.Projection, -camPos);
+//			mCylLib.UpdateWVP(Matrix.Identity, mGameCam.View, mGameCam.Projection, -camPos);
 			mBFX.World		=Matrix.Identity;
 			mBFX.View		=mGameCam.View;
 			mBFX.Projection	=mGameCam.Projection;
@@ -436,7 +430,7 @@ namespace BSPTest
 			else
 			{
 				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos);
-				mCyl.Draw(g);
+//				mCyl.Draw(g);
 			}
 
 			if(mLineVB != null)
@@ -662,75 +656,6 @@ namespace BSPTest
 		}
 
 
-		void TriggerLight(ZoneEntity zet)
-		{
-			int	switchNum;
-			if(!zet.GetInt("LightSwitchNum", out switchNum))
-			{
-				return;
-			}
-
-			//see if already on
-			bool	bOn	=true;
-
-			int	spawnFlags;
-			if(zet.GetInt("spawnflags", out spawnFlags))
-			{
-				if(UtilityLib.Misc.bFlagSet(spawnFlags, 1))
-				{
-					bOn	=false;
-				}
-			}
-
-			//switch!
-			bOn	=!bOn;
-			mLevel.SwitchLight(switchNum, bOn);
-		}
-
-
-		void TriggerTeleport(ZoneEntity ent)
-		{
-			Vector3	dest;
-			if(!ent.GetOrigin(out dest))
-			{
-				return;
-			}
-
-			mPlayerControl.Position	=dest;
-		}
-
-
-		void OnTriggerHit(object sender, EventArgs ea)
-		{
-			ZoneEntity	ze	=sender as ZoneEntity;
-			if(ze == null)
-			{
-				return;
-			}
-
-			string	targ	=ze.GetTarget();
-			if(targ == "")
-			{
-				return;
-			}
-
-			List<ZoneEntity>	targs	=mZone.GetEntitiesByTargetName(targ);
-			foreach(ZoneEntity zet in targs)
-			{
-				string	className	=zet.GetValue("classname");
-
-				if(className.StartsWith("light") || className.StartsWith("_light"))
-				{
-					TriggerLight(zet);
-				}
-				else if(className.Contains("teleport_destination"))
-				{
-					TriggerTeleport(zet);
-				}
-			}
-		}
-
-
 		void BuildTriggerBoxDrawData()
 		{
 			List<Vector3>	verts	=new List<Vector3>();
@@ -759,7 +684,11 @@ namespace BSPTest
 		{
 			if(mZone != null)
 			{
-				mZone.eTriggerHit	-=OnTriggerHit;	//unwire if alive
+				mTHelper.eChangeMap	-=OnChangeMap;
+				mTHelper.ePickUp	-=OnPickUp;
+				mTHelper.eTeleport	-=OnTeleport;
+				mTHelper.eMessage	-=OnMessage;
+				mTHelper.Clear();
 			}
 
 			//material libs hold textures and shaders
@@ -773,7 +702,10 @@ namespace BSPTest
 			mZone	=new Zone();
 			mLevel	=new MeshLib.IndoorMesh(GraphicsDevice, mMatLib);
 
-			mZone.eTriggerHit	+=OnTriggerHit;
+			mTHelper.eChangeMap	+=OnChangeMap;
+			mTHelper.ePickUp	+=OnPickUp;
+			mTHelper.eTeleport	+=OnTeleport;
+			mTHelper.eMessage	+=OnMessage;
 
 			mMatLib.ReadFromFile("GameContent/ZoneMaps/" + baseName + ".MatLib", false, mGDM.GraphicsDevice);
 			mZone.Read("GameContent/ZoneMaps/" + baseName + ".Zone", false);
@@ -793,16 +725,7 @@ namespace BSPTest
 
 			mNumMaterials	=mMatLib.GetMaterials().Count;
 
-
-			List<ZoneEntity>	switchedOn	=mZone.GetSwitchedOnLights();
-			foreach(ZoneEntity ze in switchedOn)
-			{
-				int	switchNum;
-				if(ze.GetInt("LightSwitchNum", out switchNum))
-				{
-					mLevel.SwitchLight(switchNum, true);
-				}
-			}
+			mTHelper.Initialize(mZone, mLevel.SwitchLight);
 		}
 
 
@@ -810,6 +733,57 @@ namespace BSPTest
 		{
 			mbTexturesOn	=!mbTexturesOn;
 			mMatLib.SetParameterOnAll("mbTextureEnabled", mbTexturesOn);
+		}
+
+
+		void OnTeleport(object sender, EventArgs ea)
+		{
+			Nullable<Vector3>	dest	=sender as Nullable<Vector3>;
+			if(dest == null)
+			{
+				return;
+			}
+
+			mPlayerControl.Position	=dest.Value;
+		}
+
+
+		void OnPickUp(object sender, EventArgs ea)
+		{
+			string	className	=sender as string;
+
+			System.Diagnostics.Debug.WriteLine(className);
+		}
+
+
+		void OnMessage(object sender, EventArgs ea)
+		{
+			string	className	=sender as string;
+
+			System.Diagnostics.Debug.WriteLine(className);
+		}
+
+
+		void OnChangeMap(object sender, EventArgs ea)
+		{
+			string	lev	=sender as string;
+			if(lev == null)
+			{
+				return;
+			}
+
+			int	level;
+			UtilityLib.Mathery.TryParse(lev, out level);
+
+			mCurLevel	=level;
+			if(mCurLevel >= mLevels.Count)
+			{
+				mCurLevel	=0;
+			}
+
+			System.Diagnostics.Debug.WriteLine("Changing level to: " + level);
+
+			ChangeLevel(mLevels[mCurLevel]);
 		}
 
 

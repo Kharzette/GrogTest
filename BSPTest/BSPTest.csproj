@@ -121,19 +121,14 @@
       <Project>{EEC34A30-ACD3-4240-A4FE-5A3F8D5D7B13}</Project>
       <Name>MeshLib</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\Games\LudumDare\Libs\UtilityLib\UtilityLib.csproj">
-      <Project>{BB91910C-2595-4EB6-B48C-30BCC41457F6}</Project>
-      <Name>UtilityLib</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Games\LudumDare\Ludum23\GameContent\GameContent.contentproj">
-      <Project>{65952809-57AD-427F-90F1-BFBE0D208679}</Project>
-      <Name>GameContent</Name>
-      <XnaReferenceType>Content</XnaReferenceType>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Libs\ShaderLib\ShaderLib.contentproj">
+    <ProjectReference Include="..\..\Games\LudumDare\Libs\ShaderLib\ShaderLib.contentproj">
       <Project>{F921E3ED-B43E-4B82-B4EB-C9BC2E373B1F}</Project>
       <Name>ShaderLib</Name>
       <XnaReferenceType>Content</XnaReferenceType>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Games\LudumDare\Libs\UtilityLib\UtilityLib.csproj">
+      <Project>{BB91910C-2595-4EB6-B48C-30BCC41457F6}</Project>
+      <Name>UtilityLib</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
