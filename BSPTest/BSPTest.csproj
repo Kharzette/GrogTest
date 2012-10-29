@@ -105,28 +105,33 @@
     </NestedContentProject>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Games\LudumDare\Libs\BSPVis\BSPVis32.csproj">
-      <Project>{5DBC6D17-4312-420F-8CE3-65AAE94328EA}</Project>
-      <Name>BSPVis32</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Games\LudumDare\Libs\BSPZone\BSPZone.csproj">
-      <Project>{AC062C9A-21A8-4B6B-83D9-3BF6DFE5337C}</Project>
-      <Name>BSPZone</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Games\LudumDare\Libs\MaterialLib\MaterialLib.csproj">
-      <Project>{E6EAA6B0-1140-4BE3-AEFD-0DF83A7A705B}</Project>
-      <Name>MaterialLib</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Games\LudumDare\Libs\MeshLib\MeshLib.csproj">
-      <Project>{EEC34A30-ACD3-4240-A4FE-5A3F8D5D7B13}</Project>
-      <Name>MeshLib</Name>
+    <ProjectReference Include="..\..\Games\ColdVoid\GameContent\GameContent.contentproj">
+      <Project>{8F66A1EA-C917-4D47-BF18-CA9F339F8E5D}</Project>
+      <Name>GameContent</Name>
+      <XnaReferenceType>Content</XnaReferenceType>
     </ProjectReference>
     <ProjectReference Include="..\..\Games\LudumDare\Libs\ShaderLib\ShaderLib.contentproj">
       <Project>{F921E3ED-B43E-4B82-B4EB-C9BC2E373B1F}</Project>
       <Name>ShaderLib</Name>
       <XnaReferenceType>Content</XnaReferenceType>
     </ProjectReference>
-    <ProjectReference Include="..\..\Games\LudumDare\Libs\UtilityLib\UtilityLib.csproj">
+    <ProjectReference Include="..\..\Libs\BSPVis\BSPVis32.csproj">
+      <Project>{5DBC6D17-4312-420F-8CE3-65AAE94328EA}</Project>
+      <Name>BSPVis32</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Libs\BSPZone\BSPZone.csproj">
+      <Project>{AC062C9A-21A8-4B6B-83D9-3BF6DFE5337C}</Project>
+      <Name>BSPZone</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Libs\MaterialLib\MaterialLib.csproj">
+      <Project>{E6EAA6B0-1140-4BE3-AEFD-0DF83A7A705B}</Project>
+      <Name>MaterialLib</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Libs\MeshLib\MeshLib.csproj">
+      <Project>{EEC34A30-ACD3-4240-A4FE-5A3F8D5D7B13}</Project>
+      <Name>MeshLib</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Libs\UtilityLib\UtilityLib.csproj">
       <Project>{BB91910C-2595-4EB6-B48C-30BCC41457F6}</Project>
       <Name>UtilityLib</Name>
     </ProjectReference>

@@ -41,6 +41,10 @@ namespace BSPTest
 		VertexBuffer	mLineVB, mVisVB;
 		IndexBuffer		mLineIB, mVisIB;
 		BasicEffect		mBFX;
+		int				mModelHit;
+		Vector3			mColPos, mImpacto;
+		ZonePlane		mPlaneHit;
+		bool			mbStartCol, mbHit;
 		bool			mbFreezeVis, mbClusterMode, mbDisplayHelp;
 		bool			mbTexturesOn	=true;
 		bool			mbPushingForward;	//autorun toggle for collision testing
@@ -83,7 +87,7 @@ namespace BSPTest
 			mGDM.PreferredBackBufferWidth	=1280;
 			mGDM.PreferredBackBufferHeight	=720;
 
-			mLevels.Add("TestMap");
+			mLevels.Add("DoorTest");
 		}
 
 
@@ -350,6 +354,21 @@ namespace BSPTest
 				camPos	=-mPlayerControl.Position;
 			}
 
+			if(pi.WasKeyPressed(Keys.P))
+			{
+				if(mbStartCol)
+				{
+					mColPos	=mPlayerControl.Position;
+				}
+				else
+				{
+					mbHit	=mZone.Trace_All(mCharBox,
+						mColPos, mPlayerControl.Position,
+						ref mModelHit, ref mImpacto, ref mPlaneHit);
+				}
+				mbStartCol	=!mbStartCol;
+			}
+
 			if(!mbFreezeVis)
 			{
 				mVisPos	=-camPos;
@@ -415,7 +434,7 @@ namespace BSPTest
 			}
 			else if(mbClusterMode)
 			{
-				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos);
+				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos, mZone.GetModelTransforms());
 				if(mVisVB != null)
 				{
 					g.DepthStencilState	=DepthStencilState.Default;
@@ -429,7 +448,7 @@ namespace BSPTest
 			}
 			else
 			{
-				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos);
+				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos, mZone.GetModelTransforms());
 //				mCyl.Draw(g);
 			}
 
@@ -486,6 +505,12 @@ namespace BSPTest
 			else if(mbVisMode)
 			{
 				mSB.DrawString(mKoot20, "NumLeafsVisible: " + mNumLeafsVisible,
+					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
+					Color.Green);
+			}
+			else if(mbHit)
+			{
+				mSB.DrawString(mKoot20, "Hit model " + mModelHit + " pos " + mImpacto + ", Plane normal: " + mPlaneHit.mNormal,
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
 			}
