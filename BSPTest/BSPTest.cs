@@ -166,6 +166,8 @@ namespace BSPTest
 
 			mInput.Update();
 
+			mZone.UpdateTriggerPositions();
+
 			UtilityLib.Input.PlayerInput	pi	=mInput.Player1;
 
 			if(pi.WasKeyPressed(Keys.F1) || pi.WasButtonPressed(Buttons.Start))
