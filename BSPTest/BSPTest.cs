@@ -44,7 +44,7 @@ namespace BSPTest
 		int				mModelHit;
 		Vector3			mColPos, mImpacto;
 		ZonePlane		mPlaneHit;
-		bool			mbStartCol, mbHit;
+		bool			mbStartCol	=true, mbHit;
 		bool			mbFreezeVis, mbClusterMode, mbDisplayHelp;
 		bool			mbTexturesOn	=true;
 		bool			mbPushingForward;	//autorun toggle for collision testing
@@ -227,6 +227,11 @@ namespace BSPTest
 				MakeClusterDebugInfo();
 			}
 
+			if(pi.WasKeyPressed(Keys.N))
+			{
+
+			}
+
 			if(pi.WasKeyPressed(Keys.T) || pi.WasButtonPressed(Buttons.RightShoulder))
 			{
 				mbVisMode	=!mbVisMode;
@@ -302,9 +307,8 @@ namespace BSPTest
 				{
 					moveDelta.X	*=MidAirMoveScale;
 					moveDelta.Z	*=MidAirMoveScale;
+					mVelocity.Y	-=((9.8f / 1000.0f) * msDelta);	//gravity
 				}
-
-				mVelocity.Y	-=((9.8f / 1000.0f) * msDelta);	//gravity
 
 				//get ideal final position
 				endPos	=startPos + mVelocity + moveDelta;
@@ -364,9 +368,17 @@ namespace BSPTest
 				}
 				else
 				{
-					mbHit	=mZone.Trace_All(mCharBox,
-						mColPos, mPlayerControl.Position,
-						ref mModelHit, ref mImpacto, ref mPlaneHit);
+					Vector3	ndPos	=mPlayerControl.Position;
+
+					//level out the Y
+					ndPos.Y	=mColPos.Y;
+//					mbHit	=mZone.Trace_All(mCharBox,
+//						mColPos, mPlayerControl.Position,
+//						ref mModelHit, ref mImpacto, ref mPlaneHit);
+					bool	bStairs	=false;
+					mbHit	=mZone.BipedMoveBox(mCharBox,
+						mColPos, ndPos, true,
+						ref mImpacto, ref bStairs);
 				}
 				mbStartCol	=!mbStartCol;
 			}
