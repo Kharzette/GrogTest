@@ -1,6 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
@@ -88,6 +89,8 @@ namespace BSPTest
 			mGDM.PreferredBackBufferHeight	=720;
 
 			mLevels.Add("DoorTest");
+
+			PointsFromPlaneTest();
 		}
 
 
@@ -229,7 +232,13 @@ namespace BSPTest
 
 			if(pi.WasKeyPressed(Keys.N))
 			{
+				Matrix	testMat	=mZone.GetModelTransform(1);
 
+				Matrix	rot	=Matrix.CreateRotationY(MathHelper.PiOver4 / 4.0f);
+
+				testMat	=rot * testMat;
+
+				mZone.SetModelTransform(1, testMat);
 			}
 
 			if(pi.WasKeyPressed(Keys.T) || pi.WasButtonPressed(Buttons.RightShoulder))
@@ -372,13 +381,13 @@ namespace BSPTest
 
 					//level out the Y
 					ndPos.Y	=mColPos.Y;
-//					mbHit	=mZone.Trace_All(mCharBox,
-//						mColPos, mPlayerControl.Position,
-//						ref mModelHit, ref mImpacto, ref mPlaneHit);
-					bool	bStairs	=false;
-					mbHit	=mZone.BipedMoveBox(mCharBox,
-						mColPos, ndPos, true,
-						ref mImpacto, ref bStairs);
+					mbHit	=mZone.Trace_All(mCharBox,
+						mColPos, mPlayerControl.Position,
+						ref mModelHit, ref mImpacto, ref mPlaneHit);
+//					bool	bStairs	=false;
+//					mbHit	=mZone.BipedMoveBox(mCharBox,
+//						mColPos, ndPos, true,
+//						ref mImpacto, ref bStairs);
 				}
 				mbStartCol	=!mbStartCol;
 			}
@@ -836,6 +845,101 @@ namespace BSPTest
 			}
 
 			ChangeLevel(mLevels[mCurLevel]);
+		}
+
+
+		void PointsFromPlaneTest()
+		{
+			Vector3	norm	=Vector3.UnitX;
+			float	dist	=10.0f;
+
+			Vector3	p0, p1, p2;
+
+			UtilityLib.Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
+
+			List<Vector3>	verts	=new List<Vector3>();
+			verts.Add(p0);
+			verts.Add(p1);
+			verts.Add(p2);
+
+			Vector3	outNorm	=Vector3.Zero;
+			float	outDist	=0.0f;
+
+			UtilityLib.Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
+
+			Debug.Assert(norm == outNorm);
+			Debug.Assert(dist == outDist);
+
+			norm	=Vector3.UnitY;
+
+			UtilityLib.Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
+
+			verts.Clear();
+			verts.Add(p0);
+			verts.Add(p1);
+			verts.Add(p2);
+
+			UtilityLib.Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
+
+			Debug.Assert(norm == outNorm);
+			Debug.Assert(dist == outDist);
+
+			norm	=Vector3.UnitZ;
+
+			UtilityLib.Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
+
+			verts.Clear();
+			verts.Add(p0);
+			verts.Add(p1);
+			verts.Add(p2);
+
+			UtilityLib.Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
+
+			Debug.Assert(norm == outNorm);
+			Debug.Assert(dist == outDist);
+
+			norm	=Vector3.UnitX;
+			dist	=-10f;
+
+			UtilityLib.Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
+
+			verts.Clear();
+			verts.Add(p0);
+			verts.Add(p1);
+			verts.Add(p2);
+
+			UtilityLib.Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
+
+			Debug.Assert(norm == outNorm);
+			Debug.Assert(dist == outDist);
+
+			norm	=Vector3.UnitY;
+
+			UtilityLib.Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
+
+			verts.Clear();
+			verts.Add(p0);
+			verts.Add(p1);
+			verts.Add(p2);
+
+			UtilityLib.Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
+
+			Debug.Assert(norm == outNorm);
+			Debug.Assert(dist == outDist);
+
+			norm	=Vector3.UnitZ;
+
+			UtilityLib.Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
+
+			verts.Clear();
+			verts.Add(p0);
+			verts.Add(p1);
+			verts.Add(p2);
+
+			UtilityLib.Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
+
+			Debug.Assert(norm == outNorm);
+			Debug.Assert(dist == outDist);
 		}
 
 
