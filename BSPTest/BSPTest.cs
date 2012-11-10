@@ -43,7 +43,7 @@ namespace BSPTest
 		IndexBuffer		mLineIB, mVisIB;
 		BasicEffect		mBFX;
 		int				mModelHit;
-		Vector3			mColPos, mImpacto;
+		Vector3			mColPos0, mColPos1, mImpacto;
 		ZonePlane		mPlaneHit;
 		bool			mbStartCol	=true, mbHit;
 		bool			mbFreezeVis, mbClusterMode, mbDisplayHelp;
@@ -102,7 +102,7 @@ namespace BSPTest
 				mGDM.GraphicsDevice.Viewport.AspectRatio, 1.0f, 4000.0f);
 
 			//56, 24 is the general character size
-			mEyeHeight		=Vector3.UnitY * 50.0f;
+			mEyeHeight		=Vector3.UnitY * 22.0f;	//actual height of 50
 
 			mCharBox	=UtilityLib.Misc.MakeBox(24.0f, 56.0f);
 
@@ -238,7 +238,11 @@ namespace BSPTest
 
 				testMat	=rot * testMat;
 
-				mZone.SetModelTransform(1, testMat);
+				mZone.RotateModelX(5, 5f);
+				mZone.RotateModelY(5, 10f);
+				mZone.RotateModelZ(5, 20f);
+
+//				mZone.SetModelTransform(1, testMat);
 			}
 
 			if(pi.WasKeyPressed(Keys.T) || pi.WasButtonPressed(Buttons.RightShoulder))
@@ -373,17 +377,20 @@ namespace BSPTest
 			{
 				if(mbStartCol)
 				{
-					mColPos	=mPlayerControl.Position;
+					mColPos0	=mPlayerControl.Position;
 				}
 				else
 				{
-					Vector3	ndPos	=mPlayerControl.Position;
+					mColPos1	=mPlayerControl.Position;
 
 					//level out the Y
-					ndPos.Y	=mColPos.Y;
-					mbHit	=mZone.Trace_All(mCharBox,
-						mColPos, mPlayerControl.Position,
-						ref mModelHit, ref mImpacto, ref mPlaneHit);
+					mColPos1.Y	=mColPos0.Y;
+
+					MakeTraceLine();
+
+//					mbHit	=mZone.Trace_All(mCharBox,
+//						mColPos, mPlayerControl.Position,
+//						ref mModelHit, ref mImpacto, ref mPlaneHit);
 //					bool	bStairs	=false;
 //					mbHit	=mZone.BipedMoveBox(mCharBox,
 //						mColPos, ndPos, true,
@@ -457,7 +464,7 @@ namespace BSPTest
 			}
 			else if(mbClusterMode)
 			{
-				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos, mZone.GetModelTransforms());
+				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos, mZone.GetModelTransform);
 				if(mVisVB != null)
 				{
 					g.DepthStencilState	=DepthStencilState.Default;
@@ -471,7 +478,7 @@ namespace BSPTest
 			}
 			else
 			{
-				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos, mZone.GetModelTransforms());
+				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos, mZone.GetModelTransform);
 //				mCyl.Draw(g);
 			}
 
@@ -669,6 +676,27 @@ namespace BSPTest
 		}
 
 
+		void MakeTraceLine()
+		{
+			mLineVB	=new VertexBuffer(mGDM.GraphicsDevice, typeof(VertexPositionColor), 2, BufferUsage.WriteOnly);
+
+			VertexPositionColor	[]line	=new VertexPositionColor[2];
+
+			Matrix	matInv	=Matrix.Invert(mZone.GetModelTransform(5));
+
+			Vector3	backTrans0	=Vector3.Transform(mColPos0, matInv);
+			Vector3	backTrans1	=Vector3.Transform(mColPos1, matInv);
+
+			line[0].Position	=backTrans0;
+			line[1].Position	=backTrans1;
+
+			line[0].Color	=Color.Blue;
+			line[1].Color	=Color.Red;
+
+			mLineVB.SetData<VertexPositionColor>(line);
+		}
+
+
 		void MakeClusterDebugInfo()
 		{
 			List<Vector3>	verts		=new List<Vector3>();
@@ -759,7 +787,7 @@ namespace BSPTest
 			mZone.Read("GameContent/ZoneMaps/" + baseName + ".Zone", false);
 			mLevel.Read(GraphicsDevice, "GameContent/ZoneMaps/" + baseName + ".ZoneDraw", true);
 
-			mPlayerControl.Position	=mZone.GetPlayerStartPos() + Vector3.Up;
+			mPlayerControl.Position	=mZone.GetPlayerStartPos() + Vector3.Up * 28.1f;
 
 			mMatLib.SetParameterOnAll("mLight0Color", Vector3.One);
 			mMatLib.SetParameterOnAll("mLightRange", 200.0f);
