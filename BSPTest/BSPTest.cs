@@ -169,9 +169,11 @@ namespace BSPTest
 
 			mInput.Update();
 
-			mZone.UpdateTriggerPositions();
-
 			UtilityLib.Input.PlayerInput	pi	=mInput.Player1;
+
+			mZone.UpdateTriggerPositions();
+			mZone.SetPushable(mCharBox, mPlayerControl.Position);
+
 
 			if(pi.WasKeyPressed(Keys.F1) || pi.WasButtonPressed(Buttons.Start))
 			{
@@ -218,6 +220,9 @@ namespace BSPTest
 				}
 			}
 
+			mZone.RotateModelX(2, msDelta * 0.05f);
+
+
 			if(pi.WasKeyPressed(Keys.Add) || pi.WasButtonPressed(Buttons.DPadUp))
 			{
 				mCurCluster++;
@@ -238,9 +243,9 @@ namespace BSPTest
 
 				testMat	=rot * testMat;
 
-				mZone.RotateModelX(5, 5f);
+//				mZone.RotateModelX(5, 5f);
 				mZone.RotateModelY(5, 10f);
-				mZone.RotateModelZ(5, 20f);
+//				mZone.RotateModelZ(5, 20f);
 
 //				mZone.SetModelTransform(1, testMat);
 			}
@@ -287,15 +292,6 @@ namespace BSPTest
 
 			Vector3	startPos	=mPlayerControl.Position;
 
-			if(mbFlyMode)
-			{
-				mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.Fly;
-			}
-			else
-			{
-				mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.FirstPerson;
-			}
-			
 			mPlayerControl.Update(msDelta, mGameCam, pi.mKBS, pi.mMS, pi.mGPS);
 
 			Vector3	endPos		=mPlayerControl.Position;
@@ -306,72 +302,8 @@ namespace BSPTest
 				endPos.Y	-=msDelta * PlayerSpeed * mGameCam.View.M23;
 				endPos.Z	-=msDelta * PlayerSpeed * mGameCam.View.M33;
 			}
-			
-			Vector3	moveDelta	=endPos - startPos;
-			Vector3	camPos		=Vector3.Zero;
 
-			if(!mbFlyMode)
-			{
-				//flatten movement
-				moveDelta.Y	=0;
-
-				//if not on the ground, limit midair movement
-				if(!mbOnGround)
-				{
-					moveDelta.X	*=MidAirMoveScale;
-					moveDelta.Z	*=MidAirMoveScale;
-					mVelocity.Y	-=((9.8f / 1000.0f) * msDelta);	//gravity
-				}
-
-				//get ideal final position
-				endPos	=startPos + mVelocity + moveDelta;
-
-				//move it through the bsp
-				bool	bUsedStairs	=false;
-				if(mZone.BipedMoveBox(mCharBox, startPos, endPos, mbOnGround, ref endPos, ref bUsedStairs))
-				{
-					//on ground, friction velocity
-					mVelocity	=endPos - startPos;
-					mVelocity	*=0.6f;
-
-					//clamp really small velocities
-					if(mVelocity.X < 0.001f && mVelocity.X > -0.001f)
-					{
-						mVelocity.X	=0.0f;
-					}
-					if(mVelocity.Y < 0.001f && mVelocity.Y > -0.001f)
-					{
-						mVelocity.Y	=0.0f;
-					}
-					if(mVelocity.Z < 0.001f && mVelocity.Z > -0.001f)
-					{
-						mVelocity.Z	=0.0f;
-					}
-
-					mbOnGround	=true;
-					if(bUsedStairs)
-					{
-						mVelocity.Y	=0.0f;
-					}
-				}
-				else
-				{
-					mVelocity	=endPos - startPos;
-					mbOnGround	=false;
-				}
-
-				mPlayerControl.Position	=endPos;
-
-				//pop up to eye height
-				camPos	=-(endPos + mEyeHeight);
-
-				//do a trigger check
-				mTHelper.CheckPlayer(mCharBox, startPos, endPos, msDelta);
-			}
-			else
-			{
-				camPos	=-mPlayerControl.Position;
-			}
+			Vector3	camPos	=MovePlayer(startPos, endPos, msDelta);			
 
 			if(pi.WasKeyPressed(Keys.P))
 			{
@@ -388,13 +320,25 @@ namespace BSPTest
 
 					MakeTraceLine();
 
+					Vector3	backTrans0	=new Vector3(-181.0751f, -67.999f, -74.83295f);
+					Vector3	backTrans1	=new Vector3(-187.999f, -67.999f, -77.015621f);
+
+					Vector3	dirVec	=backTrans1 - backTrans0;
+
+					dirVec.Normalize();
+
+					dirVec	*=10.0f;
+
+					backTrans0	-=dirVec;
+
+
 //					mbHit	=mZone.Trace_All(mCharBox,
-//						mColPos, mPlayerControl.Position,
+//						backTrans0, backTrans1,
 //						ref mModelHit, ref mImpacto, ref mPlaneHit);
-//					bool	bStairs	=false;
-//					mbHit	=mZone.BipedMoveBox(mCharBox,
-//						mColPos, ndPos, true,
-//						ref mImpacto, ref bStairs);
+					bool	bStairs	=false;
+					mbHit	=mZone.BipedMoveBox(mCharBox,
+						backTrans0, backTrans1, true,
+						ref mImpacto, ref bStairs);
 				}
 				mbStartCol	=!mbStartCol;
 			}
@@ -687,6 +631,17 @@ namespace BSPTest
 			Vector3	backTrans0	=Vector3.Transform(mColPos0, matInv);
 			Vector3	backTrans1	=Vector3.Transform(mColPos1, matInv);
 
+			backTrans0	=new Vector3(-181.0751f, -67.999f, -74.83295f);
+			backTrans1	=new Vector3(-187.999f, -67.999f, -77.015621f);
+
+			Vector3	dirVec	=backTrans1 - backTrans0;
+
+			dirVec.Normalize();
+
+			dirVec	*=10.0f;
+
+			backTrans0	-=dirVec;
+
 			line[0].Position	=backTrans0;
 			line[1].Position	=backTrans1;
 
@@ -765,6 +720,8 @@ namespace BSPTest
 				mTHelper.eTeleport	-=OnTeleport;
 				mTHelper.eMessage	-=OnMessage;
 				mTHelper.Clear();
+
+				mZone.ePushObject	-=OnPushObject;
 			}
 
 			//material libs hold textures and shaders
@@ -782,6 +739,7 @@ namespace BSPTest
 			mTHelper.ePickUp	+=OnPickUp;
 			mTHelper.eTeleport	+=OnTeleport;
 			mTHelper.eMessage	+=OnMessage;
+			mZone.ePushObject	+=OnPushObject;
 
 			mMatLib.ReadFromFile("GameContent/ZoneMaps/" + baseName + ".MatLib", false, mGDM.GraphicsDevice);
 			mZone.Read("GameContent/ZoneMaps/" + baseName + ".Zone", false);
@@ -809,6 +767,100 @@ namespace BSPTest
 		{
 			mbTexturesOn	=!mbTexturesOn;
 			mMatLib.SetParameterOnAll("mbTextureEnabled", mbTexturesOn);
+		}
+
+
+		Vector3 MovePlayer(Vector3 startPos, Vector3 endPos, int msDelta)
+		{
+			if(mbFlyMode)
+			{
+				mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.Fly;
+			}
+			else
+			{
+				mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.FirstPerson;
+			}
+			
+			Vector3	moveDelta	=endPos - startPos;
+			Vector3	camPos		=Vector3.Zero;
+
+			if(!mbFlyMode)
+			{
+				//flatten movement
+				moveDelta.Y	=0;
+
+				//if not on the ground, limit midair movement
+				if(!mbOnGround)
+				{
+					moveDelta.X	*=MidAirMoveScale;
+					moveDelta.Z	*=MidAirMoveScale;
+					mVelocity.Y	-=((9.8f / 1000.0f) * msDelta);	//gravity
+				}
+
+				//get ideal final position
+				endPos	=startPos + mVelocity + moveDelta;
+
+				//move it through the bsp
+				bool	bUsedStairs	=false;
+				if(mZone.BipedMoveBox(mCharBox, startPos, endPos, mbOnGround, ref endPos, ref bUsedStairs))
+				{
+					//on ground, friction velocity
+					mVelocity	=endPos - startPos;
+					mVelocity	*=0.6f;
+
+					//clamp really small velocities
+					if(mVelocity.X < 0.001f && mVelocity.X > -0.001f)
+					{
+						mVelocity.X	=0.0f;
+					}
+					if(mVelocity.Y < 0.001f && mVelocity.Y > -0.001f)
+					{
+						mVelocity.Y	=0.0f;
+					}
+					if(mVelocity.Z < 0.001f && mVelocity.Z > -0.001f)
+					{
+						mVelocity.Z	=0.0f;
+					}
+
+					mbOnGround	=true;
+					if(bUsedStairs)
+					{
+						mVelocity.Y	=0.0f;
+					}
+				}
+				else
+				{
+					mVelocity	=endPos - startPos;
+					mbOnGround	=false;
+				}
+
+				mPlayerControl.Position	=endPos;
+
+				//pop up to eye height
+				camPos	=-(endPos + mEyeHeight);
+
+				//do a trigger check
+				mTHelper.CheckPlayer(mCharBox, startPos, endPos, msDelta);
+			}
+			else
+			{
+				camPos	=-mPlayerControl.Position;
+			}
+
+			return	camPos;
+		}
+
+
+		void OnPushObject(object sender, EventArgs ea)
+		{
+			Nullable<Vector3>	delta	=sender as Nullable<Vector3>;
+			if(delta == null)
+			{
+				return;
+			}
+
+			MovePlayer(mPlayerControl.Position,
+				mPlayerControl.Position + delta.Value, 0);
 		}
 
 
