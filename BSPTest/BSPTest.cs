@@ -220,8 +220,7 @@ namespace BSPTest
 				}
 			}
 
-			mZone.RotateModelX(2, msDelta * 0.05f);
-
+			mZone.RotateModelY(5, msDelta * 0.05f);
 
 			if(pi.WasKeyPressed(Keys.Add) || pi.WasButtonPressed(Buttons.DPadUp))
 			{
@@ -302,6 +301,9 @@ namespace BSPTest
 				endPos.Y	-=msDelta * PlayerSpeed * mGameCam.View.M23;
 				endPos.Z	-=msDelta * PlayerSpeed * mGameCam.View.M33;
 			}
+
+			//flatten movement
+			endPos.Y	=startPos.Y;
 
 			Vector3	camPos	=MovePlayer(startPos, endPos, msDelta);			
 
@@ -786,9 +788,6 @@ namespace BSPTest
 
 			if(!mbFlyMode)
 			{
-				//flatten movement
-				moveDelta.Y	=0;
-
 				//if not on the ground, limit midair movement
 				if(!mbOnGround)
 				{
