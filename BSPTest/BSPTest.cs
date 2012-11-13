@@ -190,20 +190,20 @@ namespace BSPTest
 			{
 				if(!mbMoveToggle)
 				{
-					mTestMover.SetUpMove(mMoveEnd, mMoveStart, 5f, 0.2f, 0.2f);
+					mTestMover.SetUpMove(mMoveEnd, mMoveStart, 15f, 0.2f, 0.2f);
 				}
 				else
 				{
-					mTestMover.SetUpMove(mMoveStart, mMoveEnd, 5f, 0.2f, 0.2f);
+					mTestMover.SetUpMove(mMoveStart, mMoveEnd, 15f, 0.2f, 0.2f);
 				}
 				mbMoveToggle	=!mbMoveToggle;
 			}
 
 			//don't use deltas with movement
 			mZone.MoveModelTo(1, mTestMover.GetPos());
-			mZone.RotateModelY(1, msDelta * 0.05f);
-			mZone.RotateModelZ(1, msDelta * 0.05f);
-			mZone.RotateModelX(1, msDelta * 0.05f);
+//			mZone.RotateModelY(1, msDelta * 0.05f);
+//			mZone.RotateModelZ(1, msDelta * 0.05f);
+//			mZone.RotateModelX(1, msDelta * 0.05f);
 
 			DoUpdateHotKeys(pi);
 
