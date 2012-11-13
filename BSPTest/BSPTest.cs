@@ -11,6 +11,7 @@ using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
 using Microsoft.Xna.Framework.Storage;
 using BSPZone;
+using UtilityLib;
 
 
 namespace BSPTest
@@ -23,13 +24,13 @@ namespace BSPTest
 		ContentManager			mShaderCM;
 		SpriteFont				mKoot20, mPesc12;
 
-		Zone						mZone;
-		MeshLib.IndoorMesh			mLevel;
-		UtilityLib.GameCamera		mGameCam;
-		UtilityLib.PlayerSteering	mPlayerControl;
-		UtilityLib.Input			mInput;
-		MaterialLib.MaterialLib		mMatLib;
-		TriggerHelper				mTHelper	=new TriggerHelper();
+		Zone					mZone;
+		MeshLib.IndoorMesh		mLevel;
+		GameCamera				mGameCam;
+		PlayerSteering			mPlayerControl;
+		Input					mInput;
+		MaterialLib.MaterialLib	mMatLib;
+		TriggerHelper			mTHelper	=new TriggerHelper();
 
 		MeshLib.StaticMeshObject	mCyl;
 		MaterialLib.MaterialLib		mCylLib;
@@ -42,6 +43,9 @@ namespace BSPTest
 		VertexBuffer	mLineVB, mVisVB;
 		IndexBuffer		mLineIB, mVisIB;
 		BasicEffect		mBFX;
+		Mover3			mTestMover	=new Mover3();
+		bool			mbMoveToggle;
+		Vector3			mMoveStart, mMoveEnd;
 		int				mModelHit;
 		Vector3			mColPos0, mColPos1, mImpacto;
 		ZonePlane		mPlaneHit;
@@ -91,12 +95,17 @@ namespace BSPTest
 			mLevels.Add("DoorTest");
 
 			PointsFromPlaneTest();
+
+			mMoveStart	=new Vector3(-400f, -67.999f, -100f);
+			mMoveEnd	=new Vector3(-600f, -67.999f, -100f);
+
+			mTestMover.SetUpMove(mMoveStart, mMoveEnd, 5f, 0.2f, 0.2f);
 		}
 
 
 		protected override void Initialize()
 		{
-			mGameCam	=new UtilityLib.GameCamera(
+			mGameCam	=new GameCamera(
 				mGDM.GraphicsDevice.Viewport.Width,
 				mGDM.GraphicsDevice.Viewport.Height,
 				mGDM.GraphicsDevice.Viewport.AspectRatio, 1.0f, 4000.0f);
@@ -104,13 +113,13 @@ namespace BSPTest
 			//56, 24 is the general character size
 			mEyeHeight		=Vector3.UnitY * 22.0f;	//actual height of 50
 
-			mCharBox	=UtilityLib.Misc.MakeBox(24.0f, 56.0f);
+			mCharBox	=Misc.MakeBox(24.0f, 56.0f);
 
-			mInput			=new UtilityLib.Input();
-			mPlayerControl	=new UtilityLib.PlayerSteering(mGDM.GraphicsDevice.Viewport.Width,
+			mInput			=new Input();
+			mPlayerControl	=new PlayerSteering(mGDM.GraphicsDevice.Viewport.Width,
 								mGDM.GraphicsDevice.Viewport.Height);
 
-			mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.FirstPerson;
+			mPlayerControl.Method	=PlayerSteering.SteeringMethod.FirstPerson;
 			mPlayerControl.Speed	=PlayerSpeed;
 
 			base.Initialize();
@@ -169,132 +178,43 @@ namespace BSPTest
 
 			mInput.Update();
 
-			UtilityLib.Input.PlayerInput	pi	=mInput.Player1;
+			Input.PlayerInput	pi	=mInput.Player1;
 
 			mZone.UpdateTriggerPositions();
 			mZone.SetPushable(mCharBox, mPlayerControl.Position);
 
+			mZone.RotateModelY(5, msDelta * 0.05f);
 
-			if(pi.WasKeyPressed(Keys.F1) || pi.WasButtonPressed(Buttons.Start))
+			mTestMover.Update(msDelta);
+			if(mTestMover.Done())
 			{
-				mbDisplayHelp	=!mbDisplayHelp;
-			}
-
-			if(pi.WasKeyPressed(Keys.F) || pi.WasButtonPressed(Buttons.LeftShoulder))
-			{
-				mbFlyMode	=!mbFlyMode;
-			}
-
-			if(pi.WasKeyPressed(Keys.M))
-			{
-				mbPushingForward	=!mbPushingForward;
-			}
-
-			if(pi.WasKeyPressed(Keys.R) || pi.WasButtonPressed(Buttons.X))
-			{
-				mbFreezeVis	=!mbFreezeVis;
-			}
-
-			if(pi.WasKeyPressed(Keys.X) || pi.WasButtonPressed(Buttons.LeftStick))
-			{
-				ToggleTextures();
-			}
-
-			if(pi.WasKeyPressed(Keys.L) || pi.WasButtonPressed(Buttons.RightStick))
-			{
-				NextLevel();
-			}
-
-			if(pi.WasKeyPressed(Keys.C) || pi.WasButtonPressed(Buttons.B))
-			{
-				mbClusterMode	=!mbClusterMode;
-				if(mbClusterMode)
+				if(!mbMoveToggle)
 				{
-					mbVisMode	=false;
-					MakeClusterDebugInfo();
+					mTestMover.SetUpMove(mMoveEnd, mMoveStart, 5f, 0.2f, 0.2f);
 				}
 				else
 				{
-					mLineVB	=null;
-					mLineIB	=null;
+					mTestMover.SetUpMove(mMoveStart, mMoveEnd, 5f, 0.2f, 0.2f);
 				}
+				mbMoveToggle	=!mbMoveToggle;
 			}
 
-			mZone.RotateModelY(5, msDelta * 0.05f);
+			//don't use deltas with movement
+			mZone.MoveModelTo(1, mTestMover.GetPos());
+			mZone.RotateModelY(1, msDelta * 0.05f);
+			mZone.RotateModelZ(1, msDelta * 0.05f);
+			mZone.RotateModelX(1, msDelta * 0.05f);
 
-			if(pi.WasKeyPressed(Keys.Add) || pi.WasButtonPressed(Buttons.DPadUp))
-			{
-				mCurCluster++;
-				MakeClusterDebugInfo();
-			}
+			DoUpdateHotKeys(pi);
 
-			if(pi.WasKeyPressed(Keys.Subtract) || pi.WasButtonPressed(Buttons.DPadDown))
-			{
-				mCurCluster--;
-				MakeClusterDebugInfo();
-			}
-
-			if(pi.WasKeyPressed(Keys.N))
-			{
-				Matrix	testMat	=mZone.GetModelTransform(1);
-
-				Matrix	rot	=Matrix.CreateRotationY(MathHelper.PiOver4 / 4.0f);
-
-				testMat	=rot * testMat;
-
-//				mZone.RotateModelX(5, 5f);
-				mZone.RotateModelY(5, 10f);
-//				mZone.RotateModelZ(5, 20f);
-
-//				mZone.SetModelTransform(1, testMat);
-			}
-
-			if(pi.WasKeyPressed(Keys.T) || pi.WasButtonPressed(Buttons.RightShoulder))
-			{
-				mbVisMode	=!mbVisMode;
-				if(mbVisMode)
-				{
-					List<Vector3>	verts	=new List<Vector3>();
-					List<UInt32>	inds	=new List<UInt32>();
-
-					mNumLeafsVisible	=mZone.GetVisibleGeometry(mVisPos, verts, inds);
-
-					BuildDebugDrawData(verts, inds);
-
-					mbClusterMode	=false;
-					mLineVB			=null;
-					mLineIB			=null;
-				}
-			}
-
-			//jump, no need for press & release, can hold it down
-			if((pi.mKBS.IsKeyDown(Keys.Space)
-				|| pi.mGPS.IsButtonDown(Buttons.A)) && mbOnGround)
-			{
-				mVelocity	+=Vector3.UnitY * JumpVelocity;
-			}
-
-			//dynamic light, can hold
-			if(pi.mGPS.IsButtonDown(Buttons.Y) ||
-				pi.mKBS.IsKeyDown(Keys.G))
-			{
-				Vector3	dynamicLight	=mPlayerControl.Position;
-				if(!mbFlyMode)
-				{
-					dynamicLight	+=mEyeHeight;
-				}
-				mMatLib.SetParameterOnAll("mLight0Position", dynamicLight);
-				mMatLib.SetParameterOnAll("mLight0Color", Vector3.One * 50.0f);
-				mMatLib.SetParameterOnAll("mLightRange", 300.0f);
-				mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
-			}
-
+			//get player movement vector (running so flat in Y)
 			Vector3	startPos	=mPlayerControl.Position;
 
 			mPlayerControl.Update(msDelta, mGameCam, pi.mKBS, pi.mMS, pi.mGPS);
 
 			Vector3	endPos		=mPlayerControl.Position;
 
+			//for physics testing
 			if(mbPushingForward)
 			{
 				endPos.X	-=msDelta * PlayerSpeed * mGameCam.View.M13;
@@ -305,74 +225,9 @@ namespace BSPTest
 			//flatten movement
 			endPos.Y	=startPos.Y;
 
-			Vector3	camPos	=MovePlayer(startPos, endPos, msDelta);			
+			Vector3	camPos	=MovePlayer(startPos, endPos, msDelta);
 
-			if(pi.WasKeyPressed(Keys.P))
-			{
-				if(mbStartCol)
-				{
-					mColPos0	=mPlayerControl.Position;
-				}
-				else
-				{
-					mColPos1	=mPlayerControl.Position;
-
-					//level out the Y
-					mColPos1.Y	=mColPos0.Y;
-
-					MakeTraceLine();
-
-					Vector3	backTrans0	=new Vector3(-181.0751f, -67.999f, -74.83295f);
-					Vector3	backTrans1	=new Vector3(-187.999f, -67.999f, -77.015621f);
-
-					Vector3	dirVec	=backTrans1 - backTrans0;
-
-					dirVec.Normalize();
-
-					dirVec	*=10.0f;
-
-					backTrans0	-=dirVec;
-
-
-//					mbHit	=mZone.Trace_All(mCharBox,
-//						backTrans0, backTrans1,
-//						ref mModelHit, ref mImpacto, ref mPlaneHit);
-					bool	bStairs	=false;
-					mbHit	=mZone.BipedMoveBox(mCharBox,
-						backTrans0, backTrans1, true,
-						ref mImpacto, ref bStairs);
-				}
-				mbStartCol	=!mbStartCol;
-			}
-
-			if(!mbFreezeVis)
-			{
-				mVisPos	=-camPos;
-				if(mbVisMode)
-				{
-					int	curNode	=mZone.FindNodeLandedIn(0, mVisPos);
-					if(curNode != mLastNode)
-					{
-						List<Vector3>	verts	=new List<Vector3>();
-						List<UInt32>	inds	=new List<UInt32>();
-
-						mNumLeafsVisible	=mZone.GetVisibleGeometry(mVisPos, verts, inds);
-
-						BuildDebugDrawData(verts, inds);
-
-						mLastNode	=curNode;
-					}
-				}
-
-				mNumMatsVisible	=0;
-				for(int i=0;i < mNumMaterials;i++)
-				{
-					if(mZone.IsMaterialVisibleFromPos(mVisPos, i))
-					{
-						mNumMatsVisible++;
-					}
-				}
-			}
+			DebugVisDataRebuild(camPos);
 
 			mGameCam.Update(camPos, mPlayerControl.Pitch, mPlayerControl.Yaw, mPlayerControl.Roll);
 			
@@ -622,6 +477,189 @@ namespace BSPTest
 		}
 
 
+		void DoUpdateHotKeys(Input.PlayerInput pi)
+		{
+			if(pi.WasKeyPressed(Keys.P))
+			{
+				if(mbStartCol)
+				{
+					mColPos0	=mPlayerControl.Position;
+				}
+				else
+				{
+					mColPos1	=mPlayerControl.Position;
+
+					//level out the Y
+					mColPos1.Y	=mColPos0.Y;
+
+					MakeTraceLine();
+
+					Vector3	backTrans0	=new Vector3(-181.0751f, -67.999f, -74.83295f);
+					Vector3	backTrans1	=new Vector3(-187.999f, -67.999f, -77.015621f);
+
+					Vector3	dirVec	=backTrans1 - backTrans0;
+
+					dirVec.Normalize();
+
+					dirVec	*=10.0f;
+
+					backTrans0	-=dirVec;
+
+
+//					mbHit	=mZone.Trace_All(mCharBox,
+//						backTrans0, backTrans1,
+//						ref mModelHit, ref mImpacto, ref mPlaneHit);
+					bool	bStairs	=false;
+					mbHit	=mZone.BipedMoveBox(mCharBox,
+						backTrans0, backTrans1, true,
+						ref mImpacto, ref bStairs);
+				}
+				mbStartCol	=!mbStartCol;
+			}
+
+			if(pi.WasKeyPressed(Keys.N))
+			{
+				Matrix	testMat	=mZone.GetModelTransform(1);
+
+				Matrix	rot	=Matrix.CreateRotationY(MathHelper.PiOver4 / 4.0f);
+
+				testMat	=rot * testMat;
+
+				mZone.RotateModelY(5, 10f);
+			}
+
+			if(pi.WasKeyPressed(Keys.T) || pi.WasButtonPressed(Buttons.RightShoulder))
+			{
+				mbVisMode	=!mbVisMode;
+				if(mbVisMode)
+				{
+					List<Vector3>	verts	=new List<Vector3>();
+					List<UInt32>	inds	=new List<UInt32>();
+
+					mNumLeafsVisible	=mZone.GetVisibleGeometry(mVisPos, verts, inds);
+
+					BuildDebugDrawData(verts, inds);
+
+					mbClusterMode	=false;
+					mLineVB			=null;
+					mLineIB			=null;
+				}
+			}
+
+			//jump, no need for press & release, can hold it down
+			if((pi.mKBS.IsKeyDown(Keys.Space)
+				|| pi.mGPS.IsButtonDown(Buttons.A)) && mbOnGround)
+			{
+				mVelocity	+=Vector3.UnitY * JumpVelocity;
+			}
+
+			//dynamic light, can hold
+			if(pi.mGPS.IsButtonDown(Buttons.Y) ||
+				pi.mKBS.IsKeyDown(Keys.G))
+			{
+				Vector3	dynamicLight	=mPlayerControl.Position;
+				if(!mbFlyMode)
+				{
+					dynamicLight	+=mEyeHeight;
+				}
+				mMatLib.SetParameterOnAll("mLight0Position", dynamicLight);
+				mMatLib.SetParameterOnAll("mLight0Color", Vector3.One * 50.0f);
+				mMatLib.SetParameterOnAll("mLightRange", 300.0f);
+				mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
+			}
+
+			if(pi.WasKeyPressed(Keys.F1) || pi.WasButtonPressed(Buttons.Start))
+			{
+				mbDisplayHelp	=!mbDisplayHelp;
+			}
+
+			if(pi.WasKeyPressed(Keys.F) || pi.WasButtonPressed(Buttons.LeftShoulder))
+			{
+				mbFlyMode	=!mbFlyMode;
+			}
+
+			if(pi.WasKeyPressed(Keys.M))
+			{
+				mbPushingForward	=!mbPushingForward;
+			}
+
+			if(pi.WasKeyPressed(Keys.R) || pi.WasButtonPressed(Buttons.X))
+			{
+				mbFreezeVis	=!mbFreezeVis;
+			}
+
+			if(pi.WasKeyPressed(Keys.X) || pi.WasButtonPressed(Buttons.LeftStick))
+			{
+				ToggleTextures();
+			}
+
+			if(pi.WasKeyPressed(Keys.L) || pi.WasButtonPressed(Buttons.RightStick))
+			{
+				NextLevel();
+			}
+
+			if(pi.WasKeyPressed(Keys.C) || pi.WasButtonPressed(Buttons.B))
+			{
+				mbClusterMode	=!mbClusterMode;
+				if(mbClusterMode)
+				{
+					mbVisMode	=false;
+					MakeClusterDebugInfo();
+				}
+				else
+				{
+					mLineVB	=null;
+					mLineIB	=null;
+				}
+			}
+
+			if(pi.WasKeyPressed(Keys.Add) || pi.WasButtonPressed(Buttons.DPadUp))
+			{
+				mCurCluster++;
+				MakeClusterDebugInfo();
+			}
+
+			if(pi.WasKeyPressed(Keys.Subtract) || pi.WasButtonPressed(Buttons.DPadDown))
+			{
+				mCurCluster--;
+				MakeClusterDebugInfo();
+			}
+		}
+
+
+		void DebugVisDataRebuild(Vector3 camPos)
+		{
+			if(!mbFreezeVis)
+			{
+				mVisPos	=-camPos;
+				if(mbVisMode)
+				{
+					int	curNode	=mZone.FindNodeLandedIn(0, mVisPos);
+					if(curNode != mLastNode)
+					{
+						List<Vector3>	verts	=new List<Vector3>();
+						List<UInt32>	inds	=new List<UInt32>();
+
+						mNumLeafsVisible	=mZone.GetVisibleGeometry(mVisPos, verts, inds);
+
+						BuildDebugDrawData(verts, inds);
+
+						mLastNode	=curNode;
+					}
+				}
+
+				mNumMatsVisible	=0;
+				for(int i=0;i < mNumMaterials;i++)
+				{
+					if(mZone.IsMaterialVisibleFromPos(mVisPos, i))
+					{
+						mNumMatsVisible++;
+					}
+				}
+			}
+		}
+
+
 		void MakeTraceLine()
 		{
 			mLineVB	=new VertexBuffer(mGDM.GraphicsDevice, typeof(VertexPositionColor), 2, BufferUsage.WriteOnly);
@@ -776,11 +814,11 @@ namespace BSPTest
 		{
 			if(mbFlyMode)
 			{
-				mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.Fly;
+				mPlayerControl.Method	=PlayerSteering.SteeringMethod.Fly;
 			}
 			else
 			{
-				mPlayerControl.Method	=UtilityLib.PlayerSteering.SteeringMethod.FirstPerson;
+				mPlayerControl.Method	=PlayerSteering.SteeringMethod.FirstPerson;
 			}
 			
 			Vector3	moveDelta	=endPos - startPos;
@@ -900,7 +938,7 @@ namespace BSPTest
 			}
 
 			int	level;
-			UtilityLib.Mathery.TryParse(lev, out level);
+			Mathery.TryParse(lev, out level);
 
 			mCurLevel	=level;
 			if(mCurLevel >= mLevels.Count)
@@ -934,7 +972,7 @@ namespace BSPTest
 
 			Vector3	p0, p1, p2;
 
-			UtilityLib.Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
+			Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
 
 			List<Vector3>	verts	=new List<Vector3>();
 			verts.Add(p0);
@@ -944,35 +982,35 @@ namespace BSPTest
 			Vector3	outNorm	=Vector3.Zero;
 			float	outDist	=0.0f;
 
-			UtilityLib.Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
+			Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
 
 			Debug.Assert(norm == outNorm);
 			Debug.Assert(dist == outDist);
 
 			norm	=Vector3.UnitY;
 
-			UtilityLib.Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
+			Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
 
 			verts.Clear();
 			verts.Add(p0);
 			verts.Add(p1);
 			verts.Add(p2);
 
-			UtilityLib.Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
+			Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
 
 			Debug.Assert(norm == outNorm);
 			Debug.Assert(dist == outDist);
 
 			norm	=Vector3.UnitZ;
 
-			UtilityLib.Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
+			Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
 
 			verts.Clear();
 			verts.Add(p0);
 			verts.Add(p1);
 			verts.Add(p2);
 
-			UtilityLib.Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
+			Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
 
 			Debug.Assert(norm == outNorm);
 			Debug.Assert(dist == outDist);
@@ -980,42 +1018,42 @@ namespace BSPTest
 			norm	=Vector3.UnitX;
 			dist	=-10f;
 
-			UtilityLib.Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
+			Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
 
 			verts.Clear();
 			verts.Add(p0);
 			verts.Add(p1);
 			verts.Add(p2);
 
-			UtilityLib.Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
+			Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
 
 			Debug.Assert(norm == outNorm);
 			Debug.Assert(dist == outDist);
 
 			norm	=Vector3.UnitY;
 
-			UtilityLib.Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
+			Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
 
 			verts.Clear();
 			verts.Add(p0);
 			verts.Add(p1);
 			verts.Add(p2);
 
-			UtilityLib.Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
+			Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
 
 			Debug.Assert(norm == outNorm);
 			Debug.Assert(dist == outDist);
 
 			norm	=Vector3.UnitZ;
 
-			UtilityLib.Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
+			Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
 
 			verts.Clear();
 			verts.Add(p0);
 			verts.Add(p1);
 			verts.Add(p2);
 
-			UtilityLib.Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
+			Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
 
 			Debug.Assert(norm == outNorm);
 			Debug.Assert(dist == outDist);
@@ -1038,12 +1076,12 @@ namespace BSPTest
 			for(int i=0;i < verts.Count;i++)
 			{
 				vpc[i].Position	=verts[i];
-				vpc[i].Color	=UtilityLib.Mathery.RandomColor(mRand);
+				vpc[i].Color	=Mathery.RandomColor(mRand);
 			}
 
 			for(int i=0;i < inds.Count;i+=3)
 			{
-				Color	randColor		=UtilityLib.Mathery.RandomColor(mRand);
+				Color	randColor		=Mathery.RandomColor(mRand);
 				vpc[inds[i]].Color		=randColor;
 				vpc[inds[i + 1]].Color	=randColor;
 				vpc[inds[i + 2]].Color	=randColor;
