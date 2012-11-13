@@ -38,6 +38,7 @@ namespace BSPTest
 		List<string>	mLevels		=new List<string>();
 		int				mCurLevel	=-1;
 		float			mWarpFactor;
+		int				mModelOn	=-1;	//model standing on
 
 		//debug stuff
 		VertexBuffer	mLineVB, mVisVB;
@@ -181,7 +182,7 @@ namespace BSPTest
 			Input.PlayerInput	pi	=mInput.Player1;
 
 			mZone.UpdateTriggerPositions();
-			mZone.SetPushable(mCharBox, mPlayerControl.Position);
+			mZone.SetPushable(mCharBox, mPlayerControl.Position, mModelOn);
 
 			mZone.RotateModelY(5, msDelta * 0.05f);
 
@@ -200,7 +201,7 @@ namespace BSPTest
 			}
 
 			//don't use deltas with movement
-			mZone.MoveModelTo(1, mTestMover.GetPos());
+			mZone.MoveModelTo(4, mTestMover.GetPos());
 //			mZone.RotateModelY(1, msDelta * 0.05f);
 //			mZone.RotateModelZ(1, msDelta * 0.05f);
 //			mZone.RotateModelX(1, msDelta * 0.05f);
@@ -225,7 +226,7 @@ namespace BSPTest
 			//flatten movement
 			endPos.Y	=startPos.Y;
 
-			Vector3	camPos	=MovePlayer(startPos, endPos, msDelta);
+			Vector3	camPos	=MovePlayer(startPos, endPos, msDelta, true);
 
 			DebugVisDataRebuild(camPos);
 
@@ -372,7 +373,7 @@ namespace BSPTest
 				}
 				else
 				{
-					mSB.DrawString(mPesc12, "Press F1 to display help",
+					mSB.DrawString(mPesc12, "Press F1 to display help " + mModelOn,
 						(Vector2.UnitY * 700) + (Vector2.UnitX * 20.0f), Color.Yellow);
 				}
 			}
@@ -512,7 +513,7 @@ namespace BSPTest
 					bool	bStairs	=false;
 					mbHit	=mZone.BipedMoveBox(mCharBox,
 						backTrans0, backTrans1, true,
-						ref mImpacto, ref bStairs);
+						out mImpacto, out bStairs, ref mModelHit);
 				}
 				mbStartCol	=!mbStartCol;
 			}
@@ -810,7 +811,7 @@ namespace BSPTest
 		}
 
 
-		Vector3 MovePlayer(Vector3 startPos, Vector3 endPos, int msDelta)
+		Vector3 MovePlayer(Vector3 startPos, Vector3 endPos, int msDelta, bool bAffectVelocity)
 		{
 			if(mbFlyMode)
 			{
@@ -839,39 +840,48 @@ namespace BSPTest
 
 				//move it through the bsp
 				bool	bUsedStairs	=false;
-				if(mZone.BipedMoveBox(mCharBox, startPos, endPos, mbOnGround, ref endPos, ref bUsedStairs))
+				if(mZone.BipedMoveBox(mCharBox, startPos, endPos, mbOnGround, out endPos, out bUsedStairs, ref mModelOn))
 				{
-					//on ground, friction velocity
-					mVelocity	=endPos - startPos;
-					mVelocity	*=0.6f;
-
-					//clamp really small velocities
-					if(mVelocity.X < 0.001f && mVelocity.X > -0.001f)
-					{
-						mVelocity.X	=0.0f;
-					}
-					if(mVelocity.Y < 0.001f && mVelocity.Y > -0.001f)
-					{
-						mVelocity.Y	=0.0f;
-					}
-					if(mVelocity.Z < 0.001f && mVelocity.Z > -0.001f)
-					{
-						mVelocity.Z	=0.0f;
-					}
-
 					mbOnGround	=true;
-					if(bUsedStairs)
+
+					//on ground, friction velocity
+					if(bAffectVelocity)
 					{
-						mVelocity.Y	=0.0f;
+						mVelocity	=endPos - startPos;
+						mVelocity	*=0.6f;
+
+						//clamp really small velocities
+						if(mVelocity.X < 0.001f && mVelocity.X > -0.001f)
+						{
+							mVelocity.X	=0.0f;
+						}
+						if(mVelocity.Y < 0.001f && mVelocity.Y > -0.001f)
+						{
+							mVelocity.Y	=0.0f;
+						}
+						if(mVelocity.Z < 0.001f && mVelocity.Z > -0.001f)
+						{
+							mVelocity.Z	=0.0f;
+						}
+
+						if(bUsedStairs)
+						{
+							mVelocity.Y	=0.0f;
+						}
 					}
 				}
 				else
 				{
-					mVelocity	=endPos - startPos;
+					if(bAffectVelocity)
+					{
+						mVelocity	=endPos - startPos;
+					}
 					mbOnGround	=false;
 				}
 
 				mPlayerControl.Position	=endPos;
+
+				mZone.SetPushable(mCharBox, mPlayerControl.Position, mModelOn);
 
 				//pop up to eye height
 				camPos	=-(endPos + mEyeHeight);
@@ -897,7 +907,7 @@ namespace BSPTest
 			}
 
 			MovePlayer(mPlayerControl.Position,
-				mPlayerControl.Position + delta.Value, 0);
+				mPlayerControl.Position + delta.Value, 0, false);
 		}
 
 
