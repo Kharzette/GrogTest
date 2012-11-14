@@ -97,8 +97,8 @@ namespace BSPTest
 
 			PointsFromPlaneTest();
 
-			mMoveStart	=new Vector3(-400f, -67.999f, -100f);
-			mMoveEnd	=new Vector3(-600f, -67.999f, -100f);
+			mMoveStart	=new Vector3(-400f, 7.999f, -100f);
+			mMoveEnd	=new Vector3(-600f, 7.999f, -100f);
 
 			mTestMover.SetUpMove(mMoveStart, mMoveEnd, 5f, 0.2f, 0.2f);
 		}
@@ -828,15 +828,11 @@ namespace BSPTest
 			if(!mbFlyMode)
 			{
 				//if not on the ground, limit midair movement
-				if(!mbOnGround)
+				if(!mbOnGround && bAffectVelocity)
 				{
 					moveDelta.X	*=MidAirMoveScale;
 					moveDelta.Z	*=MidAirMoveScale;
-
-					if(bAffectVelocity)
-					{
-						mVelocity.Y	-=((9.8f / 1000.0f) * msDelta);	//gravity
-					}
+					mVelocity.Y	-=((9.8f / 1000.0f) * msDelta);	//gravity
 				}
 
 				//get ideal final position
