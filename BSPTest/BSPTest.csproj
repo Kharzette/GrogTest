@@ -110,11 +110,6 @@
       <Name>GameContent</Name>
       <XnaReferenceType>Content</XnaReferenceType>
     </ProjectReference>
-    <ProjectReference Include="..\..\Games\LudumDare\Libs\ShaderLib\ShaderLib.contentproj">
-      <Project>{F921E3ED-B43E-4B82-B4EB-C9BC2E373B1F}</Project>
-      <Name>ShaderLib</Name>
-      <XnaReferenceType>Content</XnaReferenceType>
-    </ProjectReference>
     <ProjectReference Include="..\..\Libs\BSPVis\BSPVis32.csproj">
       <Project>{5DBC6D17-4312-420F-8CE3-65AAE94328EA}</Project>
       <Name>BSPVis32</Name>
@@ -130,6 +125,11 @@
     <ProjectReference Include="..\..\Libs\MeshLib\MeshLib.csproj">
       <Project>{EEC34A30-ACD3-4240-A4FE-5A3F8D5D7B13}</Project>
       <Name>MeshLib</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Libs\ShaderLib\ShaderLib.contentproj">
+      <Project>{F921E3ED-B43E-4B82-B4EB-C9BC2E373B1F}</Project>
+      <Name>ShaderLib</Name>
+      <XnaReferenceType>Content</XnaReferenceType>
     </ProjectReference>
     <ProjectReference Include="..\..\Libs\UtilityLib\UtilityLib.csproj">
       <Project>{BB91910C-2595-4EB6-B48C-30BCC41457F6}</Project>
