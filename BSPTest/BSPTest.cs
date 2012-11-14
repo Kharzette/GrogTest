@@ -832,11 +832,22 @@ namespace BSPTest
 				{
 					moveDelta.X	*=MidAirMoveScale;
 					moveDelta.Z	*=MidAirMoveScale;
-					mVelocity.Y	-=((9.8f / 1000.0f) * msDelta);	//gravity
+
+					if(bAffectVelocity)
+					{
+						mVelocity.Y	-=((9.8f / 1000.0f) * msDelta);	//gravity
+					}
 				}
 
 				//get ideal final position
-				endPos	=startPos + mVelocity + moveDelta;
+				if(bAffectVelocity)
+				{
+					endPos	=startPos + mVelocity + moveDelta;
+				}
+				else
+				{
+					endPos	=startPos + moveDelta;
+				}
 
 				//move it through the bsp
 				bool	bUsedStairs	=false;
