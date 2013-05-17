@@ -66,16 +66,13 @@ namespace BSPTest
 		VertexBuffer	mLineVB, mVisVB;
 		IndexBuffer		mLineIB, mVisIB;
 		BasicEffect		mBFX;
-		Mover3			mTestMover	=new Mover3();
-		bool			mbMoveToggle;
-		Vector3			mMoveStart, mMoveEnd;
 		int				mModelHit;
 		Vector3			mColPos0, mColPos1, mImpacto;
 		ZonePlane		mPlaneHit;
 		bool			mbStartCol	=true, mbHit;
 		bool			mbFreezeVis, mbClusterMode, mbDisplayHelp;
 		bool			mbTexturesOn	=true;
-		bool			mbVisMode, mbFlyMode;
+		bool			mbVisMode, mbFlyMode, mbShowPathing;
 		bool			mbPushingForward;	//autorun toggle for collision testing
 		Vector3			mVisPos;
 		Random			mRand	=new Random();
@@ -103,6 +100,7 @@ namespace BSPTest
 			mGDM.PreferredBackBufferWidth	=1280;
 			mGDM.PreferredBackBufferHeight	=720;
 
+			mLevels.Add("PathTest");
 			mLevels.Add("Level01");
 			mLevels.Add("Attract2");
 		}
@@ -296,6 +294,10 @@ namespace BSPTest
 					gd.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, mVisVB.VertexCount, 0, mVisIB.IndexCount / 3);
 				}
 			}
+			else if(mbShowPathing)
+			{
+				mGraph.Render(gd, mBFX);
+			}
 			else
 			{
 				mZoneDraw.Draw(gd, mVisPos, mCam, mZone.IsMaterialVisibleFromPos, mZone.GetModelTransform, RenderExternal);
@@ -328,7 +330,31 @@ namespace BSPTest
 
 			SpriteFont	first	=mFonts.First().Value;
 
-			if(mbClusterMode)
+			if(mbShowPathing)
+			{
+				int	numCon, myIndex;
+				Vector3	groundPos	=mPMob.GetGroundPosition();
+				groundPos			=mZone.DropToGround(groundPos, false);
+
+				List<int>	connectedTo	=new List<int>();
+
+				bool	bFound	=mGraph.GetInfoAboutLocation(groundPos,
+					mZone.FindWorldNodeLandedIn, out numCon, out myIndex, connectedTo);
+
+				string	cons	="";
+				foreach(int con in connectedTo)
+				{
+					cons	+="" + con +", ";
+				}
+
+				cons	=cons.Substring(0, cons.Length - 2);
+
+				mSB.DrawString(first, "Path Node " + myIndex + " Valid: " + bFound + " , Connections: " + numCon,
+					Vector2.UnitX * 10 + Vector2.UnitY * (ResY - 80), Color.GreenYellow);
+				mSB.DrawString(first, "Connected to: " + cons,
+					Vector2.UnitX * 10 + Vector2.UnitY * (ResY - 60), Color.IndianRed);
+			}
+			else if(mbClusterMode)
 			{
 				mSB.DrawString(first, "Cur Clust: " + mCurCluster +
 					", NumClustPortals: " + mNumClustPortals,
@@ -461,7 +487,7 @@ namespace BSPTest
 				mSB.DrawString(first, "A : Jump if not in fly mode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 470.0f),
 					Color.Yellow);
-				mSB.DrawString(first, "Y : Place a dynamic light, or hold for a following light",
+				mSB.DrawString(first, "Y : Dyn Light but not working right now",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 490.0f),
 					Color.Yellow);
 				mSB.DrawString(first, "Left Stick Button : Toggle textures on/off",
@@ -500,7 +526,7 @@ namespace BSPTest
 				mSB.DrawString(first, "Spacebar : Jump if not in fly mode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 470.0f),
 					Color.Yellow);
-				mSB.DrawString(first, "G : Place a dynamic light, or hold for a following light",
+				mSB.DrawString(first, "G : Dyn Light but not working right now",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 490.0f),
 					Color.Yellow);
 				mSB.DrawString(first, "X : Toggle textures on/off",
@@ -511,6 +537,9 @@ namespace BSPTest
 					Color.Yellow);
 				mSB.DrawString(first, "M : Autorun forward (for debugging physics)",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 550.0f),
+					Color.Yellow);
+				mSB.DrawString(first, "P : Show Pathing Info",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 570.0f),
 					Color.Yellow);
 			}
 		}
@@ -551,6 +580,15 @@ namespace BSPTest
 				mZoneMats.SetParameterOnAll("mLight0Color", Vector3.One * 50.0f);
 				mZoneMats.SetParameterOnAll("mLightRange", 300.0f);
 				mZoneMats.SetParameterOnAll("mLightFalloffRange", 100.0f);
+			}
+
+			if(pi.WasKeyPressed(Keys.P))
+			{
+				mbShowPathing	=!mbShowPathing;
+				if(mbShowPathing)
+				{
+					mGraph.BuildDrawInfo(mGDM.GraphicsDevice);
+				}
 			}
 
 			if(pi.WasKeyPressed(Keys.F1) || pi.WasButtonPressed(Buttons.Start))
