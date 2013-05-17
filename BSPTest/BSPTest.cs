@@ -7,10 +7,12 @@ using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SpriteMapLib;
 using UtilityLib;
 using BSPZone;
 using MeshLib;
 using PathLib;
+using UILib;
 
 
 namespace BSPTest
@@ -22,6 +24,17 @@ namespace BSPTest
 		ContentManager			mSLib;
 
 		Dictionary<string, SpriteFont>		mFonts;
+
+		//ui stuff
+		MenuBuilder		mMB;
+		QuickOptions	mQOptions;
+		Vector2			mScreenCenter	=new Vector2(ResX / 2, ResY / 2);
+		bool			mbMenuUp;
+
+		//ui texture elements
+		//these are game specific, so might need to
+		//adjust what the hilite tex is when switching projects
+		Dictionary<string, TextureElement>	mUITex	=new Dictionary<string, TextureElement>();
 
 		//audio
 		Audio	mAudio	=new Audio();
@@ -74,7 +87,9 @@ namespace BSPTest
 		BSPVis.VisMap	mVisMap;
 
 		//constants
-		const float	PlayerSpeed		=0.15f;
+		const float	PlayerSpeed	=0.15f;
+		const int	ResX		=1280;
+		const int	ResY		=720;
 
 
 		public BSPTest()
@@ -118,19 +133,49 @@ namespace BSPTest
 
 		protected override void LoadContent()
 		{
-			//spritebatch for text
-			mSB	=new SpriteBatch(GraphicsDevice);
-
+			mSB		=new SpriteBatch(GraphicsDevice);
 			mSLib	=new ContentManager(Services, "ShaderLib");
 
-			//fonts for printing debug stuff
+			//load all fonts and audio
+			mAudio.LoadAllSounds(Content);
 			mFonts	=FileUtil.LoadAllFonts(Content);
+
+			//load up ui textures
+			TextureElement.LoadTexLib(Content.RootDirectory + "\\TexLibs\\UI.TexLib", Content, mUITex);
 
 			//basic effect, lazy built in shader stuff
 			mBFX					=new BasicEffect(mGDM.GraphicsDevice);
 			mBFX.VertexColorEnabled	=true;
 			mBFX.LightingEnabled	=false;
 			mBFX.TextureEnabled		=false;
+
+			//game specific info, change this if switching projects
+			string	menuFont	="Kawoszeh48";
+			string	menuHilite	="Textures\\UI\\GoldBorder.png";
+
+			//menu stuff
+			mMB			=new MenuBuilder(mFonts, mUITex);
+			mQOptions	=new QuickOptions(mGDM, mMB, mPSteering,
+				mScreenCenter, menuFont, menuHilite);
+
+			mMB.AddScreen("MainMenu", MenuBuilder.ScreenTypes.VerticalMenu,
+				mScreenCenter, "Textures\\UI\\GoldBorder.png");
+
+			mMB.AddMenuStop("MainMenu", "Controls", "Controls", menuFont);
+			mMB.AddMenuStop("MainMenu", "Video", "Video", menuFont);
+			mMB.AddMenuStop("MainMenu", "Exit", "Exit", menuFont);
+
+			mMB.SetUpNav("MainMenu", "Controls");
+			mMB.Link("MainMenu", "Controls", "ControlsMenu");
+			mMB.Link("MainMenu", "Video", "VideoMenu");
+
+			mMB.eMenuStopInvoke	+=OnMenuInvoke;
+			mMB.eNavigating		+=OnNavigating;
+
+			//set menu colors
+			mMB.SetScreenTextColor("MainMenu", Color.Gold);
+			mMB.SetScreenTextColor("ControlsMenu", Color.Gold);
+			mMB.SetScreenTextColor("VideoMenu", Color.Gold);
 
 			NextLevel();
 		}
@@ -149,18 +194,29 @@ namespace BSPTest
 				return;
 			}
 
-			if(GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
+			mInput.Update();
+			Input.PlayerInput	pi	=mInput.Player1;
+
+			if(pi.WasButtonPressed(Buttons.Back)
+				|| pi.WasKeyPressed(Keys.Escape))
 			{
-				this.Exit();
+				mbMenuUp	=!mbMenuUp;
+				if(mbMenuUp)
+				{
+					mMB.ActivateScreen("MainMenu");
+				}
 			}
 
 			int	msDelta	=gameTime.ElapsedGameTime.Milliseconds;
 
+			if(mbMenuUp)
+			{
+				mMB.Update(msDelta, mInput);
+				base.Update(gameTime);
+				return;
+			}
+
 			mBMHelper.Update(msDelta, mAudio.mListener);
-
-			mInput.Update();
-
-			Input.PlayerInput	pi	=mInput.Player1;
 
 			DoUpdateHotKeys(pi);
 
@@ -180,7 +236,10 @@ namespace BSPTest
 			}
 
 			//flatten movement
-			endPos.Y	=startPos.Y;
+			if(!mbFlyMode)
+			{
+				endPos.Y	=startPos.Y;
+			}
 
 			Vector3	finalPos, camPos;
 			mPMob.Move(endPos, msDelta, false, !mbFlyMode, mbFlyMode, true, out finalPos, out camPos);
@@ -326,7 +385,8 @@ namespace BSPTest
 			}
 			else
 			{
-				if(mInput.Player1.mGPS.IsConnected)
+				if(mInput.Player1.mGPS.IsConnected
+					&& mPSteering.UseGamePadIfPossible)
 				{
 					mSB.DrawString(first, "Press Start to display help",
 						(Vector2.UnitY * 700) + (Vector2.UnitX * 20.0f), Color.Yellow);
@@ -350,6 +410,11 @@ namespace BSPTest
 			}
 			mSB.End();
 
+			if(mbMenuUp)
+			{
+				mMB.Draw(mSB);
+			}
+
 			base.Draw(gameTime);
 		}
 
@@ -369,7 +434,8 @@ namespace BSPTest
 		{
 			SpriteFont	first	=mFonts.First().Value;
 
-			if(mInput.Player1.mGPS.IsConnected)
+			if(mInput.Player1.mGPS.IsConnected
+				&& mPSteering.UseGamePadIfPossible)
 			{
 				mSB.DrawString(first, "List of controller buttons:",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 330.0f),
@@ -495,6 +561,14 @@ namespace BSPTest
 			if(pi.WasKeyPressed(Keys.F) || pi.WasButtonPressed(Buttons.LeftShoulder))
 			{
 				mbFlyMode	=!mbFlyMode;
+				if(mbFlyMode)
+				{
+					mPSteering.Method	=PlayerSteering.SteeringMethod.Fly;
+				}
+				else
+				{
+					mPSteering.Method	=PlayerSteering.SteeringMethod.FirstPerson;
+				}
 			}
 
 			if(pi.WasKeyPressed(Keys.M))
@@ -768,16 +842,24 @@ namespace BSPTest
 
 		void OnPushObject(object sender, EventArgs ea)
 		{
-			Nullable<Vector3>	delta	=sender as Nullable<Vector3>;
-			if(delta == null)
+			Mobile	mob	=sender as Mobile;
+			if(mob != mPMob)
+			{
+				//not the player
+				return;
+			}
+
+			Vector3EventArgs	vea	=ea as Vector3EventArgs;
+			if(vea == null)
 			{
 				return;
 			}
 
-			Vector3	finalPos, camPos;
-			mPMob.Move(mPSteering.Position + delta.Value, 1, true, false, false, true, out finalPos, out camPos);
+			Vector3	pushedTo, camTo;
+			mPMob.Move(vea.mVector + mPMob.GetGroundPosition(), 1, true, false, false, true, out pushedTo, out camTo);
+			mPMob.SetGroundPosition(pushedTo);
 
-			mPSteering.Position	=finalPos;
+			mPSteering.Position	=pushedTo;
 		}
 
 
@@ -806,6 +888,23 @@ namespace BSPTest
 			string	className	=sender as string;
 
 			System.Diagnostics.Debug.WriteLine(className);
+		}
+
+
+		void OnMenuInvoke(object sender, EventArgs ea)
+		{
+			string	stop	=sender as string;
+
+			if(stop == "Exit")
+			{
+				Exit();
+			}
+		}
+
+
+		void OnNavigating(object sender, EventArgs ea)
+		{
+			//play a sound here or something
 		}
 
 

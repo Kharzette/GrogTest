@@ -126,6 +126,14 @@
       <Name>ShaderLib</Name>
       <XnaReferenceType>Content</XnaReferenceType>
     </ProjectReference>
+    <ProjectReference Include="..\..\Libs\SpriteMapLib\SpriteMapLib.csproj">
+      <Project>{9FFB87A8-2180-4386-872F-BD5563F75BA6}</Project>
+      <Name>SpriteMapLib</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Libs\UILib\UILib.csproj">
+      <Project>{3807B237-FA8B-4B90-A7C9-EA59CBE5149C}</Project>
+      <Name>UILib</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Libs\UtilityLib\UtilityLib.csproj">
       <Project>{BB91910C-2595-4EB6-B48C-30BCC41457F6}</Project>
       <Name>UtilityLib</Name>
