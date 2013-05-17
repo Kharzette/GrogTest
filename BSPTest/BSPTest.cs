@@ -342,13 +342,14 @@ namespace BSPTest
 					mZone.FindWorldNodeLandedIn, out numCon, out myIndex, connectedTo);
 
 				string	cons	="";
-				foreach(int con in connectedTo)
+				if(connectedTo.Count > 0)
 				{
-					cons	+="" + con +", ";
+					foreach(int con in connectedTo)
+					{
+						cons	+="" + con +", ";
+					}
+					cons	=cons.Substring(0, cons.Length - 2);
 				}
-
-				cons	=cons.Substring(0, cons.Length - 2);
-
 				mSB.DrawString(first, "Path Node " + myIndex + " Valid: " + bFound + " , Connections: " + numCon,
 					Vector2.UnitX * 10 + Vector2.UnitY * (ResY - 80), Color.GreenYellow);
 				mSB.DrawString(first, "Connected to: " + cons,
