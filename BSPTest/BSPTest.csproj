@@ -68,23 +68,14 @@
   <ItemGroup>
     <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86" />
     <Reference Include="Microsoft.Xna.Framework.Game, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86" />
-    <Reference Include="Microsoft.Xna.Framework.GamerServices, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=MSIL" />
     <Reference Include="Microsoft.Xna.Framework.Graphics, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86" />
-    <Reference Include="Microsoft.Xna.Framework.Storage, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=MSIL" />
     <Reference Include="mscorlib">
       <Private>False</Private>
     </Reference>
     <Reference Include="System">
       <Private>False</Private>
     </Reference>
-    <Reference Include="System.Xml">
-      <Private>False</Private>
-    </Reference>
     <Reference Include="System.Core">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="System.Xml.Linq">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
       <Private>False</Private>
     </Reference>
@@ -105,8 +96,8 @@
     </NestedContentProject>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Games\ColdVoid\GameContent\GameContent.contentproj">
-      <Project>{8F66A1EA-C917-4D47-BF18-CA9F339F8E5D}</Project>
+    <ProjectReference Include="..\..\Games\LudumDare\MinnieNMal\GameContent\GameContent.contentproj">
+      <Project>{965453FF-AEDC-42EB-BC1B-FFC055177DAE}</Project>
       <Name>GameContent</Name>
       <XnaReferenceType>Content</XnaReferenceType>
     </ProjectReference>
@@ -125,6 +116,10 @@
     <ProjectReference Include="..\..\Libs\MeshLib\MeshLib.csproj">
       <Project>{EEC34A30-ACD3-4240-A4FE-5A3F8D5D7B13}</Project>
       <Name>MeshLib</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Libs\PathLib\PathLib.csproj">
+      <Project>{77EEBCF7-224D-45F7-BA5F-C7124253DE7F}</Project>
+      <Name>PathLib</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\Libs\ShaderLib\ShaderLib.contentproj">
       <Project>{F921E3ED-B43E-4B82-B4EB-C9BC2E373B1F}</Project>

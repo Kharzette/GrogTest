@@ -5,13 +5,12 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
-using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using Microsoft.Xna.Framework.Media;
-using Microsoft.Xna.Framework.Storage;
-using BSPZone;
 using UtilityLib;
+using BSPZone;
+using MeshLib;
+using PathLib;
 
 
 namespace BSPTest
@@ -20,26 +19,35 @@ namespace BSPTest
 	{
 		GraphicsDeviceManager	mGDM;
 		SpriteBatch				mSB;
-		ContentManager			mGameCM;
-		ContentManager			mShaderCM;
-		SpriteFont				mKoot20, mPesc12;
+		ContentManager			mSLib;
 
+		Dictionary<string, SpriteFont>		mFonts;
+
+		//audio
+		Audio	mAudio	=new Audio();
+
+		//level
 		Zone					mZone;
-		MeshLib.IndoorMesh		mLevel;
-		GameCamera				mGameCam;
-		PlayerSteering			mPlayerControl;
-		Input					mInput;
-		MaterialLib.MaterialLib	mMatLib;
-		TriggerHelper			mTHelper	=new TriggerHelper();
-		Mobile					mPlayerMob;
+		IndoorMesh				mZoneDraw;
+		MaterialLib.MaterialLib	mZoneMats;
 
-		MeshLib.StaticMeshObject	mCyl;
-		MaterialLib.MaterialLib		mCylLib;
+		//pathing stuff
+		PathGraph	mGraph	=PathGraph.CreatePathGrid();
 
+		//control
+		GameCamera		mCam;
+		PlayerSteering	mPSteering;
+		Input			mInput;
+		Mobile			mPMob;
+		int				mModelOn	=-1;	//model standing on
+
+		//helpers
+		TriggerHelper		mTHelper	=new TriggerHelper();
+		BasicModelHelper	mBMHelper	=new BasicModelHelper();
+
+		//level changing stuff
 		List<string>	mLevels		=new List<string>();
 		int				mCurLevel	=-1;
-		float			mWarpFactor;
-		int				mModelOn	=-1;	//model standing on
 
 		//debug stuff
 		VertexBuffer	mLineVB, mVisVB;
@@ -63,9 +71,7 @@ namespace BSPTest
 		int				mNumMatsVisible, mNumMaterials;
 		List<Int32>		mPortNums	=new List<Int32>();
 		Vector3			mClustCenter;
-#if !XBOX
 		BSPVis.VisMap	mVisMap;
-#endif
 
 		//constants
 		const float	PlayerSpeed		=0.15f;
@@ -75,44 +81,36 @@ namespace BSPTest
 		{
 			mGDM	=new GraphicsDeviceManager(this);
 
-#if XBOX
-			Components.Add(new GamerServicesComponent(this));
-#endif
-
-			Content.RootDirectory	="Content";	//don't use this
+			Content.RootDirectory	="GameContent";
 
 			IsFixedTimeStep	=false;
 
 			mGDM.PreferredBackBufferWidth	=1280;
 			mGDM.PreferredBackBufferHeight	=720;
 
-			mLevels.Add("DoorTest");
-
-			PointsFromPlaneTest();
-
-			mMoveStart	=new Vector3(-400f, 7.999f, -100f);
-			mMoveEnd	=new Vector3(-600f, 7.999f, -100f);
-
-			mTestMover.SetUpMove(mMoveStart, mMoveEnd, 5f, 0.2f, 0.2f);
+			mLevels.Add("Level01");
+			mLevels.Add("Attract2");
 		}
 
 
 		protected override void Initialize()
 		{
-			mGameCam	=new GameCamera(
+			mCam	=new GameCamera(
 				mGDM.GraphicsDevice.Viewport.Width,
 				mGDM.GraphicsDevice.Viewport.Height,
 				mGDM.GraphicsDevice.Viewport.AspectRatio, 1.0f, 4000.0f);
 
 			//56, 24 is the general character size
-			mPlayerMob	=new Mobile(24f, 56f, 50f, true, mTHelper);
+			mPMob	=new Mobile(this, 24f, 56f, 50f, true, mTHelper);
 
-			mInput			=new Input();
-			mPlayerControl	=new PlayerSteering(mGDM.GraphicsDevice.Viewport.Width,
+			mInput		=new Input();
+			mPSteering	=new PlayerSteering(mGDM.GraphicsDevice.Viewport.Width,
 								mGDM.GraphicsDevice.Viewport.Height);
 
-			mPlayerControl.Method	=PlayerSteering.SteeringMethod.FirstPerson;
-			mPlayerControl.Speed	=PlayerSpeed;
+			mPSteering.Method	=PlayerSteering.SteeringMethod.FirstPerson;
+			mPSteering.Speed	=PlayerSpeed;
+
+			mTHelper.eFunc	+=OnFunc;
 
 			base.Initialize();
 		}
@@ -123,14 +121,10 @@ namespace BSPTest
 			//spritebatch for text
 			mSB	=new SpriteBatch(GraphicsDevice);
 
-			//two content managers, one for the gamewide data, another
-			//for a shader lib that I share among all games (lives in libs)
-			mGameCM		=new ContentManager(Services, "GameContent");
-			mShaderCM	=new ContentManager(Services, "ShaderLib");
+			mSLib	=new ContentManager(Services, "ShaderLib");
 
 			//fonts for printing debug stuff
-			mKoot20		=mGameCM.Load<SpriteFont>("Fonts/Koot20");
-			mPesc12		=mGameCM.Load<SpriteFont>("Fonts/Pescadero12");
+			mFonts	=FileUtil.LoadAllFonts(Content);
 
 			//basic effect, lazy built in shader stuff
 			mBFX					=new BasicEffect(mGDM.GraphicsDevice);
@@ -149,6 +143,12 @@ namespace BSPTest
 
 		protected override void Update(GameTime gameTime)
 		{
+			if(!IsActive)
+			{
+				base.Update(gameTime);
+				return;
+			}
+
 			if(GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
 			{
 				this.Exit();
@@ -156,64 +156,47 @@ namespace BSPTest
 
 			int	msDelta	=gameTime.ElapsedGameTime.Milliseconds;
 
+			mBMHelper.Update(msDelta, mAudio.mListener);
+
 			mInput.Update();
 
 			Input.PlayerInput	pi	=mInput.Player1;
 
-			mZone.RotateModelY(5, msDelta * 0.05f);
-
-			mTestMover.Update(msDelta);
-			if(mTestMover.Done())
-			{
-				if(!mbMoveToggle)
-				{
-					mTestMover.SetUpMove(mMoveEnd, mMoveStart, 15f, 0.2f, 0.2f);
-				}
-				else
-				{
-					mTestMover.SetUpMove(mMoveStart, mMoveEnd, 15f, 0.2f, 0.2f);
-				}
-				mbMoveToggle	=!mbMoveToggle;
-			}
-
-			//don't use deltas with movement
-			mZone.MoveModelTo(4, mTestMover.GetPos());
-
 			DoUpdateHotKeys(pi);
 
 			//get player movement vector (running so flat in Y)
-			Vector3	startPos	=mPlayerControl.Position;
+			Vector3	startPos	=mPSteering.Position;
 
-			mPlayerControl.Update(msDelta, mGameCam, pi.mKBS, pi.mMS, pi.mGPS);
+			mPSteering.Update(msDelta, mCam, pi.mKBS, pi.mMS, pi.mGPS);
 
-			Vector3	endPos		=mPlayerControl.Position;
+			Vector3	endPos		=mPSteering.Position;
 
 			//for physics testing
 			if(mbPushingForward)
 			{
-				endPos.X	-=msDelta * PlayerSpeed * mGameCam.View.M13;
-				endPos.Y	-=msDelta * PlayerSpeed * mGameCam.View.M23;
-				endPos.Z	-=msDelta * PlayerSpeed * mGameCam.View.M33;
+				endPos.X	-=msDelta * PlayerSpeed * mCam.View.M13;
+				endPos.Y	-=msDelta * PlayerSpeed * mCam.View.M23;
+				endPos.Z	-=msDelta * PlayerSpeed * mCam.View.M33;
 			}
 
 			//flatten movement
 			endPos.Y	=startPos.Y;
 
 			Vector3	finalPos, camPos;
-			mPlayerMob.Move(endPos, msDelta, true, mbFlyMode, true, out finalPos, out camPos);
+			mPMob.Move(endPos, msDelta, false, !mbFlyMode, mbFlyMode, true, out finalPos, out camPos);
 
-			mPlayerControl.Position	=finalPos;
+			mPSteering.Position	=finalPos;
 
 			DebugVisDataRebuild(camPos);
 
-			mGameCam.Update(camPos, mPlayerControl.Pitch, mPlayerControl.Yaw, mPlayerControl.Roll);
+			mCam.Update(camPos, mPSteering.Pitch, mPSteering.Yaw, mPSteering.Roll);
 			
-			mLevel.Update(msDelta);
-			mMatLib.UpdateWVP(Matrix.Identity, mGameCam.View, mGameCam.Projection, -camPos);
-//			mCylLib.UpdateWVP(Matrix.Identity, mGameCam.View, mGameCam.Projection, -camPos);
+			mZoneDraw.Update(msDelta);
+			mZoneMats.UpdateWVP(Matrix.Identity, mCam.View, mCam.Projection, -camPos);
+
 			mBFX.World		=Matrix.Identity;
-			mBFX.View		=mGameCam.View;
-			mBFX.Projection	=mGameCam.Projection;
+			mBFX.View		=mCam.View;
+			mBFX.Projection	=mCam.Projection;
 
 			base.Update(gameTime);
 		}
@@ -221,77 +204,78 @@ namespace BSPTest
 
 		protected override void Draw(GameTime gameTime)
 		{
-			GraphicsDevice	g	=mGDM.GraphicsDevice;
+			GraphicsDevice	gd	=mGDM.GraphicsDevice;
 
-			g.Clear(Color.CornflowerBlue);
+			gd.Clear(Color.CornflowerBlue);
 
 			//spritebatch turns this off
-			g.DepthStencilState	=DepthStencilState.Default;
+			gd.DepthStencilState	=DepthStencilState.Default;
 
 			if(mbVisMode)
 			{
 				if(mVisVB != null)
 				{
-					g.SetVertexBuffer(mVisVB);
-					g.Indices	=mVisIB;
+					gd.SetVertexBuffer(mVisVB);
+					gd.Indices	=mVisIB;
 
 					mBFX.CurrentTechnique.Passes[0].Apply();
 
-					g.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, mVisVB.VertexCount, 0, mVisIB.IndexCount / 3);
+					gd.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, mVisVB.VertexCount, 0, mVisIB.IndexCount / 3);
 				}
 			}
 			else if(mbClusterMode)
 			{
-				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos, mZone.GetModelTransform);
+				mZoneDraw.Draw(gd, mVisPos, mCam, mZone.IsMaterialVisibleFromPos, mZone.GetModelTransform, RenderExternal);
 				if(mVisVB != null)
 				{
-					g.DepthStencilState	=DepthStencilState.Default;
-					g.SetVertexBuffer(mVisVB);
-					g.Indices	=mVisIB;
+					gd.DepthStencilState	=DepthStencilState.Default;
+					gd.SetVertexBuffer(mVisVB);
+					gd.Indices	=mVisIB;
 
 					mBFX.CurrentTechnique.Passes[0].Apply();
 
-					g.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, mVisVB.VertexCount, 0, mVisIB.IndexCount / 3);
+					gd.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, mVisVB.VertexCount, 0, mVisIB.IndexCount / 3);
 				}
 			}
 			else
 			{
-				mLevel.Draw(g, mGameCam, mVisPos, mZone.IsMaterialVisibleFromPos, mZone.GetModelTransform);
-//				mCyl.Draw(g);
+				mZoneDraw.Draw(gd, mVisPos, mCam, mZone.IsMaterialVisibleFromPos, mZone.GetModelTransform, RenderExternal);
 			}
 
 			if(mLineVB != null)
 			{
-				g.DepthStencilState	=DepthStencilState.Default;
-				g.SetVertexBuffer(mLineVB);
+				gd.DepthStencilState	=DepthStencilState.Default;
+				gd.SetVertexBuffer(mLineVB);
 
 				//might not need indexes
 				if(mLineIB != null)
 				{
-					g.Indices	=mLineIB;
+					gd.Indices	=mLineIB;
 				}
 
 				mBFX.CurrentTechnique.Passes[0].Apply();
 
 				if(mLineIB != null)
 				{
-					g.DrawIndexedPrimitives(PrimitiveType.LineList, 0, 0, mLineVB.VertexCount, 0, mLineIB.IndexCount / 2);
+					gd.DrawIndexedPrimitives(PrimitiveType.LineList, 0, 0, mLineVB.VertexCount, 0, mLineIB.IndexCount / 2);
 				}
 				else
 				{
-					g.DrawPrimitives(PrimitiveType.LineList, 0, mLineVB.VertexCount / 2);
+					gd.DrawPrimitives(PrimitiveType.LineList, 0, mLineVB.VertexCount / 2);
 				}
 			}
 
 			mSB.Begin();
 
+			SpriteFont	first	=mFonts.First().Value;
+
 			if(mbClusterMode)
 			{
-				mSB.DrawString(mKoot20, "Cur Clust: " + mCurCluster +
+				mSB.DrawString(first, "Cur Clust: " + mCurCluster +
 					", NumClustPortals: " + mNumClustPortals,
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
-				mSB.DrawString(mKoot20, "Port Nums: ",
+				mSB.DrawString(first, "Port Nums: ",
 					(Vector2.UnitY * 90.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
 				if(mPortNums.Count > 0)
@@ -303,35 +287,35 @@ namespace BSPTest
 					}
 					//chop off , on the end
 					portNumString	=portNumString.Substring(0, portNumString.Length - 2);
-					mSB.DrawString(mPesc12, portNumString,
+					mSB.DrawString(first, portNumString,
 						(Vector2.UnitY * 100.0f) + (Vector2.UnitX * (170.0f)), Color.Red);
-					mSB.DrawString(mKoot20, "ClustCenter: " + mClustCenter,
+					mSB.DrawString(first, "ClustCenter: " + mClustCenter,
 						(Vector2.UnitY * 130.0f) + (Vector2.UnitX * 20.0f),
 						Color.PowderBlue);
 				}
 			}
 			else if(mbVisMode)
 			{
-				mSB.DrawString(mKoot20, "NumLeafsVisible: " + mNumLeafsVisible,
+				mSB.DrawString(first, "NumLeafsVisible: " + mNumLeafsVisible,
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
 			}
 			else if(mbHit)
 			{
-				mSB.DrawString(mKoot20, "Hit model " + mModelHit + " pos " + mImpacto + ", Plane normal: " + mPlaneHit.mNormal,
+				mSB.DrawString(first, "Hit model " + mModelHit + " pos " + mImpacto + ", Plane normal: " + mPlaneHit.mNormal,
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
 			}
 			else
 			{
-				mSB.DrawString(mKoot20, "NumMaterialsVisible: " + mNumMatsVisible,
+				mSB.DrawString(first, "NumMaterialsVisible: " + mNumMatsVisible,
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
 			}
 
 			if(mbFreezeVis)
 			{
-				mSB.DrawString(mKoot20, "Vis Point Frozen at: " + mVisPos,
+				mSB.DrawString(first, "Vis Point Frozen at: " + mVisPos,
 					(Vector2.UnitY * 90.0f) + (Vector2.UnitX * 520.0f),
 					Color.Magenta);
 			}
@@ -344,24 +328,24 @@ namespace BSPTest
 			{
 				if(mInput.Player1.mGPS.IsConnected)
 				{
-					mSB.DrawString(mPesc12, "Press Start to display help",
+					mSB.DrawString(first, "Press Start to display help",
 						(Vector2.UnitY * 700) + (Vector2.UnitX * 20.0f), Color.Yellow);
 				}
 				else
 				{
-					mSB.DrawString(mPesc12, "Press F1 to display help " + mModelOn,
+					mSB.DrawString(first, "Press F1 to display help " + mModelOn,
 						(Vector2.UnitY * 700) + (Vector2.UnitX * 20.0f), Color.Yellow);
 				}
 			}
 
 			if(mbFlyMode)
 			{
-				mSB.DrawString(mKoot20, "FlyMode Coords: " + mPlayerControl.Position,
+				mSB.DrawString(first, "FlyMode Coords: " + mPSteering.Position,
 					Vector2.One * 20.0f, Color.Yellow);
 			}
 			else
 			{
-				mSB.DrawString(mKoot20, "Coords: " + mPlayerControl.Position,
+				mSB.DrawString(first, "Coords: " + mPSteering.Position,
 					Vector2.One * 20.0f, Color.Yellow);
 			}
 			mSB.End();
@@ -370,84 +354,96 @@ namespace BSPTest
 		}
 
 
+		void RenderExternal(MaterialLib.AlphaPool ap, Vector3 camPos, Matrix view, Matrix proj)
+		{
+			GraphicsDevice	gd	=mGDM.GraphicsDevice;
+
+			//draw non level stuff here
+			
+//			mPB.Draw(ap, view, proj);
+		}
+
+
 		//assumes begin has been called, and in draw
 		void DisplayHelp()
 		{
+			SpriteFont	first	=mFonts.First().Value;
+
 			if(mInput.Player1.mGPS.IsConnected)
 			{
-				mSB.DrawString(mPesc12, "List of controller buttons:",
+				mSB.DrawString(first, "List of controller buttons:",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 330.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "Start : Toggle help",
+				mSB.DrawString(first, "Start : Toggle help",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 350.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "Left Shoulder : Toggle flymode",
+				mSB.DrawString(first, "Left Shoulder : Toggle flymode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 370.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "X : Freeze Vis point at current camera location",
+				mSB.DrawString(first, "X : Freeze Vis point at current camera location",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 390.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "B : Toggle cluster display mode",
+				mSB.DrawString(first, "B : Toggle cluster display mode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 410.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "DPad Up/Down : Cycle through cluster number in cluster mode",
+				mSB.DrawString(first, "DPad Up/Down : Cycle through cluster number in cluster mode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 430.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "Right Shoulder : Toggle visible geometry display mode",
+				mSB.DrawString(first, "Right Shoulder : Toggle visible geometry display mode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 450.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "A : Jump if not in fly mode",
+				mSB.DrawString(first, "A : Jump if not in fly mode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 470.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "Y : Place a dynamic light, or hold for a following light",
+				mSB.DrawString(first, "Y : Place a dynamic light, or hold for a following light",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 490.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "Left Stick Button : Toggle textures on/off",
+				mSB.DrawString(first, "Left Stick Button : Toggle textures on/off",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 510.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "Right Stick Button : Next level",
+				mSB.DrawString(first, "Right Stick Button : Next level",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 530.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "Back : Exit",
+				mSB.DrawString(first, "Back : Exit",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 550.0f),
 					Color.Yellow);
 			}
 			else
 			{
-				mSB.DrawString(mPesc12, "List of hotkeys: (Hold right mouse to turn!)",
+				mSB.DrawString(first, "List of hotkeys: (Hold right mouse to turn!)",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 330.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "F1 : Toggle help",
+				mSB.DrawString(first, "F1 : Toggle help",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 350.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "F : Toggle flymode",
+				mSB.DrawString(first, "F : Toggle flymode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 370.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "R : Freeze Vis point at current camera location",
+				mSB.DrawString(first, "R : Freeze Vis point at current camera location",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 390.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "C : Toggle cluster display mode",
+				mSB.DrawString(first, "C : Toggle cluster display mode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 410.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "+/- : Cycle through cluster number in cluster mode",
+				mSB.DrawString(first, "+/- : Cycle through cluster number in cluster mode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 430.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "T : Toggle visible geometry display mode",
+				mSB.DrawString(first, "T : Toggle visible geometry display mode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 450.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "Spacebar : Jump if not in fly mode",
+				mSB.DrawString(first, "Spacebar : Jump if not in fly mode",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 470.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "G : Place a dynamic light, or hold for a following light",
+				mSB.DrawString(first, "G : Place a dynamic light, or hold for a following light",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 490.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "X : Toggle textures on/off",
+				mSB.DrawString(first, "X : Toggle textures on/off",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 510.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "L : Next level",
+				mSB.DrawString(first, "L : Next level",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 530.0f),
 					Color.Yellow);
-				mSB.DrawString(mPesc12, "M : Autorun forward (for debugging physics)",
+				mSB.DrawString(first, "M : Autorun forward (for debugging physics)",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 550.0f),
 					Color.Yellow);
 			}
@@ -477,18 +473,18 @@ namespace BSPTest
 			//jump, no need for press & release, can hold it down
 			if(pi.mKBS.IsKeyDown(Keys.Space) || pi.mGPS.IsButtonDown(Buttons.A))
 			{
-				mPlayerMob.Jump();
+				mPMob.Jump();
 			}
 
 			//dynamic light, can hold
 			if(pi.mGPS.IsButtonDown(Buttons.Y) ||
 				pi.mKBS.IsKeyDown(Keys.G))
 			{
-				Vector3	dynamicLight	=mPlayerControl.Position;
-				mMatLib.SetParameterOnAll("mLight0Position", dynamicLight);
-				mMatLib.SetParameterOnAll("mLight0Color", Vector3.One * 50.0f);
-				mMatLib.SetParameterOnAll("mLightRange", 300.0f);
-				mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
+				Vector3	dynamicLight	=mPSteering.Position;
+				mZoneMats.SetParameterOnAll("mLight0Position", dynamicLight);
+				mZoneMats.SetParameterOnAll("mLight0Color", Vector3.One * 50.0f);
+				mZoneMats.SetParameterOnAll("mLightRange", 300.0f);
+				mZoneMats.SetParameterOnAll("mLightFalloffRange", 100.0f);
 			}
 
 			if(pi.WasKeyPressed(Keys.F1) || pi.WasButtonPressed(Buttons.Start))
@@ -678,62 +674,95 @@ namespace BSPTest
 		{
 			if(mZone != null)
 			{
-				mTHelper.eChangeMap	-=OnChangeMap;
-				mTHelper.ePickUp	-=OnPickUp;
-				mTHelper.eTeleport	-=OnTeleport;
-				mTHelper.eMessage	-=OnMessage;
-				mTHelper.Clear();
-
-				mPlayerMob.SetZone(null);
-
 				mZone.ePushObject	-=OnPushObject;
 			}
 
-			//material libs hold textures and shaders
-			//and the parameters fed to the shaders
-			//as well as vid hardware states and such
-			mMatLib	=new MaterialLib.MaterialLib(GraphicsDevice,
-				mGameCM, mShaderCM, false);
+			GraphicsDevice	gd	=mGDM.GraphicsDevice;
 
 			//levels consist of a zone, which is collision and visibility and
 			//entity info, and the zonedraw which is just an indoor mesh
 			mZone	=new Zone();
-			mLevel	=new MeshLib.IndoorMesh(GraphicsDevice, mMatLib);
+			mZone.Read(Content.RootDirectory + "/Levels/" + mLevels[mCurLevel] + ".Zone", false);
 
-			mTHelper.eChangeMap	+=OnChangeMap;
-			mTHelper.ePickUp	+=OnPickUp;
-			mTHelper.eTeleport	+=OnTeleport;
-			mTHelper.eMessage	+=OnMessage;
-			mZone.ePushObject	+=OnPushObject;
+			//material libs hold textures and shaders
+			//and the parameters fed to the shaders
+			//as well as vid hardware states and such
+			mZoneMats	=new MaterialLib.MaterialLib(gd, Content, mSLib, false);
+			mZoneMats.ReadFromFile(Content.RootDirectory + "/Levels/"
+				+ mLevels[mCurLevel] + ".MatLib", false, gd);
 
-			mMatLib.ReadFromFile("GameContent/ZoneMaps/" + baseName + ".MatLib", false, mGDM.GraphicsDevice);
-			mZone.Read("GameContent/ZoneMaps/" + baseName + ".Zone", false);
-			mLevel.Read(GraphicsDevice, "GameContent/ZoneMaps/" + baseName + ".ZoneDraw", true);
+			mZoneDraw	=new IndoorMesh(gd, mZoneMats);
+			mZoneDraw.Read(gd, Content.RootDirectory + "/Levels/"
+				+ mLevels[mCurLevel] + ".ZoneDraw", false,
+				(mGDM.GraphicsProfile == GraphicsProfile.Reach));
 
-			mPlayerControl.Position	=mZone.GetPlayerStartPos() + Vector3.Up * 28.1f;
-			mPlayerMob.SetPosition(mPlayerControl.Position);
+			mZoneMats.InitCellShading(1);
+			mZoneMats.GenerateCellTexturePreset(gd, false, 0);
+			mZoneMats.SetCellTexture(0);
 
-			mMatLib.SetParameterOnAll("mLight0Color", Vector3.One);
-			mMatLib.SetParameterOnAll("mLightRange", 200.0f);
-			mMatLib.SetParameterOnAll("mLightFalloffRange", 100.0f);
+			mGraph.GenerateGraph(mZone.GetWalkableFaces, Zone.StepHeight);
+			mGraph.BuildDrawInfo(gd);
 
-#if !XBOX
 			mVisMap	=new BSPVis.VisMap();
-			mVisMap.LoadVisData("GameContent/ZoneMaps/" + baseName + ".VisData");
-			mVisMap.LoadPortalFile("GameContent/ZoneMaps/" + baseName + ".gpf", false);
-#endif
+			mVisMap.LoadVisData("GameContent/Levels/" + baseName + ".VisData");
+			mVisMap.LoadPortalFile("GameContent/Levels/" + baseName + ".gpf", false);
 
-			mNumMaterials	=mMatLib.GetMaterials().Count;
+			mNumMaterials	=mZoneMats.GetMaterials().Count;
 
-			mTHelper.Initialize(mZone, mLevel.SwitchLight);
-			mPlayerMob.SetZone(mZone);
+			mTHelper.Initialize(mZone, mZoneDraw.SwitchLight);
+			mPMob.SetZone(mZone);
+
+			float		angle;
+			Vector3		startPos	=mZone.GetPlayerStartPos(out angle);
+
+			mPSteering.Position	=startPos;
+			mPMob.SetGroundPosition(startPos);
+
+			//helper stuff
+			mTHelper.Initialize(mZone, mZoneDraw.SwitchLight);
+			mBMHelper.Initialize(mZone, mAudio, mAudio.mListener);
+
+			mZone.ePushObject	+=OnPushObject;
 		}
 
 
 		void ToggleTextures()
 		{
 			mbTexturesOn	=!mbTexturesOn;
-			mMatLib.SetParameterOnAll("mbTextureEnabled", mbTexturesOn);
+			mZoneMats.SetParameterOnAll("mbTextureEnabled", mbTexturesOn);
+		}
+
+
+		void OnFunc(object sender, EventArgs ea)
+		{
+			ZoneEntity	ze	=sender as ZoneEntity;
+			if(ze == null)
+			{
+				return;
+			}
+
+			TriggerHelper.FuncEventArgs	fea	=ea as TriggerHelper.FuncEventArgs;
+			if(fea == null)
+			{
+				return;
+			}
+
+			Mobile	mob	=fea.mTCEA.mContext as Mobile;
+			if(mob == null)
+			{
+				return;
+			}
+
+			int	modIdx;
+			ze.GetInt("Model", out modIdx);
+
+			Vector3	org;
+			if(ze.GetVectorNoConversion("ModelOrigin", out org))
+			{
+				org	=mZone.DropToGround(org, false);
+			}
+
+			mBMHelper.SetState(modIdx, fea.mbTriggerState);
 		}
 
 
@@ -746,9 +775,9 @@ namespace BSPTest
 			}
 
 			Vector3	finalPos, camPos;
-			mPlayerMob.Move(mPlayerControl.Position + delta.Value, 0, false, false, true, out finalPos, out camPos);
+			mPMob.Move(mPSteering.Position + delta.Value, 1, true, false, false, true, out finalPos, out camPos);
 
-			mPlayerControl.Position	=finalPos;
+			mPSteering.Position	=finalPos;
 		}
 
 
@@ -760,7 +789,7 @@ namespace BSPTest
 				return;
 			}
 
-			mPlayerControl.Position	=dest.Value;
+			mPSteering.Position	=dest.Value;
 		}
 
 
@@ -813,101 +842,6 @@ namespace BSPTest
 			}
 
 			ChangeLevel(mLevels[mCurLevel]);
-		}
-
-
-		void PointsFromPlaneTest()
-		{
-			Vector3	norm	=Vector3.UnitX;
-			float	dist	=10.0f;
-
-			Vector3	p0, p1, p2;
-
-			Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
-
-			List<Vector3>	verts	=new List<Vector3>();
-			verts.Add(p0);
-			verts.Add(p1);
-			verts.Add(p2);
-
-			Vector3	outNorm	=Vector3.Zero;
-			float	outDist	=0.0f;
-
-			Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
-
-			Debug.Assert(norm == outNorm);
-			Debug.Assert(dist == outDist);
-
-			norm	=Vector3.UnitY;
-
-			Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
-
-			verts.Clear();
-			verts.Add(p0);
-			verts.Add(p1);
-			verts.Add(p2);
-
-			Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
-
-			Debug.Assert(norm == outNorm);
-			Debug.Assert(dist == outDist);
-
-			norm	=Vector3.UnitZ;
-
-			Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
-
-			verts.Clear();
-			verts.Add(p0);
-			verts.Add(p1);
-			verts.Add(p2);
-
-			Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
-
-			Debug.Assert(norm == outNorm);
-			Debug.Assert(dist == outDist);
-
-			norm	=Vector3.UnitX;
-			dist	=-10f;
-
-			Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
-
-			verts.Clear();
-			verts.Add(p0);
-			verts.Add(p1);
-			verts.Add(p2);
-
-			Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
-
-			Debug.Assert(norm == outNorm);
-			Debug.Assert(dist == outDist);
-
-			norm	=Vector3.UnitY;
-
-			Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
-
-			verts.Clear();
-			verts.Add(p0);
-			verts.Add(p1);
-			verts.Add(p2);
-
-			Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
-
-			Debug.Assert(norm == outNorm);
-			Debug.Assert(dist == outDist);
-
-			norm	=Vector3.UnitZ;
-
-			Mathery.PointsFromPlane(norm, dist, out p0, out p1, out p2);
-
-			verts.Clear();
-			verts.Add(p0);
-			verts.Add(p1);
-			verts.Add(p2);
-
-			Mathery.PlaneFromVerts(verts, out outNorm, out outDist);
-
-			Debug.Assert(norm == outNorm);
-			Debug.Assert(dist == outDist);
 		}
 
 
