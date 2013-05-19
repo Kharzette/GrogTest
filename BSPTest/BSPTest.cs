@@ -72,7 +72,7 @@ namespace BSPTest
 		bool			mbStartCol	=true, mbHit;
 		bool			mbFreezeVis, mbClusterMode, mbDisplayHelp;
 		bool			mbTexturesOn	=true;
-		bool			mbVisMode, mbFlyMode, mbShowPathing;
+		bool			mbVisMode, mbFlyMode, mbShowPathing, mbShowNodeFaces;
 		bool			mbPushingForward;	//autorun toggle for collision testing
 		Vector3			mVisPos;
 		Random			mRand	=new Random();
@@ -100,8 +100,8 @@ namespace BSPTest
 			mGDM.PreferredBackBufferWidth	=1280;
 			mGDM.PreferredBackBufferHeight	=720;
 
-			mLevels.Add("PathTest");
 			mLevels.Add("Level01");
+			mLevels.Add("PathTest");
 			mLevels.Add("Attract2");
 		}
 
@@ -268,7 +268,7 @@ namespace BSPTest
 			//spritebatch turns this off
 			gd.DepthStencilState	=DepthStencilState.Default;
 
-			if(mbVisMode)
+			if(mbVisMode || mbShowNodeFaces)
 			{
 				if(mVisVB != null)
 				{
@@ -330,11 +330,12 @@ namespace BSPTest
 
 			SpriteFont	first	=mFonts.First().Value;
 
+			Vector3	groundPos	=mPMob.GetGroundPosition();
+			groundPos			=mZone.DropToGround(groundPos, false);
+
 			if(mbShowPathing)
 			{
 				int	numCon, myIndex;
-				Vector3	groundPos	=mPMob.GetGroundPosition();
-				groundPos			=mZone.DropToGround(groundPos, false);
 
 				List<int>	connectedTo	=new List<int>();
 
@@ -354,6 +355,17 @@ namespace BSPTest
 					Vector2.UnitX * 10 + Vector2.UnitY * (ResY - 80), Color.GreenYellow);
 				mSB.DrawString(first, "Connected to: " + cons,
 					Vector2.UnitX * 10 + Vector2.UnitY * (ResY - 60), Color.IndianRed);
+			}
+			else if(mbShowNodeFaces)
+			{
+				int	node	=mZone.FindWorldNodeLandedIn(groundPos);
+				if(node != mLastNode)
+				{
+					DebugNodeDataRebuild(node);
+				}
+				mSB.DrawString(first, "Node: " + node,
+					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
+					Color.Green);
 			}
 			else if(mbClusterMode)
 			{
@@ -542,6 +554,9 @@ namespace BSPTest
 				mSB.DrawString(first, "P : Show Pathing Info",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 570.0f),
 					Color.Yellow);
+				mSB.DrawString(first, "N : Draw node faces",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 590.0f),
+					Color.Yellow);
 			}
 		}
 
@@ -613,6 +628,11 @@ namespace BSPTest
 			if(pi.WasKeyPressed(Keys.M))
 			{
 				mbPushingForward	=!mbPushingForward;
+			}
+
+			if(pi.WasKeyPressed(Keys.N))
+			{
+				mbShowNodeFaces	=!mbShowNodeFaces;
 			}
 
 			if(pi.WasKeyPressed(Keys.R) || pi.WasButtonPressed(Buttons.X))
@@ -689,6 +709,19 @@ namespace BSPTest
 					}
 				}
 			}
+		}
+
+
+		void DebugNodeDataRebuild(int node)
+		{
+			List<Vector3>	verts	=new List<Vector3>();
+			List<UInt32>	inds	=new List<UInt32>();
+
+			mZone.GetNodeGeometry(node, verts, inds);
+
+			BuildDebugDrawData(verts, inds);
+
+			mLastNode	=node;
 		}
 
 
