@@ -23,7 +23,9 @@ namespace GBSPLightExplore
 
 		OpenFileDialog	mOFD	=new OpenFileDialog();
 
-		Map	mMap;
+		//bsp data
+		Map			mMap;
+		LightParams	mLP;
 
 		IOrderedEnumerable<KeyValuePair<string, SpriteFont>>	mFonts;
 
@@ -36,11 +38,12 @@ namespace GBSPLightExplore
 		PlayerSteering	mPSteering	=new PlayerSteering(ResX, ResY);
 
 		//drawing stuff
-		VertexBuffer	mVB;
-		IndexBuffer		mIB;
+		VertexBuffer	mLevelVB, mFaceVB;
+		IndexBuffer		mLevelIB, mFaceIB;
+		int				mCurFace;
 
 		//state
-		bool	mbVBReady, mbLighting;
+		bool	mbLevelVBReady, mbLighting, mbFaceVBReady;
 
 		//constants
 		public const int	ResX	=1280;
@@ -63,6 +66,7 @@ namespace GBSPLightExplore
 		protected override void Initialize()
 		{
 			mPSteering.Method	=PlayerSteering.SteeringMethod.Fly;
+			mPSteering.Speed	=0.5f;
 
 			mPSteering.UseGamePadIfPossible	=false;
 
@@ -111,6 +115,31 @@ namespace GBSPLightExplore
 			{
 				LoadStuff();
 			}
+
+			if(pi.WasKeyPressed(Microsoft.Xna.Framework.Input.Keys.PageDown))
+			{
+				if(pi.mKBS.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.LeftShift))
+				{
+					mCurFace	-=10;
+				}
+				else
+				{
+					mCurFace--;
+				}
+				BuildFaceDrawData();
+			}
+			else if(pi.WasKeyPressed(Microsoft.Xna.Framework.Input.Keys.PageUp))
+			{
+				if(pi.mKBS.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.LeftShift))
+				{
+					mCurFace	+=10;
+				}
+				else
+				{
+					mCurFace++;
+				}
+				BuildFaceDrawData();
+			}
 			base.Update(gameTime);
 		}
 
@@ -124,10 +153,10 @@ namespace GBSPLightExplore
 			gd.BlendState			=BlendState.Opaque;
 			gd.DepthStencilState	=DepthStencilState.Default;
 
-			if(mVB != null && mbVBReady)
+			if(mLevelVB != null && mbLevelVBReady)
 			{
-				gd.SetVertexBuffer(mVB);
-				gd.Indices	=mIB;
+				gd.SetVertexBuffer(mLevelVB);
+				gd.Indices	=mLevelIB;
 
 				mBFX.View		=mCam.View;
 				mBFX.Projection	=mCam.Projection;
@@ -135,12 +164,27 @@ namespace GBSPLightExplore
 				mBFX.CurrentTechnique.Passes[0].Apply();
 
 				gd.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0,
-					mVB.VertexCount, 0, mIB.IndexCount / 3);
+					mLevelVB.VertexCount, 0, mLevelIB.IndexCount / 3);
+
+				gd.SetVertexBuffer(null);
+			}
+
+			if(mFaceVB != null && mbFaceVBReady)
+			{
+				gd.SetVertexBuffer(mFaceVB);
+
+				mBFX.View		=mCam.View;
+				mBFX.Projection	=mCam.Projection;
+
+				mBFX.CurrentTechnique.Passes[0].Apply();
+
+				gd.DrawPrimitives(PrimitiveType.LineList, 0, mLevelVB.VertexCount / 2);
 
 				gd.SetVertexBuffer(null);
 			}
 
 			mSB.Begin();
+
 			mSB.DrawString(mFonts.First().Value, "Coords: " + mPSteering.Position,
 				Vector2.UnitY * ResY + Vector2.UnitY * -20f + Vector2.UnitX * 10f, Color.Yellow);
 
@@ -149,6 +193,13 @@ namespace GBSPLightExplore
 				mSB.DrawString(mFonts.First().Value, "Lighting level...",
 					Vector2.UnitY * ResY + Vector2.UnitY * -40f + Vector2.UnitX * 10f, Color.PaleGoldenrod);
 			}
+
+			if(mbFaceVBReady)
+			{
+				mSB.DrawString(mFonts.First().Value, "Face: " + mCurFace,
+					Vector2.UnitY * ResY + Vector2.UnitY * -60f + Vector2.UnitX * 10f, Color.DarkRed);
+			}
+
 			mSB.End();
 
 			base.Draw(gameTime);
@@ -175,32 +226,77 @@ namespace GBSPLightExplore
 
 			mMap	=new Map();
 
-			LightParams	lp	=new LightParams();
-			lp.mbSeamCorrection	=true;
-			lp.mbSurfaceLighting	=false;
-			lp.mLightGridSize		=8;
-			lp.mMaxIntensity		=255;
-			lp.mMinLight			=Vector3.Zero;
-			lp.mNumSamples			=5;
+			mLP						=new LightParams();
+			mLP.mbSeamCorrection	=true;
+			mLP.mbSurfaceLighting	=false;
+			mLP.mLightGridSize		=8;
+			mLP.mMaxIntensity		=255;
+			mLP.mMinLight			=Vector3.Zero;
+			mLP.mNumSamples			=1;
+			mLP.mbRecording			=true;
 
 			BSPBuildParams	bp	=new BSPBuildParams();
 			bp.mMaxThreads		=4;
 
 			mbLighting	=true;
 
-			mMap.LightGBSPFile(mOFD.FileName, EmissiveForMaterial, lp, bp);
+			mMap.LightGBSPFile(mOFD.FileName, EmissiveForMaterial, mLP, bp);
+		}
+
+
+		void BuildFaceDrawData()
+		{
+			mbFaceVBReady	=false;
+
+			if(!mLP.mFacePoints.ContainsKey(mCurFace))
+			{
+				return;
+			}
+
+			if(mLP.mFacePoints[mCurFace].Count <= 0)
+			{
+				return;
+			}
+
+			List<Vector3>	verts	=mLP.mFacePoints[mCurFace];
+			GFXPlane		pln		=mLP.mFacePlanes[mCurFace];
+
+			GraphicsDevice	gd	=mGDM.GraphicsDevice;
+
+			mFaceVB	=new VertexBuffer(gd, typeof(VertexPositionColor),
+				verts.Count * 2, BufferUsage.WriteOnly);
+
+			VertexPositionColor	[]vpc	=new VertexPositionColor[verts.Count * 2];
+
+			int	idx	=0;
+			for(int i=0;i < verts.Count;i++)
+			{
+				vpc[idx].Position	=verts[i];
+				vpc[idx].Color		=Mathery.RandomColor(mRand);
+
+				idx++;
+
+				vpc[idx].Position	=verts[i] + pln.mNormal * 3f;
+				vpc[idx].Color		=Mathery.RandomColor(mRand);
+
+				idx++;
+			}
+
+			mFaceVB.SetData<VertexPositionColor>(vpc);
+
+			mbFaceVBReady	=true;
 		}
 
 
 		void OnLightDone(object sender, EventArgs ea)
 		{
-			mbLighting	=false;
+			mbLighting		=false;
 		}
 
 
 		void OnNumClustersChanged(object sender, EventArgs ea)
 		{
-			mbVBReady	=false;
+			mbLevelVBReady	=false;
 
 			GraphicsDevice	gd	=mGDM.GraphicsDevice;
 
@@ -209,8 +305,8 @@ namespace GBSPLightExplore
 
 			mMap.GetTriangles(Vector3.Zero, verts, inds, "GFX Faces");
 
-			mVB	=new VertexBuffer(gd, typeof(VertexPositionColor), verts.Count, BufferUsage.WriteOnly);
-			mIB	=new IndexBuffer(gd, IndexElementSize.ThirtyTwoBits, inds.Count, BufferUsage.WriteOnly);
+			mLevelVB	=new VertexBuffer(gd, typeof(VertexPositionColor), verts.Count, BufferUsage.WriteOnly);
+			mLevelIB	=new IndexBuffer(gd, IndexElementSize.ThirtyTwoBits, inds.Count, BufferUsage.WriteOnly);
 
 			VertexPositionColor	[]vpc	=new VertexPositionColor[verts.Count];
 
@@ -220,10 +316,10 @@ namespace GBSPLightExplore
 				vpc[i].Color	=Mathery.RandomColor(mRand);
 			}
 
-			mVB.SetData<VertexPositionColor>(vpc);
-			mIB.SetData<UInt32>(inds.ToArray());
+			mLevelVB.SetData<VertexPositionColor>(vpc);
+			mLevelIB.SetData<UInt32>(inds.ToArray());
 
-			mbVBReady	=true;
+			mbLevelVBReady	=true;
 		}
 	}
 }
