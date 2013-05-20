@@ -20,6 +20,7 @@ namespace GBSPLightExplore
 		ContentManager			mSLib;	//shader library
 		Random					mRand	=new Random();
 		BasicEffect				mBFX;
+		Texture2D				mCurLightMap;
 
 		OpenFileDialog	mOFD	=new OpenFileDialog();
 
@@ -39,11 +40,12 @@ namespace GBSPLightExplore
 
 		//drawing stuff
 		VertexBuffer	mLevelVB, mFaceVB;
-		IndexBuffer		mLevelIB, mFaceIB;
-		int				mCurFace;
+		IndexBuffer		mLevelIB;
+		int				mCurFace, mCurWidth, mCurHeight;
 
 		//state
 		bool	mbLevelVBReady, mbLighting, mbFaceVBReady;
+		bool	mbLitLoaded;
 
 		//constants
 		public const int	ResX	=1280;
@@ -113,7 +115,12 @@ namespace GBSPLightExplore
 
 			if(pi.WasKeyPressed(Microsoft.Xna.Framework.Input.Keys.L))
 			{
-				LoadStuff();
+				LoadAndLight();
+			}
+
+			if(!mbLighting && pi.WasKeyPressed(Microsoft.Xna.Framework.Input.Keys.M))
+			{
+				LoadLit();
 			}
 
 			if(pi.WasKeyPressed(Microsoft.Xna.Framework.Input.Keys.PageDown))
@@ -198,6 +205,15 @@ namespace GBSPLightExplore
 			{
 				mSB.DrawString(mFonts.First().Value, "Face: " + mCurFace,
 					Vector2.UnitY * ResY + Vector2.UnitY * -60f + Vector2.UnitX * 10f, Color.DarkRed);
+
+				if(mCurLightMap != null && mbLitLoaded)
+				{
+					Rectangle	rect	=new Rectangle(
+						ResX - (mCurWidth * 8),
+						ResY - (mCurHeight * 8),
+						mCurWidth * 8, mCurHeight * 8);
+					mSB.Draw(mCurLightMap, rect, Microsoft.Xna.Framework.Color.White);
+				}
 			}
 
 			mSB.End();
@@ -212,7 +228,20 @@ namespace GBSPLightExplore
 		}
 
 
-		void LoadStuff()
+		void LoadLit()
+		{
+			mMap	=new Map();
+
+			GFXHeader	hdr	=mMap.LoadGBSPFile(mOFD.FileName);
+			if(hdr == null)
+			{
+				return;
+			}
+			mbLitLoaded	=true;
+		}
+
+
+		void LoadAndLight()
 		{
 			mOFD.DefaultExt		="*.gbsp";
 			mOFD.Filter			="GBSP files (*.gbsp)|*.gbsp|All files (*.*)|*.*";
@@ -284,6 +313,17 @@ namespace GBSPLightExplore
 
 			mFaceVB.SetData<VertexPositionColor>(vpc);
 
+			if(mbLitLoaded)
+			{
+				Color	[]lmap	=mMap.GetLightMapForFace(mCurFace, out mCurWidth, out mCurHeight);
+
+				if(lmap != null)
+				{
+					mCurLightMap	=new Texture2D(gd, mCurWidth, mCurHeight);
+
+					mCurLightMap.SetData<Color>(lmap);
+				}
+			}
 			mbFaceVBReady	=true;
 		}
 
