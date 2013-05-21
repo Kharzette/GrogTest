@@ -607,6 +607,15 @@ namespace BSPTest
 				mSB.DrawString(first, "N : Draw node faces",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 590.0f),
 					Color.Yellow);
+				mSB.DrawString(first, "1 : Set path start",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 610.0f),
+					Color.Yellow);
+				mSB.DrawString(first, "2 : Set path end",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 630.0f),
+					Color.Yellow);
+				mSB.DrawString(first, "H : Follow path",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 650.0f),
+					Color.Yellow);
 			}
 		}
 
