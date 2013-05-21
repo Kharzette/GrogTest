@@ -45,13 +45,16 @@ namespace BSPTest
 		MaterialLib.MaterialLib	mZoneMats;
 
 		//pathing stuff
-		PathGraph	mGraph	=PathGraph.CreatePathGrid();
+		PathGraph		mGraph	=PathGraph.CreatePathGrid();
+		List<Vector3>	mPath	=new List<Vector3>();
+		Vector3			mTestPoint1, mTestPoint2;
+		bool			mbAwaitingPathing, mbPathing;
 
 		//control
 		GameCamera		mCam;
 		PlayerSteering	mPSteering;
 		Input			mInput;
-		Mobile			mPMob;
+		Mobile			mPMob, mPathTestPMob;
 		int				mModelOn	=-1;	//model standing on
 
 		//helpers
@@ -87,6 +90,7 @@ namespace BSPTest
 		const float	PlayerSpeed	=0.15f;
 		const int	ResX		=1280;
 		const int	ResY		=720;
+		const float	CloseEnough	=8f;
 
 
 		public BSPTest()
@@ -115,6 +119,10 @@ namespace BSPTest
 
 			//56, 24 is the general character size
 			mPMob	=new Mobile(this, 24f, 56f, 50f, true, mTHelper);
+
+			//this one should be made 16 units shorter
+			//path nodes are tested by a move down
+			mPathTestPMob	=new Mobile(this, 24f, 40f, 38f, true, mTHelper);
 
 			mInput		=new Input();
 			mPSteering	=new PlayerSteering(mGDM.GraphicsDevice.Viewport.Width,
@@ -220,10 +228,19 @@ namespace BSPTest
 
 			//get player movement vector (running so flat in Y)
 			Vector3	startPos	=mPSteering.Position;
-
-			mPSteering.Update(msDelta, mCam, pi.mKBS, pi.mMS, pi.mGPS);
-
 			Vector3	endPos		=mPSteering.Position;
+
+			if(mbPathing)
+			{
+				Vector3	startGround	=mZone.DropToGround(startPos, false);
+				UpdateFollowPath(msDelta, startGround, ref endPos);
+				mPSteering.Update(msDelta, mCam, pi.mKBS, pi.mMS, pi.mGPS);
+			}
+			else
+			{
+				mPSteering.Update(msDelta, mCam, pi.mKBS, pi.mMS, pi.mGPS);
+				endPos		=mPSteering.Position;
+			}
 
 			//for physics testing
 			if(mbPushingForward)
@@ -255,7 +272,40 @@ namespace BSPTest
 			mBFX.View		=mCam.View;
 			mBFX.Projection	=mCam.Projection;
 
+			mGraph.Update();
+
 			base.Update(gameTime);
+		}
+
+
+		void UpdateFollowPath(int msDelta, Vector3 startPos, ref Vector3 endPos)
+		{
+			if(mPath.Count <= 0)
+			{
+				mbPathing	=false;
+			}
+			else
+			{
+				Vector3	target	=mPath[0] + Vector3.UnitY;
+
+				Vector3	compareTarget	=target;
+
+				float	yDiff	=Math.Abs(target.Y - mPath[0].Y);
+				if(yDiff < Zone.StepHeight)
+				{
+					//fix for stairs
+					compareTarget.Y	=startPos.Y;
+				}
+
+				if(Mathery.CompareVectorEpsilon(compareTarget, startPos, CloseEnough))
+				{
+					mPath.RemoveAt(0);
+				}
+				else
+				{
+					ComputeApproach(target, msDelta, out endPos);
+				}
+			}
 		}
 
 
@@ -563,6 +613,24 @@ namespace BSPTest
 
 		void DoUpdateHotKeys(Input.PlayerInput pi)
 		{
+			if(pi.WasKeyPressed(Keys.D1))
+			{
+				mTestPoint1	=mPSteering.Position;
+			}
+
+			if(pi.WasKeyPressed(Keys.D2))
+			{
+				mTestPoint2	=mPSteering.Position;
+			}
+
+			if(pi.WasKeyPressed(Keys.H))
+			{
+				mbAwaitingPathing	=true;
+				Vector3	p1	=mZone.DropToGround(mTestPoint1, false);
+				Vector3	p2	=mZone.DropToGround(mTestPoint2, false);
+				mGraph.FindPath(p1, p2, OnPathDone, mZone.FindWorldNodeLandedIn);
+			}
+
 			if(pi.WasKeyPressed(Keys.T) || pi.WasButtonPressed(Buttons.RightShoulder))
 			{
 				mbVisMode	=!mbVisMode;
@@ -846,7 +914,15 @@ namespace BSPTest
 			mZoneMats.GenerateCellTexturePreset(gd, false, 0);
 			mZoneMats.SetCellTexture(0);
 
-			mGraph.GenerateGraph(mZone.GetWalkableFaces, Zone.StepHeight);
+			float		angle;
+			Vector3		startPos	=mZone.GetPlayerStartPos(out angle);
+
+			mPSteering.Position	=startPos;
+			mPMob.SetZone(mZone);
+			mPathTestPMob.SetZone(mZone);
+			mPMob.SetGroundPosition(startPos);
+
+			mGraph.GenerateGraph(mZone.GetWalkableFaces, Zone.StepHeight, IsPositionOk);
 			mGraph.BuildDrawInfo(gd);
 
 			mVisMap	=new BSPVis.VisMap();
@@ -856,13 +932,6 @@ namespace BSPTest
 			mNumMaterials	=mZoneMats.GetMaterials().Count;
 
 			mTHelper.Initialize(mZone, mZoneDraw.SwitchLight);
-			mPMob.SetZone(mZone);
-
-			float		angle;
-			Vector3		startPos	=mZone.GetPlayerStartPos(out angle);
-
-			mPSteering.Position	=startPos;
-			mPMob.SetGroundPosition(startPos);
 
 			//helper stuff
 			mTHelper.Initialize(mZone, mZoneDraw.SwitchLight);
@@ -1003,6 +1072,25 @@ namespace BSPTest
 		}
 
 
+		void OnPathDone(List<Vector3> resultPath)
+		{
+			mPath.Clear();
+
+			if(!mbAwaitingPathing)
+			{
+				return;
+			}
+			mbAwaitingPathing	=false;
+
+			foreach(Vector3 spot in resultPath)
+			{
+				mPath.Add(spot);
+			}
+
+			mbPathing	=(mPath.Count > 0);
+		}
+
+
 		void NextLevel()
 		{
 			mCurLevel++;
@@ -1013,6 +1101,61 @@ namespace BSPTest
 			}
 
 			ChangeLevel(mLevels[mCurLevel]);
+		}
+
+
+		bool ComputeApproach(Vector3 target, int msDelta, out Vector3 endPos)
+		{
+			Vector3	myPos		=mPSteering.Position;
+			Vector3	aim			=myPos - target;
+
+			myPos	=mZone.DropToGround(myPos, false);
+
+			//flatten for the nearness detection
+			//this can cause some hilarity if AI goals are off the ground
+			//AI controlled characters can appear to suddenly become
+			//Michael Jordan and leap up trying to get to the goal
+			Vector3	flatAim	=aim;
+			
+			flatAim.Y	=0;
+
+			float	targetLen	=flatAim.Length();
+			if(targetLen <= 0f)
+			{
+				endPos	=target;
+				return	true;
+			}
+
+			flatAim	/=targetLen;
+
+			flatAim	*=mPSteering.Speed * msDelta;
+
+			float	moveLen	=flatAim.Length();
+
+			if(moveLen > targetLen)
+			{
+				//arrive at goal
+				endPos	=target;
+				return	true;
+			}
+
+			//do unflattened move
+			aim.Normalize();
+			aim	*=mPSteering.Speed * msDelta;
+
+			endPos	=myPos - aim;
+			return	false;
+		}
+
+
+		bool IsPositionOk(Vector3 pos)
+		{
+			//set off the ground
+			mPathTestPMob.SetGroundPosition(pos);
+
+			//test a sphere about midway up the box height
+			//sphere should be half the hitbox width
+			return	mPathTestPMob.TrySphere(mPathTestPMob.GetMiddlePosition(), 12f, false);
 		}
 
 
