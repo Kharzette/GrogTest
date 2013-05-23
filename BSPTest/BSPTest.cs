@@ -69,14 +69,11 @@ namespace BSPTest
 		VertexBuffer	mLineVB, mVisVB;
 		IndexBuffer		mLineIB, mVisIB;
 		BasicEffect		mBFX;
-		int				mModelHit;
-		Vector3			mColPos0, mColPos1, mImpacto;
-		ZonePlane		mPlaneHit;
-		bool			mbStartCol	=true, mbHit;
 		bool			mbFreezeVis, mbClusterMode, mbDisplayHelp;
 		bool			mbTexturesOn	=true;
 		bool			mbVisMode, mbFlyMode, mbShowPathing, mbShowNodeFaces;
 		bool			mbPushingForward;	//autorun toggle for collision testing
+		bool			mbRayMode;
 		Vector3			mVisPos;
 		Random			mRand	=new Random();
 		int				mCurCluster, mNumClustPortals;
@@ -274,7 +271,28 @@ namespace BSPTest
 
 			mGraph.Update();
 
+			if(mbRayMode)
+			{
+				UpdateRayMode(msDelta);
+			}
+
 			base.Update(gameTime);
+		}
+
+
+		void UpdateRayMode(int msDelta)
+		{
+			//grab ray
+			Vector3	lookDir	=-mCam.Forward;
+
+			Vector3	startPos	=mPMob.GetMiddlePosition() + mCam.Left * 5f;
+
+			Vector3	endPos	=startPos + lookDir * 300f;
+
+			List<Vector3>	segments	=new List<Vector3>();
+			mPMob.MoveDebug(msDelta, startPos, endPos, segments);
+
+			MakeTraceLine(segments);
 		}
 
 
@@ -448,12 +466,12 @@ namespace BSPTest
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
 			}
-			else if(mbHit)
+/*			else if(mbHit)
 			{
 				mSB.DrawString(first, "Hit model " + mModelHit + " pos " + mImpacto + ", Plane normal: " + mPlaneHit.mNormal,
 					(Vector2.UnitY * 60.0f) + (Vector2.UnitX * 20.0f),
 					Color.Green);
-			}
+			}*/
 			else
 			{
 				mSB.DrawString(first, "NumMaterialsVisible: " + mNumMatsVisible,
@@ -616,6 +634,12 @@ namespace BSPTest
 				mSB.DrawString(first, "H : Follow path",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 650.0f),
 					Color.Yellow);
+				mSB.DrawString(first, "V : Trace collision box through path points",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 670.0f),
+					Color.Yellow);
+				mSB.DrawString(first, "E : Toggle Ray Mode",
+					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 690.0f),
+					Color.Yellow);
 			}
 		}
 
@@ -630,6 +654,18 @@ namespace BSPTest
 			if(pi.WasKeyPressed(Keys.D2))
 			{
 				mTestPoint2	=mPSteering.Position;
+			}
+
+			if(pi.WasKeyPressed(Keys.E))
+			{
+				mbRayMode	=!mbRayMode;
+			}
+
+			if(pi.WasKeyPressed(Keys.V))
+			{
+				List<Vector3>	segs	=new List<Vector3>();
+				mPMob.MoveDebug(50, mTestPoint1, mTestPoint2, segs);
+				MakeTraceLine(segs);
 			}
 
 			if(pi.WasKeyPressed(Keys.H))
@@ -802,34 +838,24 @@ namespace BSPTest
 		}
 
 
-		void MakeTraceLine()
+		void MakeTraceLine(List<Vector3> segments)
 		{
-			mLineVB	=new VertexBuffer(mGDM.GraphicsDevice, typeof(VertexPositionColor), 2, BufferUsage.WriteOnly);
+			mLineVB	=new VertexBuffer(mGDM.GraphicsDevice,
+				typeof(VertexPositionColor),
+				segments.Count, BufferUsage.WriteOnly);
 
-			VertexPositionColor	[]line	=new VertexPositionColor[2];
+			VertexPositionColor	[]line	=new VertexPositionColor[segments.Count];
 
-			Matrix	matInv	=Matrix.Invert(mZone.GetModelTransform(5));
+			for(int i=0;i < (segments.Count - 1);i++)
+			{
+				line[i].Position	=segments[i];
+				line[i].Color		=Color.Blue;
 
-			Vector3	backTrans0	=Vector3.Transform(mColPos0, matInv);
-			Vector3	backTrans1	=Vector3.Transform(mColPos1, matInv);
+				i++;
 
-			backTrans0	=new Vector3(-181.0751f, -67.999f, -74.83295f);
-			backTrans1	=new Vector3(-187.999f, -67.999f, -77.015621f);
-
-			Vector3	dirVec	=backTrans1 - backTrans0;
-
-			dirVec.Normalize();
-
-			dirVec	*=10.0f;
-
-			backTrans0	-=dirVec;
-
-			line[0].Position	=backTrans0;
-			line[1].Position	=backTrans1;
-
-			line[0].Color	=Color.Blue;
-			line[1].Color	=Color.Red;
-
+				line[i].Position	=segments[i];
+				line[i].Color		=Color.Red;
+			}
 			mLineVB.SetData<VertexPositionColor>(line);
 		}
 
