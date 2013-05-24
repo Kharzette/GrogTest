@@ -119,7 +119,7 @@ namespace BSPTest
 
 			//this one should be made 16 units shorter
 			//path nodes are tested by a move down
-			mPathTestPMob	=new Mobile(this, 24f, 40f, 38f, true, mTHelper);
+			mPathTestPMob	=new Mobile(this, 24f, 40f, 38f, false, mTHelper);
 
 			mInput		=new Input();
 			mPSteering	=new PlayerSteering(mGDM.GraphicsDevice.Viewport.Width,
