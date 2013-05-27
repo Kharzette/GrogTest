@@ -101,6 +101,7 @@ namespace BSPTest
 			mGDM.PreferredBackBufferWidth	=1280;
 			mGDM.PreferredBackBufferHeight	=720;
 
+			mLevels.Add("ModelTest");
 			mLevels.Add("Level01");
 			mLevels.Add("PathTest");
 			mLevels.Add("Attract2");
@@ -500,7 +501,7 @@ namespace BSPTest
 				}
 				else
 				{
-					mSB.DrawString(first, "Press F1 to display help " + mModelOn,
+					mSB.DrawString(first, "Press F1 to display help " + mPMob.GetModelOn(),
 						(Vector2.UnitY * 700) + (Vector2.UnitX * 20.0f), Color.Yellow);
 				}
 			}
