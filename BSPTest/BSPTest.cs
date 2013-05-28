@@ -1032,8 +1032,6 @@ namespace BSPTest
 				return;
 			}
 
-			bool	bJacked	=mZone.IntersectBoxModel(mPMob.GetBounds(), mPMob.GetMiddlePosition(), 1);
-
 			Vector3	pushedTo, camTo;
 			mPMob.Move(mpea.mPushDelta + mPMob.GetGroundPosition(), 1,
 				true, false, false, true, false, out pushedTo, out camTo);
