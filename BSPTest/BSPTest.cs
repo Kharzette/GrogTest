@@ -255,7 +255,7 @@ namespace BSPTest
 			}
 
 			Vector3	finalPos, camPos;
-			mPMob.Move(endPos, msDelta, false, !mbFlyMode, mbFlyMode, true, out finalPos, out camPos);
+			mPMob.Move(endPos, msDelta, false, !mbFlyMode, mbFlyMode, true, true, out finalPos, out camPos);
 
 			mPSteering.Position	=finalPos;
 
@@ -1026,17 +1026,26 @@ namespace BSPTest
 				return;
 			}
 
-			Vector3EventArgs	vea	=ea as Vector3EventArgs;
-			if(vea == null)
+			ModelPushEventArgs	mpea	=ea as ModelPushEventArgs;
+			if(mpea == null)
 			{
 				return;
 			}
 
+			bool	bJacked	=mZone.IntersectBoxModel(mPMob.GetBounds(), mPMob.GetMiddlePosition(), 1);
+
 			Vector3	pushedTo, camTo;
-			mPMob.Move(vea.mVector + mPMob.GetGroundPosition(), 1, true, false, false, true, out pushedTo, out camTo);
+			mPMob.Move(mpea.mPushDelta + mPMob.GetGroundPosition(), 1,
+				true, false, false, true, false, out pushedTo, out camTo);
 			mPMob.SetGroundPosition(pushedTo);
 
 			mPSteering.Position	=pushedTo;
+
+			//see if still intersecting
+			if(mZone.IntersectBoxModel(mPMob.GetBounds(), mPMob.GetMiddlePosition(), mpea.mModelIndex))
+			{
+				mBMHelper.SetState(mpea.mModelIndex, !mBMHelper.GetState(mpea.mModelIndex));
+			}
 		}
 
 
