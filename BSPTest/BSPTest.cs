@@ -59,7 +59,6 @@ namespace BSPTest
 
 		//helpers
 		TriggerHelper		mTHelper	=new TriggerHelper();
-		BasicModelHelper	mBMHelper	=new BasicModelHelper();
 
 		//level changing stuff
 		List<string>	mLevels		=new List<string>();
@@ -128,8 +127,6 @@ namespace BSPTest
 
 			mPSteering.Method	=PlayerSteering.SteeringMethod.FirstPerson;
 			mPSteering.Speed	=PlayerSpeed;
-
-			mTHelper.eFunc	+=OnFunc;
 
 			base.Initialize();
 		}
@@ -220,9 +217,12 @@ namespace BSPTest
 				return;
 			}
 
-			mBMHelper.Update(msDelta, mAudio.mListener);
+			mZone.UpdateModels(msDelta, mAudio.mListener);
 
 			DoUpdateHotKeys(pi);
+
+			//sync psteering with mobile
+			mPSteering.Position	=mPMob.GetGroundPosition();
 
 			//get player movement vector (running so flat in Y)
 			Vector3	startPos	=mPSteering.Position;
@@ -922,11 +922,6 @@ namespace BSPTest
 
 		void ChangeLevel(string baseName)
 		{
-			if(mZone != null)
-			{
-				mZone.ePushObject	-=OnPushObject;
-			}
-
 			GraphicsDevice	gd	=mGDM.GraphicsDevice;
 
 			//levels consist of a zone, which is collision and visibility and
@@ -967,13 +962,8 @@ namespace BSPTest
 
 			mNumMaterials	=mZoneMats.GetMaterials().Count;
 
-			mTHelper.Initialize(mZone, mZoneDraw.SwitchLight);
-
 			//helper stuff
-			mTHelper.Initialize(mZone, mZoneDraw.SwitchLight);
-			mBMHelper.Initialize(mZone, mAudio, mAudio.mListener);
-
-			mZone.ePushObject	+=OnPushObject;
+			mTHelper.Initialize(mZone, mZoneDraw.SwitchLight, mAudio, mAudio.mListener);
 		}
 
 
@@ -981,69 +971,6 @@ namespace BSPTest
 		{
 			mbTexturesOn	=!mbTexturesOn;
 			mZoneMats.SetParameterOnAll("mbTextureEnabled", mbTexturesOn);
-		}
-
-
-		void OnFunc(object sender, EventArgs ea)
-		{
-			ZoneEntity	ze	=sender as ZoneEntity;
-			if(ze == null)
-			{
-				return;
-			}
-
-			TriggerHelper.FuncEventArgs	fea	=ea as TriggerHelper.FuncEventArgs;
-			if(fea == null)
-			{
-				return;
-			}
-
-			Mobile	mob	=fea.mTCEA.mContext as Mobile;
-			if(mob == null)
-			{
-				return;
-			}
-
-			int	modIdx;
-			ze.GetInt("Model", out modIdx);
-
-			Vector3	org;
-			if(ze.GetVectorNoConversion("ModelOrigin", out org))
-			{
-				org	=mZone.DropToGround(org, false);
-			}
-
-			mBMHelper.SetState(modIdx, fea.mbTriggerState);
-		}
-
-
-		void OnPushObject(object sender, EventArgs ea)
-		{
-			Mobile	mob	=sender as Mobile;
-			if(mob != mPMob)
-			{
-				//not the player
-				return;
-			}
-
-			ModelPushEventArgs	mpea	=ea as ModelPushEventArgs;
-			if(mpea == null)
-			{
-				return;
-			}
-
-			Vector3	pushedTo, camTo;
-			mPMob.Move(mpea.mPushDelta + mPMob.GetGroundPosition(), 1,
-				true, false, false, true, false, out pushedTo, out camTo);
-			mPMob.SetGroundPosition(pushedTo);
-
-			mPSteering.Position	=pushedTo;
-
-			//see if still intersecting
-			if(mZone.IntersectBoxModel(mPMob.GetBounds(), mPMob.GetMiddlePosition(), mpea.mModelIndex))
-			{
-				mBMHelper.SetState(mpea.mModelIndex, !mBMHelper.GetState(mpea.mModelIndex));
-			}
 		}
 
 
