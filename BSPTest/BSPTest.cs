@@ -55,7 +55,6 @@ namespace BSPTest
 		PlayerSteering	mPSteering;
 		Input			mInput;
 		Mobile			mPMob, mPathTestPMob;
-		int				mModelOn	=-1;	//model standing on
 
 		//helpers
 		TriggerHelper		mTHelper	=new TriggerHelper();
@@ -841,6 +840,11 @@ namespace BSPTest
 
 		void MakeTraceLine(List<Vector3> segments)
 		{
+			if(segments.Count == 0)
+			{
+				return;
+			}
+
 			mLineVB	=new VertexBuffer(mGDM.GraphicsDevice,
 				typeof(VertexPositionColor),
 				segments.Count, BufferUsage.WriteOnly);
