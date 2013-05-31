@@ -83,6 +83,7 @@ namespace BSPTest
 
 		//constants
 		const float	PlayerSpeed	=0.15f;
+		const float	FlySpeed	=0.5f;
 		const int	ResX		=1280;
 		const int	ResY		=720;
 		const float	CloseEnough	=8f;
@@ -251,6 +252,17 @@ namespace BSPTest
 			if(!mbFlyMode)
 			{
 				endPos.Y	=startPos.Y;
+			}
+			else
+			{
+				if(pi.mKBS.IsKeyDown(Keys.LeftShift))
+				{
+					mPSteering.Speed	=FlySpeed * 3f;
+				}
+				else
+				{
+					mPSteering.Speed	=FlySpeed;
+				}
 			}
 
 			Vector3	finalPos, camPos;
@@ -735,6 +747,7 @@ namespace BSPTest
 				else
 				{
 					mPSteering.Method	=PlayerSteering.SteeringMethod.FirstPerson;
+					mPSteering.Speed	=PlayerSpeed;
 				}
 			}
 
