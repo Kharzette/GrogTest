@@ -973,7 +973,8 @@ namespace BSPTest
 			mNumMaterials	=mZoneMats.GetMaterials().Count;
 
 			//helper stuff
-			mTHelper.Initialize(mZone, mZoneDraw.SwitchLight, mAudio, mAudio.mListener);
+			mTHelper.Initialize(mZone, mAudio, mAudio.mListener,
+				mZoneDraw.SwitchLight, OkToFireFunc);
 		}
 
 
@@ -981,6 +982,12 @@ namespace BSPTest
 		{
 			mbTexturesOn	=!mbTexturesOn;
 			mZoneMats.SetParameterOnAll("mbTextureEnabled", mbTexturesOn);
+		}
+
+
+		bool OkToFireFunc(TriggerHelper.FuncEventArgs fea)
+		{
+			return	true;
 		}
 
 

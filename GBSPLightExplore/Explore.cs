@@ -37,6 +37,7 @@ namespace GBSPLightExplore
 		//input
 		Input			mInput		=new Input();
 		PlayerSteering	mPSteering	=new PlayerSteering(ResX, ResY);
+		Vector3			mPosition;
 
 		//drawing stuff
 		VertexBuffer	mLevelVB, mFaceVB;
@@ -109,9 +110,9 @@ namespace GBSPLightExplore
 
 			Input.PlayerInput	pi	=mInput.Player1;
 
-			mPSteering.Update(msDelta, mCam, pi.mKBS, pi.mMS, pi.mGPS);
+			mPosition	=mPSteering.Update(msDelta, mPosition, mCam, pi.mKBS, pi.mMS, pi.mGPS);
 
-			mCam.Update(-mPSteering.Position, mPSteering.Pitch, mPSteering.Yaw, mPSteering.Roll);
+			mCam.Update(-mPosition, mPSteering.Pitch, mPSteering.Yaw, mPSteering.Roll);
 
 			if(pi.WasKeyPressed(Microsoft.Xna.Framework.Input.Keys.L))
 			{
@@ -192,7 +193,7 @@ namespace GBSPLightExplore
 
 			mSB.Begin();
 
-			mSB.DrawString(mFonts.First().Value, "Coords: " + mPSteering.Position,
+			mSB.DrawString(mFonts.First().Value, "Coords: " + -mCam.Position,
 				Vector2.UnitY * ResY + Vector2.UnitY * -20f + Vector2.UnitX * 10f, Color.Yellow);
 
 			if(mbLighting)
