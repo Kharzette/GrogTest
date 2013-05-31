@@ -221,7 +221,7 @@ namespace BSPTest
 			DoUpdateHotKeys(pi);
 
 			//sync psteering with mobile
-			mPSteering.Position	=mPMob.GetGroundPosition();
+			mPSteering.Position	=mPMob.GetGroundPos();
 
 			//get player movement vector (running so flat in Y)
 			Vector3	startPos	=mPSteering.Position;
@@ -285,12 +285,12 @@ namespace BSPTest
 			//grab ray
 			Vector3	lookDir	=-mCam.Forward;
 
-			Vector3	startPos	=mPMob.GetMiddlePosition() + mCam.Left * 5f;
+			Vector3	startPos	=mPMob.GetEyePos() + mCam.Left * 5f;
 
 			Vector3	endPos	=startPos + lookDir * 300f;
 
 			List<Vector3>	segments	=new List<Vector3>();
-			mPMob.MoveDebug(msDelta, startPos, endPos, segments);
+			mZone.TraceDebug(null, null, startPos, endPos, segments);
 
 			MakeTraceLine(segments);
 		}
@@ -398,7 +398,7 @@ namespace BSPTest
 
 			SpriteFont	first	=mFonts.First().Value;
 
-			Vector3	groundPos	=mPMob.GetGroundPosition();
+			Vector3	groundPos	=mPMob.GetGroundPos();
 			groundPos			=mZone.DropToGround(groundPos, false);
 
 			if(mbShowPathing)
@@ -664,7 +664,7 @@ namespace BSPTest
 			if(pi.WasKeyPressed(Keys.V))
 			{
 				List<Vector3>	segs	=new List<Vector3>();
-				mPMob.MoveDebug(50, mTestPoint1, mTestPoint2, segs);
+				mZone.MoveBoxDebug(mPMob.GetBounds(), mTestPoint1, mTestPoint2, segs);
 				MakeTraceLine(segs);
 			}
 
@@ -955,7 +955,7 @@ namespace BSPTest
 			mPSteering.Position	=startPos;
 			mPMob.SetZone(mZone);
 			mPathTestPMob.SetZone(mZone);
-			mPMob.SetGroundPosition(startPos);
+			mPMob.SetGroundPos(startPos);
 
 			mGraph.GenerateGraph(mZone.GetWalkableFaces, Zone.StepHeight, IsPositionOk);
 			mGraph.BuildDrawInfo(gd);
@@ -1125,11 +1125,11 @@ namespace BSPTest
 		bool IsPositionOk(Vector3 pos)
 		{
 			//set off the ground
-			mPathTestPMob.SetGroundPosition(pos);
+			mPathTestPMob.SetGroundPos(pos);
 
 			//test a sphere about midway up the box height
 			//sphere should be half the hitbox width
-			return	mPathTestPMob.TrySphere(mPathTestPMob.GetMiddlePosition(), 12f, false);
+			return	mPathTestPMob.TrySphere(mPathTestPMob.GetMiddlePos(), 12f, false);
 		}
 
 
