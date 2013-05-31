@@ -221,23 +221,19 @@ namespace BSPTest
 
 			DoUpdateHotKeys(pi);
 
-			//sync psteering with mobile
-			mPSteering.Position	=mPMob.GetGroundPos();
-
 			//get player movement vector (running so flat in Y)
-			Vector3	startPos	=mPSteering.Position;
-			Vector3	endPos		=mPSteering.Position;
+			Vector3	startPos	=mPMob.GetGroundPos();
+			Vector3	endPos		=mPMob.GetGroundPos();
 
 			if(mbPathing)
 			{
 				Vector3	startGround	=mZone.DropToGround(startPos, false);
 				UpdateFollowPath(msDelta, startGround, ref endPos);
-				mPSteering.Update(msDelta, mCam, pi.mKBS, pi.mMS, pi.mGPS);
+				mPSteering.Update(msDelta, startPos, mCam, pi.mKBS, pi.mMS, pi.mGPS);
 			}
 			else
 			{
-				mPSteering.Update(msDelta, mCam, pi.mKBS, pi.mMS, pi.mGPS);
-				endPos		=mPSteering.Position;
+				endPos	=mPSteering.Update(msDelta, startPos, mCam, pi.mKBS, pi.mMS, pi.mGPS);
 			}
 
 			//for physics testing
@@ -267,8 +263,6 @@ namespace BSPTest
 
 			Vector3	finalPos, camPos;
 			mPMob.Move(endPos, msDelta, false, !mbFlyMode, mbFlyMode, true, true, out finalPos, out camPos);
-
-			mPSteering.Position	=finalPos;
 
 			DebugVisDataRebuild(camPos);
 
@@ -519,12 +513,12 @@ namespace BSPTest
 
 			if(mbFlyMode)
 			{
-				mSB.DrawString(first, "FlyMode Coords: " + mPSteering.Position,
+				mSB.DrawString(first, "FlyMode Coords: " + mPMob.GetGroundPos(),
 					Vector2.One * 20.0f, Color.Yellow);
 			}
 			else
 			{
-				mSB.DrawString(first, "Coords: " + mPSteering.Position,
+				mSB.DrawString(first, "Coords: " + mPMob.GetGroundPos(),
 					Vector2.One * 20.0f, Color.Yellow);
 			}
 			mSB.End();
@@ -660,12 +654,12 @@ namespace BSPTest
 		{
 			if(pi.WasKeyPressed(Keys.D1))
 			{
-				mTestPoint1	=mPSteering.Position;
+				mTestPoint1	=mPMob.GetGroundPos();
 			}
 
 			if(pi.WasKeyPressed(Keys.D2))
 			{
-				mTestPoint2	=mPSteering.Position;
+				mTestPoint2	=mPMob.GetGroundPos();
 			}
 
 			if(pi.WasKeyPressed(Keys.E))
@@ -716,7 +710,7 @@ namespace BSPTest
 			if(pi.mGPS.IsButtonDown(Buttons.Y) ||
 				pi.mKBS.IsKeyDown(Keys.G))
 			{
-				Vector3	dynamicLight	=mPSteering.Position;
+				Vector3	dynamicLight	=mPMob.GetEyePos();
 				mZoneMats.SetParameterOnAll("mLight0Position", dynamicLight);
 				mZoneMats.SetParameterOnAll("mLight0Color", Vector3.One * 50.0f);
 				mZoneMats.SetParameterOnAll("mLightRange", 300.0f);
@@ -965,7 +959,6 @@ namespace BSPTest
 			float		angle;
 			Vector3		startPos	=mZone.GetPlayerStartPos(out angle);
 
-			mPSteering.Position	=startPos;
 			mPMob.SetZone(mZone);
 			mPathTestPMob.SetZone(mZone);
 			mPMob.SetGroundPos(startPos);
@@ -999,7 +992,7 @@ namespace BSPTest
 				return;
 			}
 
-			mPSteering.Position	=dest.Value;
+			mPMob.SetGroundPos(dest.Value);
 		}
 
 
@@ -1093,7 +1086,7 @@ namespace BSPTest
 
 		bool ComputeApproach(Vector3 target, int msDelta, out Vector3 endPos)
 		{
-			Vector3	myPos		=mPSteering.Position;
+			Vector3	myPos		=mPMob.GetMiddlePos();
 			Vector3	aim			=myPos - target;
 
 			myPos	=mZone.DropToGround(myPos, false);
