@@ -58,12 +58,9 @@ namespace BSPTest
 
 		//helpers
 		TriggerHelper	mTHelper	=new TriggerHelper();
-//		DynamicLights	mDynLights;
 
-		//dynamic lights
-		List<Vector3>	mLightLocations	=new List<Vector3>();
-		Texture2D		mDynLights;
-		Vector4			[]mDynLightArray;
+		//dynamic light stuff
+		DynamicLights	mDynLights;
 		Effect			mLightMapFX;
 
 		//level changing stuff
@@ -135,8 +132,6 @@ namespace BSPTest
 			mPSteering.Method	=PlayerSteering.SteeringMethod.FirstPerson;
 			mPSteering.Speed	=PlayerSpeed;
 
-			mDynLightArray	=new Vector4[32];
-
 			base.Initialize();
 		}
 
@@ -152,6 +147,8 @@ namespace BSPTest
 			//directly setting dynamic light info once a frame
 			mLightMapFX	=mSLib.Load<Effect>("Shaders/LightMap3");
 
+			mDynLights	=new DynamicLights(gd, mLightMapFX);
+
 			//load all fonts and audio
 			mAudio.LoadAllSounds(Content);
 			mFonts	=FileUtil.LoadAllFonts(Content);
@@ -164,9 +161,6 @@ namespace BSPTest
 			mBFX.VertexColorEnabled	=true;
 			mBFX.LightingEnabled	=false;
 			mBFX.TextureEnabled		=false;
-
-			//dynamic lights stuffed into a rendertarget
-			mDynLights	=new Texture2D(gd, 32, 1, false, SurfaceFormat.Vector4);
 
 			//game specific info, change this if switching projects
 			string	menuFont	="Kawoszeh48";
@@ -300,31 +294,9 @@ namespace BSPTest
 				UpdateRayMode(msDelta);
 			}
 
-			UpdateDynamicLights();
+			mDynLights.Update(msDelta, mGDM.GraphicsDevice);
 
 			base.Update(gameTime);
-		}
-
-
-		void UpdateDynamicLights()
-		{
-			mGDM.GraphicsDevice.Textures[0]		=null;
-			mGDM.GraphicsDevice.Textures[1]		=null;
-			mGDM.GraphicsDevice.Textures[2]		=null;
-			mGDM.GraphicsDevice.Textures[3]		=null;
-			mGDM.GraphicsDevice.Textures[4]		=null;
-			mGDM.GraphicsDevice.Textures[5]		=null;
-			mGDM.GraphicsDevice.Textures[6]		=null;
-			mGDM.GraphicsDevice.Textures[7]		=null;
-			mGDM.GraphicsDevice.Textures[8]		=null;
-			mGDM.GraphicsDevice.Textures[9]		=null;
-			mGDM.GraphicsDevice.Textures[10]	=null;
-			mGDM.GraphicsDevice.Textures[11]	=null;
-			mGDM.GraphicsDevice.Textures[12]	=null;
-			mGDM.GraphicsDevice.Textures[13]	=null;
-			mGDM.GraphicsDevice.Textures[14]	=null;
-			mGDM.GraphicsDevice.Textures[15]	=null;
-			mDynLights.SetData<Vector4>(mDynLightArray);
 		}
 
 
@@ -416,9 +388,8 @@ namespace BSPTest
 			}
 			else
 			{
-				mLightMapFX.Parameters["mDynLights"].SetValue(mDynLights);
+				mDynLights.SetParameter();
 				mZoneDraw.Draw(gd, mVisPos, mCam, mZone.IsMaterialVisibleFromPos, mZone.GetModelTransform, RenderExternal);
-				mLightMapFX.Parameters["mDynLights"].SetValue((Texture)null);
 			}
 
 			if(mLineVB != null)
@@ -760,22 +731,12 @@ namespace BSPTest
 				&& pi.mLastKBS.IsKeyDown(Keys.G)))
 			{
 				Vector3	dynamicLight	=mPMob.GetEyePos();
-				mLightLocations.Add(dynamicLight);
 
-				for(int i=0;i < mLightLocations.Count;i++)
-				{
-					if(i > 15)
-					{
-						break;
-					}
-					mDynLightArray[2 * i].X	=mLightLocations[i].X;
-					mDynLightArray[2 * i].Y	=mLightLocations[i].Y;
-					mDynLightArray[2 * i].Z	=mLightLocations[i].Z;
-					mDynLightArray[2 * i].W	=100f + i * 10f;
+				int	id;
 
-					mDynLightArray[(2 * i) + 1]		=Mathery.RandomColorVector4(mRand);
-					mDynLightArray[(2 * i) + 1].W	=1f;
-				}
+				mDynLights.CreateDynamicLight(dynamicLight,
+					Mathery.RandomColorVector(mRand),
+					mRand.Next(50, 200), out id);
 			}
 
 			if(pi.WasKeyPressed(Keys.P))
