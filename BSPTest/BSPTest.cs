@@ -104,10 +104,10 @@ namespace BSPTest
 			mGDM.PreferredBackBufferWidth	=1280;
 			mGDM.PreferredBackBufferHeight	=720;
 
-			mLevels.Add("ModelTest");
-			mLevels.Add("Level01");
-			mLevels.Add("PathTest");
-			mLevels.Add("Attract2");
+			mLevels.Add("Hidef/ModelTest");
+			mLevels.Add("Hidef/Level01");
+			mLevels.Add("Hidef/PathTest");
+			mLevels.Add("Hidef/Attract2");
 		}
 
 
@@ -721,6 +721,7 @@ namespace BSPTest
 			//jump, no need for press & release, can hold it down
 			if(pi.mKBS.IsKeyDown(Keys.Space) || pi.mGPS.IsButtonDown(Buttons.A))
 			{
+				mZone.GetModelTransform(0);
 				mPMob.Jump();
 			}
 
