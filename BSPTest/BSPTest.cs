@@ -104,9 +104,9 @@ namespace BSPTest
 			mGDM.PreferredBackBufferWidth	=1280;
 			mGDM.PreferredBackBufferHeight	=720;
 
-			mLevels.Add("Hidef/ModelTest");
 			mLevels.Add("Hidef/Level01");
-			mLevels.Add("Hidef/PathTest");
+			mLevels.Add("Hidef/ModelTest");
+			mLevels.Add("Hidef/Attract");
 			mLevels.Add("Hidef/Attract2");
 		}
 
@@ -118,8 +118,10 @@ namespace BSPTest
 				mGDM.GraphicsDevice.Viewport.Height,
 				mGDM.GraphicsDevice.Viewport.AspectRatio, 1.0f, 4000.0f);
 
-			//56, 24 is the general character size
-			mPMob	=new Mobile(this, 24f, 56f, 50f, true, mTHelper);
+			mGDM.GraphicsDevice.DeviceReset	+=OnDeviceReset;
+
+			//55, 24 is the general character size
+			mPMob	=new Mobile(this, 24f, 55f, 50f, true, mTHelper);
 
 			//this one should be made 16 units shorter
 			//path nodes are tested by a move down
@@ -524,7 +526,7 @@ namespace BSPTest
 				}
 				else
 				{
-					mSB.DrawString(first, "Press F1 to display help " + mPMob.GetModelOn(),
+					mSB.DrawString(first, "Press F1 to display help ",
 						(Vector2.UnitY * 700) + (Vector2.UnitX * 20.0f), Color.Yellow);
 				}
 			}
@@ -555,8 +557,6 @@ namespace BSPTest
 			GraphicsDevice	gd	=mGDM.GraphicsDevice;
 
 			//draw non level stuff here
-			
-//			mPB.Draw(ap, view, proj);
 		}
 
 
@@ -607,7 +607,7 @@ namespace BSPTest
 			}
 			else
 			{
-				mSB.DrawString(first, "List of hotkeys: (Hold right mouse to turn!)",
+				mSB.DrawString(first, "List of hotkeys:",
 					(Vector2.UnitX * 20.0f) + (Vector2.UnitY * 330.0f),
 					Color.Yellow);
 				mSB.DrawString(first, "F1 : Toggle help",
@@ -1202,6 +1202,26 @@ namespace BSPTest
 				inds.Count, BufferUsage.WriteOnly);
 
 			mVisIB.SetData<UInt32>(inds.ToArray());
+		}
+
+
+		//need this to get around a bug with xna4 not saving
+		//sampler stuff on a device reset
+		void OnDeviceReset(object sender, EventArgs ea)
+		{
+			GraphicsDevice	gd	=mGDM.GraphicsDevice;
+
+			for(int i=0;i < 16;i++)
+			{
+				try
+				{
+					gd.SamplerStates[i]	=SamplerState.PointClamp;
+				}
+				catch
+				{
+					break;
+				}
+			}
 		}
 	}
 }
