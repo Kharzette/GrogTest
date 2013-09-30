@@ -23,7 +23,8 @@ namespace BSPTest
 		SpriteBatch				mSB;
 		ContentManager			mSLib;
 
-		Dictionary<string, SpriteFont>		mFonts;
+		//ordered list of fonts
+		IOrderedEnumerable<KeyValuePair<string, SpriteFont>>	mFonts;
 
 		//ui stuff
 		MenuBuilder		mMB;
@@ -104,7 +105,7 @@ namespace BSPTest
 			mGDM.PreferredBackBufferWidth	=1280;
 			mGDM.PreferredBackBufferHeight	=720;
 
-			mLevels.Add("Hidef/Level01");
+			mLevels.Add("TestPath");
 			mLevels.Add("Hidef/ModelTest");
 			mLevels.Add("Hidef/Attract");
 			mLevels.Add("Hidef/Attract2");
@@ -153,7 +154,10 @@ namespace BSPTest
 
 			//load all fonts and audio
 			mAudio.LoadAllSounds(Content);
-			mFonts	=FileUtil.LoadAllFonts(Content);
+
+			//sort fonts by size, want the small one for debug stuff
+			Dictionary<string, SpriteFont>	fonts	=UtilityLib.FileUtil.LoadAllFonts(Content);
+			mFonts	=fonts.OrderBy(fnt => fnt.Value.LineSpacing);
 
 			//load up ui textures
 			TextureElement.LoadTexLib(Content.RootDirectory + "\\TexLibs\\UI.TexLib", Content, mUITex);
@@ -165,16 +169,16 @@ namespace BSPTest
 			mBFX.TextureEnabled		=false;
 
 			//game specific info, change this if switching projects
-			string	menuFont	="Kawoszeh48";
-			string	menuHilite	="Textures\\UI\\GoldBorder.png";
+			string	menuFont	="SFSpeakEasy32";
+			string	menuHilite	="Textures\\UI\\HighLight.png";
 
 			//menu stuff
-			mMB			=new MenuBuilder(mFonts, mUITex);
+			mMB			=new MenuBuilder(fonts, mUITex);
 			mQOptions	=new QuickOptions(mGDM, mMB, mPSteering,
 				mScreenCenter, menuFont, menuHilite);
 
 			mMB.AddScreen("MainMenu", MenuBuilder.ScreenTypes.VerticalMenu,
-				mScreenCenter, "Textures\\UI\\GoldBorder.png");
+				mScreenCenter, "Textures\\UI\\HighLight.png");
 
 			mMB.AddMenuStop("MainMenu", "Controls", "Controls", menuFont);
 			mMB.AddMenuStop("MainMenu", "Video", "Video", menuFont);
@@ -322,7 +326,8 @@ namespace BSPTest
 		{
 			if(mPath.Count <= 0)
 			{
-				mbPathing	=false;
+				mbPathing			=false;
+				mPSteering.Method	=PlayerSteering.SteeringMethod.FirstPerson;
 			}
 			else
 			{
@@ -986,7 +991,7 @@ namespace BSPTest
 			mPathTestPMob.SetZone(mZone);
 			mPMob.SetGroundPos(startPos);
 
-			mGraph.GenerateGraph(mZone.GetWalkableFaces, Zone.StepHeight, IsPositionOk);
+			mGraph.GenerateGraph(mZone.GetWalkableFaces, 32f, Zone.StepHeight, IsPositionOk);
 			mGraph.BuildDrawInfo(gd);
 
 			mVisMap	=new BSPVis.VisMap();
@@ -1098,6 +1103,11 @@ namespace BSPTest
 			}
 
 			mbPathing	=(mPath.Count > 0);
+
+			if(mbPathing)
+			{
+				mPSteering.Method	=PlayerSteering.SteeringMethod.TwinStick;
+			}
 		}
 
 

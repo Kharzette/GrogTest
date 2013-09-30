@@ -96,8 +96,8 @@
     </NestedContentProject>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Games\LudumDare\MinnieNMal\GameContent\GameContent.contentproj">
-      <Project>{965453FF-AEDC-42EB-BC1B-FFC055177DAE}</Project>
+    <ProjectReference Include="..\..\Games\OneGameAMonth\TDProto\GameContent\GameContent.contentproj">
+      <Project>{55DF632F-69BC-478B-954E-DA2DCDFB4B84}</Project>
       <Name>GameContent</Name>
       <XnaReferenceType>Content</XnaReferenceType>
     </ProjectReference>
