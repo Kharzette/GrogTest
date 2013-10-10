@@ -991,7 +991,7 @@ namespace BSPTest
 			mPathTestPMob.SetZone(mZone);
 			mPMob.SetGroundPos(startPos);
 
-			mGraph.GenerateGraph(mZone.GetWalkableFaces, 32f, Zone.StepHeight, IsPositionOk);
+			mGraph.GenerateGraph(mZone.GetWalkableFaces, 32f, Zone.StepHeight, IsPositionOk, CanReachDelegate);
 			mGraph.BuildDrawInfo(gd);
 
 			mVisMap	=new BSPVis.VisMap();
@@ -1010,6 +1010,39 @@ namespace BSPTest
 		{
 			mbTexturesOn	=!mbTexturesOn;
 			mZoneMats.SetParameterOnAll("mbTextureEnabled", mbTexturesOn);
+		}
+
+
+		bool CanReachDelegate(Vector3 start, Vector3 end)
+		{
+			Vector3	finalPos;
+			int		modelOn;
+
+			const int	iterations	=2;
+
+			Vector3	boxCenter	=mPMob.GetMiddlePos() - mPMob.GetGroundPos();
+
+			start	+=boxCenter;
+			end		+=boxCenter;
+
+			for(int i=0;i < iterations;i++)
+			{
+				bool	bOnGround	=mZone.MoveBox(mPMob.GetBounds(), start, end, true, out finalPos, out modelOn);
+
+				if(!bOnGround)
+				{
+					return	false;
+				}
+
+				float	dist	=Vector3.Distance(end, finalPos);
+				if(dist < 5f)
+				{
+					//close enough
+					return	true;
+				}
+				start	=finalPos;
+			}
+			return	false;
 		}
 
 
