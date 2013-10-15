@@ -991,7 +991,7 @@ namespace BSPTest
 			mPathTestPMob.SetZone(mZone);
 			mPMob.SetGroundPos(startPos);
 
-			mGraph.GenerateGraph(mZone.GetWalkableFaces, 32f, Zone.StepHeight, IsPositionOk, CanReachDelegate);
+			mGraph.GenerateGraph(mZone.GetWalkableFaces, 32, Zone.StepHeight, IsPositionOk, CanReachDelegate);
 			mGraph.BuildDrawInfo(gd);
 
 			mVisMap	=new BSPVis.VisMap();
@@ -1015,34 +1015,21 @@ namespace BSPTest
 
 		bool CanReachDelegate(Vector3 start, Vector3 end)
 		{
-			Vector3	finalPos;
-			int		modelOn;
+			const float	radius	=15f;
 
-			const int	iterations	=2;
+			ZonePlane	startPlane	=mZone.GetGroundNormal(start, false);
+			ZonePlane	endPlane	=mZone.GetGroundNormal(end, false);
 
-			Vector3	boxCenter	=mPMob.GetMiddlePos() - mPMob.GetGroundPos();
+			float	startRatio	=Vector3.Dot(Vector3.Up, startPlane.mNormal);
+			float	endRatio	=Vector3.Dot(Vector3.Up, endPlane.mNormal);
 
-			start	+=boxCenter;
-			end		+=boxCenter;
+			//adjust up out of the plane
+			start.Y		+=(radius + 1f) / startRatio;
+			end.Y		+=(radius + 1f) / endRatio;
 
-			for(int i=0;i < iterations;i++)
-			{
-				bool	bOnGround	=mZone.MoveBox(mPMob.GetBounds(), start, end, true, out finalPos, out modelOn);
+			Collision	col	=new Collision();
 
-				if(!bOnGround)
-				{
-					return	false;
-				}
-
-				float	dist	=Vector3.Distance(end, finalPos);
-				if(dist < 5f)
-				{
-					//close enough
-					return	true;
-				}
-				start	=finalPos;
-			}
-			return	false;
+			return	!mZone.TraceAll(radius, null, start, end, out col);
 		}
 
 
