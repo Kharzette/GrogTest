@@ -693,15 +693,45 @@ namespace BSPTest
 			if(pi.WasKeyPressed(Keys.V))
 			{
 				List<Vector3>	segs	=new List<Vector3>();
-				mZone.MoveBoxDebug(mPMob.GetBounds(), mTestPoint1, mTestPoint2, segs);
+//				mZone.MoveBoxDebug(mPMob.GetBounds(), mTestPoint1, mTestPoint2, segs);
+
+				Vector3	A	=Mathery.RandomDirection(mRand);
+				Vector3	B	=Mathery.RandomDirection(mRand);
+				Vector3	C	=Mathery.RandomDirection(mRand);
+				Vector3	D	=Mathery.RandomDirection(mRand);
+
+				float	aLen	=Mathery.RandomFloatNext(mRand, 5, 20);
+				float	bLen	=Mathery.RandomFloatNext(mRand, 5, 20);
+				float	cLen	=Mathery.RandomFloatNext(mRand, 5, 20);
+				float	dLen	=Mathery.RandomFloatNext(mRand, 5, 20);
+
+				A	*=aLen;
+				B	*=bLen;
+				C	*=cLen;
+				D	*=dLen;
+
+				Vector3	shortA, shortB;
+
+				Mathery.ShortestLineBetweenTwoLines(A, B, C, D,
+					out shortA, out shortB);
+
+				segs.Add(A);
+				segs.Add(B);
+				segs.Add(C);
+				segs.Add(D);
+				segs.Add(shortA);
+				segs.Add(shortB);
+
 				MakeTraceLine(segs);
 			}
 
 			if(pi.WasKeyPressed(Keys.H))
 			{
 				mbAwaitingPathing	=true;
+
 				Vector3	p1	=mZone.DropToGround(mTestPoint1, false);
 				Vector3	p2	=mZone.DropToGround(mTestPoint2, false);
+
 				mGraph.FindPath(p1, p2, OnPathDone, mZone.FindWorldNodeLandedIn);
 			}
 
@@ -1027,7 +1057,33 @@ namespace BSPTest
 			start.Y		+=(radius + 1f) / startRatio;
 			end.Y		+=(radius + 1f) / endRatio;
 
-			Collision	col	=new Collision();
+			Collision	col			=new Collision();
+			int			iterations	=0;
+
+			//adjust start and end points if they are in solid
+			//with the supplied radius, but don't let them
+			//drift too far
+			while(mZone.TraceAll(radius, null, start, start, out col))
+			{
+				start	+=Vector3.UnitY;
+				iterations++;
+
+				if(iterations > 5)
+				{
+					return	false;
+				}
+			}
+
+			while(mZone.TraceAll(radius, null, end, end, out col))
+			{
+				end	+=Vector3.UnitY;
+				iterations++;
+
+				if(iterations > 5)
+				{
+					return	false;
+				}
+			}
 
 			return	!mZone.TraceAll(radius, null, start, end, out col);
 		}
