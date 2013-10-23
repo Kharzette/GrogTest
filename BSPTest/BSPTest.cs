@@ -106,6 +106,7 @@ namespace BSPTest
 			mGDM.PreferredBackBufferHeight	=720;
 
 			mLevels.Add("TestPath");
+			mLevels.Add("eelsPath");
 			mLevels.Add("Hidef/ModelTest");
 			mLevels.Add("Hidef/Attract");
 			mLevels.Add("Hidef/Attract2");
@@ -1045,17 +1046,17 @@ namespace BSPTest
 
 		bool CanReachDelegate(Vector3 start, Vector3 end)
 		{
-			const float	radius	=15f;
-
 			ZonePlane	startPlane	=mZone.GetGroundNormal(start, false);
 			ZonePlane	endPlane	=mZone.GetGroundNormal(end, false);
 
-			float	startRatio	=Vector3.Dot(Vector3.Up, startPlane.mNormal);
-			float	endRatio	=Vector3.Dot(Vector3.Up, endPlane.mNormal);
+			BoundingBox	box	=mPMob.GetBounds();
+
+			float	startDot	=Vector3.Dot(box.Max, startPlane.mNormal);
+			float	endDot		=Vector3.Dot(box.Max, endPlane.mNormal);
 
 			//adjust up out of the plane
-			start.Y		+=(radius + 1f) / startRatio;
-			end.Y		+=(radius + 1f) / endRatio;
+			start	+=startDot * startPlane.mNormal;
+			end		+=endDot * endPlane.mNormal;
 
 			Collision	col			=new Collision();
 			int			iterations	=0;
@@ -1063,7 +1064,7 @@ namespace BSPTest
 			//adjust start and end points if they are in solid
 			//with the supplied radius, but don't let them
 			//drift too far
-			while(mZone.TraceAll(radius, null, start, start, out col))
+			while(mZone.TraceAll(null, box, start, start + Vector3.Up, out col))
 			{
 				start	+=Vector3.UnitY;
 				iterations++;
@@ -1074,7 +1075,7 @@ namespace BSPTest
 				}
 			}
 
-			while(mZone.TraceAll(radius, null, end, end, out col))
+			while(mZone.TraceAll(null, box, end, end + Vector3.Up, out col))
 			{
 				end	+=Vector3.UnitY;
 				iterations++;
@@ -1085,7 +1086,7 @@ namespace BSPTest
 				}
 			}
 
-			return	!mZone.TraceAll(radius, null, start, end, out col);
+			return	!mZone.TraceAll(null, box, start, end, out col);
 		}
 
 
