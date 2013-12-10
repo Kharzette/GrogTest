@@ -998,9 +998,9 @@ namespace BSPTest
 				+ mLevels[mCurLevel] + ".ZoneDraw", false,
 				(mGDM.GraphicsProfile == GraphicsProfile.Reach));
 
-			mZoneMats.InitCellShading(1);
-			mZoneMats.GenerateCellTexturePreset(gd, false, 0);
-			mZoneMats.SetCellTexture(0);
+			mZoneMats.InitCelShading(1);
+			mZoneMats.GenerateCelTexturePreset(gd, false, 0);
+			mZoneMats.SetCelTexture(0);
 
 			float		angle;
 			Vector3		startPos	=mZone.GetPlayerStartPos(out angle);
