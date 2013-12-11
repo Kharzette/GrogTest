@@ -378,7 +378,12 @@ namespace BSPTest
 			}
 			else if(mbClusterMode)
 			{
-				mZoneDraw.Draw(gd, mVisPos, mCam, mZone.IsMaterialVisibleFromPos, mZone.GetModelTransform, RenderExternal);
+				mZoneDraw.Draw(gd, mVisPos, mCam, 0,
+					mZone.IsMaterialVisibleFromPos,
+					mZone.GetModelTransform,
+					RenderExternal,
+					RenderShadows);
+
 				if(mVisVB != null)
 				{
 					gd.DepthStencilState	=DepthStencilState.Default;
@@ -397,7 +402,10 @@ namespace BSPTest
 			else
 			{
 				mDynLights.SetParameter();
-				mZoneDraw.Draw(gd, mVisPos, mCam, mZone.IsMaterialVisibleFromPos, mZone.GetModelTransform, RenderExternal);
+				mZoneDraw.Draw(gd, mVisPos, mCam, 0,
+					mZone.IsMaterialVisibleFromPos,
+					mZone.GetModelTransform,
+					RenderExternal, RenderShadows);
 			}
 
 			if(mLineVB != null)
@@ -555,6 +563,11 @@ namespace BSPTest
 			}
 
 			base.Draw(gameTime);
+		}
+
+
+		void RenderShadows(int shadIndex)
+		{
 		}
 
 
