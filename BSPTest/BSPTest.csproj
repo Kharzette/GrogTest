@@ -96,9 +96,9 @@
     </NestedContentProject>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Games\OneGameAMonth\TDProto\GameContent\GameContent.contentproj">
-      <Project>{55DF632F-69BC-478B-954E-DA2DCDFB4B84}</Project>
-      <Name>GameContent</Name>
+    <ProjectReference Include="..\..\Games\LudumDare\Ludum28\GameContent\Ludum28.contentproj">
+      <Project>{30E21EC0-2B80-4B81-BB6A-4BDCEDAB042C}</Project>
+      <Name>Ludum28 %28GameContent%29</Name>
       <XnaReferenceType>Content</XnaReferenceType>
     </ProjectReference>
     <ProjectReference Include="..\..\Libs\BSPVis\BSPVis32.csproj">

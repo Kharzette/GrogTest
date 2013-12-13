@@ -105,7 +105,7 @@ namespace BSPTest
 			mGDM.PreferredBackBufferWidth	=1280;
 			mGDM.PreferredBackBufferHeight	=720;
 
-			mLevels.Add("TestPath");
+			mLevels.Add("TestMap");
 			mLevels.Add("eelsPath");
 			mLevels.Add("Hidef/ModelTest");
 			mLevels.Add("Hidef/Attract");
@@ -852,7 +852,7 @@ namespace BSPTest
 			}
 			if(pi.WasKeyPressed(Keys.G) && pi.mKBS.IsKeyDown(Keys.LeftControl))
 			{
-				mGraph.GenerateGraph(mZone.GetWalkableFaces, 32, Zone.StepHeight, IsPositionOk, CanReachDelegate);
+				mGraph.GenerateGraph(mZone.GetWalkableFaces, 32, Zone.StepHeight, CanReachDelegate);
 				mGraph.BuildDrawInfo(GraphicsDevice);
 			}
 		}
@@ -1239,17 +1239,6 @@ namespace BSPTest
 
 			endPos	=myPos - aim;
 			return	false;
-		}
-
-
-		bool IsPositionOk(Vector3 pos)
-		{
-			//set off the ground
-			mPathTestPMob.SetGroundPos(pos);
-
-			//test a sphere about midway up the box height
-			//sphere should be half the hitbox width
-			return	mPathTestPMob.TrySphere(mPathTestPMob.GetMiddlePos(), 12f, false);
 		}
 
 
