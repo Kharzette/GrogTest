@@ -105,7 +105,7 @@ namespace BSPTest
 			mGDM.PreferredBackBufferWidth	=1280;
 			mGDM.PreferredBackBufferHeight	=720;
 
-			mLevels.Add("TestMap");
+			mLevels.Add("TestPath");
 			mLevels.Add("eelsPath");
 			mLevels.Add("Hidef/ModelTest");
 			mLevels.Add("Hidef/Attract");
@@ -149,7 +149,7 @@ namespace BSPTest
 
 			//grab a handle to the lightmap shader for
 			//directly setting dynamic light info once a frame
-			mLightMapFX	=mSLib.Load<Effect>("Shaders/LightMap3");
+			mLightMapFX	=mSLib.Load<Effect>("Shaders/BSP");
 
 			mDynLights	=new DynamicLights(gd, mLightMapFX);
 
@@ -749,8 +749,7 @@ namespace BSPTest
 			//dynamic lights
 			if((pi.mGPS.IsButtonUp(Buttons.Y)
 				&& pi.mLastGPS.IsButtonDown(Buttons.Y))
-				|| (pi.mKBS.IsKeyUp(Keys.G)
-				&& pi.mLastKBS.IsKeyDown(Keys.G)))
+				|| (pi.WasKeyPressed(Keys.G) && !pi.mKBS.IsKeyDown(Keys.LeftControl)))
 			{
 				Vector3	dynamicLight	=mPMob.GetEyePos();
 
