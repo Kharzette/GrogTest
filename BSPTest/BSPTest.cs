@@ -1007,8 +1007,7 @@ namespace BSPTest
 
 			mZoneDraw	=new IndoorMesh(gd, mZoneMats);
 			mZoneDraw.Read(gd, Content.RootDirectory + "/Levels/"
-				+ mLevels[mCurLevel] + ".ZoneDraw", false,
-				(mGDM.GraphicsProfile == GraphicsProfile.Reach));
+				+ mLevels[mCurLevel] + ".ZoneDraw", false);
 
 			mZoneMats.InitCelShading(1);
 			mZoneMats.GenerateCelTexturePreset(gd, false, 0);
