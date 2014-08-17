@@ -10,6 +10,7 @@ using MeshLib;
 using UtilityLib;
 using MaterialLib;
 using InputLib;
+using TrueTypeSharp;
 
 using SharpDX;
 using SharpDX.DXGI;
@@ -47,6 +48,11 @@ namespace TestMeshes
 		float		mChar1StartTime, mChar2StartTime, mChar3StartTime;
 		float		mChar1EndTime, mChar2EndTime, mChar3EndTime;
 
+		//fontery
+		ScreenText	mST;
+		MatLib		mFontMats;
+		Matrix		mTextProj;
+
 		//gpu
 		GraphicsDevice	mGD;
 
@@ -60,6 +66,16 @@ namespace TestMeshes
 
 			int	resx	=gd.RendForm.ClientRectangle.Width;
 			int	resy	=gd.RendForm.ClientRectangle.Height;
+
+			mFontMats	=new MatLib(gd, mSKeeper);
+
+			mFontMats.CreateMaterial("Text");
+			mFontMats.SetMaterialEffect("Text", "2D.fx");
+			mFontMats.SetMaterialTechnique("Text", "Text");
+
+			mST	=new ScreenText(gd.GD, mFontMats, "Pescadero50", 1000);
+
+			mTextProj	=Matrix.OrthoOffCenterLH(0, resx, resy, 0, 0.1f, 5f);
 
 			//static stuff
 			mStaticMats	=new MatLib(gd, mSKeeper);
@@ -157,11 +173,15 @@ namespace TestMeshes
 			mChar3EndTime	=mChar3StartTime + mCharAnims.GetAnimTime("WalkLoop");
 
 			mLastTime	=Stopwatch.GetTimestamp();
+
+			mST.AddString("Pescadero50", "Boing!", "boing");
 		}
 
 
 		internal void Update(float msDelta, List<Input.InputAction> actions)
 		{
+			mST.Update(mGD.DC);
+
 			mStaticMats.SetParameterForAll("mView", mGD.GCam.View);
 			mStaticMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
 			mStaticMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
@@ -221,6 +241,8 @@ namespace TestMeshes
 			mKey1.Draw(dc, mStaticMats);
 			mKey2.Draw(dc, mStaticMats);
 			mKey3.Draw(dc, mStaticMats);
+
+			mST.Draw(dc, Matrix.Identity, mTextProj);
 		}
 
 
