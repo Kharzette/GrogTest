@@ -10,7 +10,6 @@ using MeshLib;
 using UtilityLib;
 using MaterialLib;
 using InputLib;
-using TrueTypeSharp;
 
 using SharpDX;
 using SharpDX.DXGI;
