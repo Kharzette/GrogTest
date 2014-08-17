@@ -51,6 +51,9 @@ namespace TestMeshes
 		ScreenText	mST;
 		MatLib		mFontMats;
 		Matrix		mTextProj;
+		Mover2		mTextMover	=new Mover2();
+		bool		mbForward;
+		int			mResX, mResY;
 
 		//gpu
 		GraphicsDevice	mGD;
@@ -60,12 +63,10 @@ namespace TestMeshes
 		{
 			mGD				=gd;
 			mGameRootDir	=gameRootDir;
+			mResX			=gd.RendForm.ClientRectangle.Width;
+			mResY			=gd.RendForm.ClientRectangle.Height;
 
 			mSKeeper	=new StuffKeeper(mGD, gameRootDir);
-
-			int	resx	=gd.RendForm.ClientRectangle.Width;
-			int	resy	=gd.RendForm.ClientRectangle.Height;
-
 			mFontMats	=new MatLib(gd, mSKeeper);
 
 			mFontMats.CreateMaterial("Text");
@@ -74,7 +75,7 @@ namespace TestMeshes
 
 			mST	=new ScreenText(gd.GD, mFontMats, "Pescadero50", 1000);
 
-			mTextProj	=Matrix.OrthoOffCenterLH(0, resx, resy, 0, 0.1f, 5f);
+			mTextProj	=Matrix.OrthoOffCenterLH(0, mResX, mResY, 0, 0.1f, 5f);
 
 			//static stuff
 			mStaticMats	=new MatLib(gd, mSKeeper);
@@ -173,12 +174,49 @@ namespace TestMeshes
 
 			mLastTime	=Stopwatch.GetTimestamp();
 
-			mST.AddString("Pescadero50", "Boing!", "boing");
+			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
+
+			mST.AddString("Pescadero50", "Boing!", "boing",
+				color, Vector2.One * 20f, Vector2.One * 1f);
+
+			mTextMover.SetUpMove(Vector2.One * 20f,
+				Vector2.UnitX * (mResX - 100f) + Vector2.UnitY * (mResY - 50),
+				10f, 0.2f, 0.2f);
+
+			mbForward	=true;
 		}
 
 
 		internal void Update(float msDelta, List<Input.InputAction> actions)
 		{
+			mTextMover.Update((int)msDelta);
+
+			if(mTextMover.Done())
+			{
+				if(mbForward)
+				{
+					mTextMover.SetUpMove(Vector2.UnitX * (mResX - 100f) + Vector2.UnitY * (mResY - 50),
+						Vector2.One * 20f,
+						10f, 0.2f, 0.2f);
+				}
+				else
+				{
+					mTextMover.SetUpMove(Vector2.One * 20f,
+						Vector2.UnitX * (mResX - 100f) + Vector2.UnitY * (mResY - 50),
+						10f, 0.2f, 0.2f);
+				}
+				mbForward	=!mbForward;
+			}
+
+			Vector2	randScale;
+			randScale.X	=Mathery.RandomFloatNext(mRand, 0.5f, 2f);
+			randScale.Y	=Mathery.RandomFloatNext(mRand, 0.5f, 2f);
+
+			mST.ModifyStringColor("boing", Mathery.RandomColorVector4(mRand));
+			mST.ModifyStringScale("boing", randScale);
+
+			mST.ModifyStringPosition("boing", mTextMover.GetPos());
+
 			mST.Update(mGD.DC);
 
 			mStaticMats.SetParameterForAll("mView", mGD.GCam.View);
