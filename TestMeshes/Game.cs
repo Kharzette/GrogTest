@@ -10,11 +10,13 @@ using MeshLib;
 using UtilityLib;
 using MaterialLib;
 using InputLib;
+using AudioLib;
 
 using SharpDX;
 using SharpDX.DXGI;
 using SharpDX.Direct3D;
 using SharpDX.Direct3D11;
+using SharpDX.X3DAudio;
 
 using MatLib	=MaterialLib.MaterialLib;
 
@@ -57,6 +59,10 @@ namespace TestMeshes
 
 		//gpu
 		GraphicsDevice	mGD;
+
+		//audio
+		Audio	mAudio	=new Audio();
+		Emitter	mEmitter;
 
 
 		internal Game(GraphicsDevice gd, string gameRootDir)
@@ -184,6 +190,19 @@ namespace TestMeshes
 				10f, 0.2f, 0.2f);
 
 			mbForward	=true;
+
+			mAudio.LoadSound("GainItem", mGameRootDir + "/Audio/SoundFX/GainItem.wav");
+			mAudio.LoadSound("WinMusic", mGameRootDir + "/Audio/SoundFX/WinMusic.wav");
+
+			mEmitter	=new Emitter();
+
+			mEmitter.Position				=(Vector3.UnitZ * 10f - Vector3.UnitX * 30);
+			mEmitter.OrientFront			=Vector3.ForwardRH;
+			mEmitter.OrientTop				=Vector3.Up;
+			mEmitter.Velocity				=Vector3.Zero;
+			mEmitter.CurveDistanceScaler	=50f;
+			mEmitter.ChannelCount			=1;
+			mEmitter.DopplerScaler			=1f;
 		}
 
 
@@ -206,6 +225,20 @@ namespace TestMeshes
 						10f, 0.2f, 0.2f);
 				}
 				mbForward	=!mbForward;
+			}
+
+			mAudio.Update(mGD.GCam);
+
+			foreach(Input.InputAction act in actions)
+			{
+				if(act.mAction.Equals(Program.MyActions.PlaceDynamicLight))
+				{
+					mAudio.PlayAtLocation("WinMusic", 2f, mEmitter);
+				}
+				else if(act.mAction.Equals(Program.MyActions.ClearDynamicLights))
+				{
+					mAudio.Play("GainItem", true, 0.5f);
+				}
 			}
 
 			Vector2	randScale;
@@ -288,6 +321,7 @@ namespace TestMeshes
 			mStaticMats.FreeAll();
 			mKeeper.Clear();
 			mCharMats.FreeAll();
+			mAudio.FreeAll();
 
 			mSKeeper.FreeAll();
 		}

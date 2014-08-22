@@ -61,6 +61,9 @@
     <Reference Include="SharpDX.DXGI, Version=2.6.2.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
       <HintPath>$(SharpDXPackageBinDir)\SharpDX.DXGI.dll</HintPath>
     </Reference>
+    <Reference Include="SharpDX.XAudio2, Version=2.6.2.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
+      <HintPath>$(SharpDXPackageBinDir)\SharpDX.XAudio2.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
@@ -74,6 +77,10 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Libs\AudioLib\AudioLib.csproj">
+      <Project>{5AD3A749-B7BB-4F26-9958-8AAD309A1727}</Project>
+      <Name>AudioLib</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Libs\InputLib\InputLib.csproj">
       <Project>{7B4F8D4A-3506-47EE-87A7-047F5AEA90BF}</Project>
       <Name>InputLib</Name>
