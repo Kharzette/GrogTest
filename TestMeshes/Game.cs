@@ -57,6 +57,9 @@ namespace TestMeshes
 		bool		mbForward;
 		int			mResX, mResY;
 
+		//2d stuff
+		ScreenUI	mSUI;
+
 		//gpu
 		GraphicsDevice	mGD;
 
@@ -79,7 +82,8 @@ namespace TestMeshes
 			mFontMats.SetMaterialEffect("Text", "2D.fx");
 			mFontMats.SetMaterialTechnique("Text", "Text");
 
-			mST	=new ScreenText(gd.GD, mFontMats, "Pescadero50", 1000);
+			mST		=new ScreenText(gd.GD, mFontMats, "Pescadero50", 1000);
+			mSUI	=new ScreenUI(gd.GD, mFontMats, 100);
 
 			mTextProj	=Matrix.OrthoOffCenterLH(0, mResX, mResY, 0, 0.1f, 5f);
 
@@ -182,6 +186,11 @@ namespace TestMeshes
 
 			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
 
+			mSUI.AddGump("UI\\GumpElement", "CuteGump", Vector4.One, Vector2.One * 20f, Vector2.One);
+			mSUI.AddGump("UI\\SteamAva", "CuteGump2", Vector4.One, Vector2.One * 20f, Vector2.One);
+
+			mSUI.ModifyGumpScale("CuteGump2", Vector2.One * 0.25f);
+
 			mST.AddString("Pescadero50", "Boing!", "boing",
 				color, Vector2.One * 20f, Vector2.One * 1f);
 
@@ -252,6 +261,8 @@ namespace TestMeshes
 
 			mST.Update(mGD.DC);
 
+			mSUI.Update(mGD.DC);
+
 			mStaticMats.SetParameterForAll("mView", mGD.GCam.View);
 			mStaticMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
 			mStaticMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
@@ -312,6 +323,7 @@ namespace TestMeshes
 			mKey2.Draw(dc, mStaticMats);
 			mKey3.Draw(dc, mStaticMats);
 
+			mSUI.Draw(dc, Matrix.Identity, mTextProj);
 			mST.Draw(dc, Matrix.Identity, mTextProj);
 		}
 
