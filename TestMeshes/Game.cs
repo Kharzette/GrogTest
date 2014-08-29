@@ -39,6 +39,7 @@ namespace TestMeshes
 		MatLib						mStaticMats;
 		Dictionary<string, IArch>	mStatics	=new Dictionary<string, IArch>();
 		StaticMesh					mKey1, mKey2, mKey3;
+		StaticMesh					mTestCol;
 
 		//test characters
 		IArch		mCharArch;
@@ -63,6 +64,9 @@ namespace TestMeshes
 		//gpu
 		GraphicsDevice	mGD;
 
+		//collision debuggery
+		CommonPrims	mCPrims;
+
 		//audio
 		Audio	mAudio	=new Audio();
 		Emitter	mEmitter;
@@ -77,6 +81,7 @@ namespace TestMeshes
 
 			mSKeeper	=new StuffKeeper(mGD, gameRootDir);
 			mFontMats	=new MatLib(gd, mSKeeper);
+			mCPrims		=new CommonPrims(gd, mSKeeper);
 
 			mFontMats.CreateMaterial("Text");
 			mFontMats.SetMaterialEffect("Text", "2D.fx");
@@ -92,9 +97,21 @@ namespace TestMeshes
 			mStaticMats.ReadFromFile(mGameRootDir + "/Statics/Statics.MatLib");
 			mStatics	=Mesh.LoadAllStaticMeshes(mGameRootDir + "\\Statics", gd.GD);
 
-			mKey1	=new StaticMesh(mStatics["Key.Static"]);
-			mKey2	=new StaticMesh(mStatics["Key.Static"]);
-			mKey3	=new StaticMesh(mStatics["Key.Static"]);
+			mStatics["Key.Static"].UpdateBounds();
+			mStatics["TestCol.Static"].UpdateBounds();
+
+			mKey1		=new StaticMesh(mStatics["Key.Static"]);
+			mKey2		=new StaticMesh(mStatics["Key.Static"]);
+			mKey3		=new StaticMesh(mStatics["Key.Static"]);
+			mTestCol	=new StaticMesh(mStatics["TestCol.Static"]);
+			
+			mKey1.UpdateBounds();
+			mKey2.UpdateBounds();
+			mKey3.UpdateBounds();
+			mTestCol.UpdateBounds();
+
+			mTestCol.ReadFromFile(mGameRootDir + "/Statics/TestCol.StaticInstance");
+			mTestCol.SetMatLib(mStaticMats);
 
 			mKey1.AddPart(mStaticMats);
 			mKey1.SetMatLib(mStaticMats);
@@ -111,6 +128,9 @@ namespace TestMeshes
 			mKey1.SetTransform(Matrix.Translation(Vector3.UnitZ * 10f));
 			mKey2.SetTransform(Matrix.Translation(Vector3.UnitZ * 10f + Vector3.UnitX * 30));
 			mKey3.SetTransform(Matrix.Translation(Vector3.UnitZ * 10f - Vector3.UnitX * 30));
+			mTestCol.SetTransform(Matrix.Translation(Vector3.One * 100f));
+
+			mCPrims.ReBuildBoundsDrawData(gd.GD, mTestCol);
 
 			mStaticMats.InitCelShading(1);
 			mStaticMats.GenerateCelTexturePreset(gd.GD,
@@ -186,10 +206,11 @@ namespace TestMeshes
 
 			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
 
-			mSUI.AddGump("UI\\GumpElement", "CuteGump", Vector4.One, Vector2.One * 20f, Vector2.One);
 			mSUI.AddGump("UI\\SteamAva", "CuteGump2", Vector4.One, Vector2.One * 20f, Vector2.One);
+			mSUI.AddGump("UI\\GumpElement", "CuteGump", Vector4.One, Vector2.One * 20f, Vector2.One);
 
 			mSUI.ModifyGumpScale("CuteGump2", Vector2.One * 0.25f);
+			mSUI.ModifyGumpScale("CuteGump", Vector2.One * 0.35f);
 
 			mST.AddString("Pescadero50", "Boing!", "boing",
 				color, Vector2.One * 20f, Vector2.One * 1f);
@@ -254,7 +275,28 @@ namespace TestMeshes
 			randScale.X	=Mathery.RandomFloatNext(mRand, 0.5f, 2f);
 			randScale.Y	=Mathery.RandomFloatNext(mRand, 0.5f, 2f);
 
-			mST.ModifyStringColor("boing", Mathery.RandomColorVector4(mRand));
+			Vector3	startPos	=mGD.GCam.Position;
+			Vector3	endPos		=startPos + mGD.GCam.Forward * -2000f;
+
+			Mesh	partHit;
+
+			float?	bHit	=mTestCol.RayIntersect(startPos, endPos, true, out partHit);
+			if(bHit != null)
+			{
+				if(partHit == null)
+				{
+					mST.ModifyStringColor("boing", Vector4.UnitW + Vector4.UnitX);
+				}
+				else
+				{
+					mST.ModifyStringColor("boing", Vector4.UnitW + Vector4.UnitY);
+				}
+			}
+			else
+			{
+				mST.ModifyStringColor("boing", Mathery.RandomColorVector4(mRand));
+			}
+
 			mST.ModifyStringScale("boing", randScale);
 
 			mST.ModifyStringPosition("boing", mTextMover.GetPos());
@@ -322,6 +364,9 @@ namespace TestMeshes
 			mKey1.Draw(dc, mStaticMats);
 			mKey2.Draw(dc, mStaticMats);
 			mKey3.Draw(dc, mStaticMats);
+			mTestCol.Draw(dc, mStaticMats);
+
+			mCPrims.DrawBox(dc, mTestCol.GetTransform());
 
 			mSUI.Draw(dc, Matrix.Identity, mTextProj);
 			mST.Draw(dc, Matrix.Identity, mTextProj);
