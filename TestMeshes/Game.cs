@@ -89,12 +89,12 @@ namespace TestMeshes
 
 			//static stuff
 			mStaticMats	=new MatLib(gd, mSKeeper);
-			mStaticMats.ReadFromFile(mGameRootDir + "/Statics/BBGun.MatLib");
+			mStaticMats.ReadFromFile(mGameRootDir + "/Statics/Statics.MatLib");
 			mStatics	=Mesh.LoadAllStaticMeshes(mGameRootDir + "\\Statics", gd.GD);
 
-			mKey1	=new StaticMesh(mStatics["PurpleKey.Static"]);
-			mKey2	=new StaticMesh(mStatics["PurpleKey.Static"]);
-			mKey3	=new StaticMesh(mStatics["PurpleKey.Static"]);
+			mKey1	=new StaticMesh(mStatics["Key.Static"]);
+			mKey2	=new StaticMesh(mStatics["Key.Static"]);
+			mKey3	=new StaticMesh(mStatics["Key.Static"]);
 
 			mKey1.AddPart(mStaticMats);
 			mKey1.SetMatLib(mStaticMats);
