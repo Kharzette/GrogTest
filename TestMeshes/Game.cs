@@ -66,6 +66,13 @@ namespace TestMeshes
 
 		//collision debuggery
 		CommonPrims	mCPrims;
+		int			mC1Bone, mC2Bone, mC3Bone;
+		Vector4		mHitColor;
+
+		//collision bones
+		Dictionary<int, Matrix>	mC1Bones	=new Dictionary<int, Matrix>();
+		Dictionary<int, Matrix>	mC2Bones	=new Dictionary<int, Matrix>();
+		Dictionary<int, Matrix>	mC3Bones	=new Dictionary<int, Matrix>();
 
 		//audio
 		Audio	mAudio	=new Audio();
@@ -140,17 +147,21 @@ namespace TestMeshes
 
 			//player character
 			mCharAnims	=new AnimLib();
-			mCharAnims.ReadFromFile(mGameRootDir + "/Characters/TestAnims.AnimLib");
+			mCharAnims.ReadFromFile(mGameRootDir + "/Characters/Frankenstein45.AnimLib");
 
 			mCharArch	=new CharacterArch();
 			mChar1		=new Character(mCharArch, mCharAnims);
 			mChar2		=new Character(mCharArch, mCharAnims);
 			mChar3		=new Character(mCharArch, mCharAnims);
 
-			mCharArch.ReadFromFile(mGameRootDir + "/Characters/Test.Character", mGD.GD, false);
-			mChar1.ReadFromFile(mGameRootDir + "/Characters/Test01.CharacterInstance");
-			mChar2.ReadFromFile(mGameRootDir + "/Characters/Test02.CharacterInstance");
-			mChar3.ReadFromFile(mGameRootDir + "/Characters/Test03.CharacterInstance");
+			mCharArch.ReadFromFile(mGameRootDir + "/Characters/TestNaked.Character", mGD.GD, true);
+			mChar1.ReadFromFile(mGameRootDir + "/Characters/TestShortSleeveAndJeans.CharacterInstance");
+			mChar2.ReadFromFile(mGameRootDir + "/Characters/TestTankAndShorts.CharacterInstance");
+			mChar3.ReadFromFile(mGameRootDir + "/Characters/TestUndies.CharacterInstance");
+
+			(mCharArch as CharacterArch).ComputeBoneBounds(mCharAnims.GetSkeleton());
+
+			(mCharArch as CharacterArch).BuildDebugBoundDrawData(mGD.GD, mCPrims);
 
 			//character cel 2 stage
 			float	[]levels	=new float[2];
@@ -161,7 +172,7 @@ namespace TestMeshes
 			thresh[0]	=0.3f;
 
 			mCharMats	=new MatLib(mGD, mSKeeper);
-			mCharMats.ReadFromFile(mGameRootDir + "/Characters/CharacterTest.MatLib");
+			mCharMats.ReadFromFile(mGameRootDir + "/Characters/CharCelSkin.MatLib");
 			mCharMats.InitCelShading(1);
 			mCharMats.GenerateCelTexturePreset(gd.GD,
 				gd.GD.FeatureLevel == FeatureLevel.Level_9_3, false, 0);
@@ -191,25 +202,27 @@ namespace TestMeshes
 			mKeeper.AddMaterialGroup("SkinGroup", skinMats);
 
 			mChar1.SetTransform(Matrix.Identity);
-			mChar2.SetTransform(Matrix.Translation(Vector3.UnitX * 20f));
-			mChar3.SetTransform(Matrix.Translation(Vector3.UnitX * -20f));
+			mChar2.SetTransform(Matrix.Translation(Vector3.UnitX * 50f));
+			mChar3.SetTransform(Matrix.Translation(Vector3.UnitX * -50f));
 
 			mChar1StartTime	=mCharAnims.GetAnimStartTime("TestIdle");
 			mChar2StartTime	=mCharAnims.GetAnimStartTime("WalkLoop");
-			mChar3StartTime	=mCharAnims.GetAnimStartTime("WalkLoop");
+			mChar3StartTime	=mCharAnims.GetAnimStartTime("TestAnim");
 
 			mChar1EndTime	=mChar1StartTime + mCharAnims.GetAnimTime("TestIdle");
 			mChar2EndTime	=mChar2StartTime + mCharAnims.GetAnimTime("WalkLoop");
-			mChar3EndTime	=mChar3StartTime + mCharAnims.GetAnimTime("WalkLoop");
+			mChar3EndTime	=mChar3StartTime + mCharAnims.GetAnimTime("TestAnim");
 
 			mLastTime	=Stopwatch.GetTimestamp();
 
 			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
 
-			mSUI.AddGump("UI\\SteamAva", "CuteGump2", Vector4.One, Vector2.One * 20f, Vector2.One);
+			mSUI.AddGump("UI\\CrossHair", "CrossHair", Vector4.One,
+				Vector2.UnitX * ((mResX / 2) - 16)
+				+ Vector2.UnitY * ((mResY / 2) - 16),
+				Vector2.One);
 			mSUI.AddGump("UI\\GumpElement", "CuteGump", Vector4.One, Vector2.One * 20f, Vector2.One);
 
-			mSUI.ModifyGumpScale("CuteGump2", Vector2.One * 0.25f);
 			mSUI.ModifyGumpScale("CuteGump", Vector2.One * 0.35f);
 
 			mST.AddString("Pescadero50", "Boing!", "boing",
@@ -233,6 +246,10 @@ namespace TestMeshes
 			mEmitter.CurveDistanceScaler	=50f;
 			mEmitter.ChannelCount			=1;
 			mEmitter.DopplerScaler			=1f;
+
+			mHitColor	=Vector4.One * 0.5f;
+
+			mHitColor.Y	=mHitColor.Z	=0f;
 		}
 
 
@@ -296,7 +313,7 @@ namespace TestMeshes
 			{
 				mST.ModifyStringColor("boing", Mathery.RandomColorVector4(mRand));
 			}
-
+			
 			mST.ModifyStringScale("boing", randScale);
 
 			mST.ModifyStringPosition("boing", mTextMover.GetPos());
@@ -350,9 +367,24 @@ namespace TestMeshes
 				mChar3AnimTime	=mChar3StartTime;
 			}
 
+			//adjust coordinate system
+			Matrix	shiftMat	=Matrix.RotationX(MathUtil.PiOverTwo);
+			shiftMat.Invert();
+
+			startPos	=Vector3.TransformCoordinate(startPos, shiftMat);
+			endPos		=Vector3.TransformCoordinate(endPos, shiftMat);
+
 			mChar1.Animate("TestIdle", mChar1AnimTime);
+			mC1Bones	=(mCharArch as CharacterArch).GetBoneTransforms(mCharAnims.GetSkeleton());
+			mChar1.RayIntersectBones2(startPos, endPos, out mC1Bone);
+
 			mChar2.Animate("WalkLoop", mChar2AnimTime);
-			mChar3.Animate("WalkLoop", mChar3AnimTime);
+			mC2Bones	=(mCharArch as CharacterArch).GetBoneTransforms(mCharAnims.GetSkeleton());
+			mChar2.RayIntersectBones2(startPos, endPos, out mC2Bone);
+
+			mChar3.Animate("TestAnim", mChar3AnimTime);
+			mC3Bones	=(mCharArch as CharacterArch).GetBoneTransforms(mCharAnims.GetSkeleton());
+			mChar3.RayIntersectBones2(startPos, endPos, out mC3Bone);
 		}
 
 
@@ -367,6 +399,51 @@ namespace TestMeshes
 			mTestCol.Draw(dc, mStaticMats);
 
 			mCPrims.DrawBox(dc, mTestCol.GetTransform());
+
+			//adjust coordinate system
+			Matrix	shiftMat	=Matrix.RotationX(MathUtil.PiOverTwo);
+
+			foreach(KeyValuePair<int, Matrix> bone in mC1Bones)
+			{
+				Matrix	boneTrans	=bone.Value;
+
+				if(bone.Key == mC1Bone)
+				{
+					mCPrims.DrawBox(dc, bone.Key, boneTrans * shiftMat * mChar1.GetTransform(), mHitColor);
+				}
+				else
+				{
+					mCPrims.DrawBox(dc, bone.Key, boneTrans * shiftMat * mChar1.GetTransform(), Vector4.One * 0.5f);
+				}
+			}
+
+			foreach(KeyValuePair<int, Matrix> bone in mC2Bones)
+			{
+				Matrix	boneTrans	=bone.Value;
+
+				if(bone.Key == mC2Bone)
+				{
+					mCPrims.DrawBox(dc, bone.Key, boneTrans * shiftMat * mChar2.GetTransform(), mHitColor);
+				}
+				else
+				{
+					mCPrims.DrawBox(dc, bone.Key, boneTrans * shiftMat * mChar2.GetTransform(), Vector4.One * 0.5f);
+				}
+			}
+
+			foreach(KeyValuePair<int, Matrix> bone in mC3Bones)
+			{
+				Matrix	boneTrans	=bone.Value;
+
+				if(bone.Key == mC3Bone)
+				{
+					mCPrims.DrawBox(dc, bone.Key, boneTrans * shiftMat * mChar3.GetTransform(), mHitColor);
+				}
+				else
+				{
+					mCPrims.DrawBox(dc, bone.Key, boneTrans * shiftMat * mChar3.GetTransform(), Vector4.One * 0.5f);
+				}
+			}
 
 			mSUI.Draw(dc, Matrix.Identity, mTextProj);
 			mST.Draw(dc, Matrix.Identity, mTextProj);
