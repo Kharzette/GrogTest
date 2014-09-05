@@ -68,6 +68,7 @@ namespace TestMeshes
 		CommonPrims	mCPrims;
 		int			mC1Bone, mC2Bone, mC3Bone;
 		Vector4		mHitColor;
+		int			mFrameCheck;
 
 		//collision bones
 		Dictionary<int, Matrix>	mC1Bones	=new Dictionary<int, Matrix>();
@@ -94,7 +95,7 @@ namespace TestMeshes
 			mFontMats.SetMaterialEffect("Text", "2D.fx");
 			mFontMats.SetMaterialTechnique("Text", "Text");
 
-			mST		=new ScreenText(gd.GD, mFontMats, "Pescadero50", 1000);
+			mST		=new ScreenText(gd.GD, mFontMats, "Pescadero40", 1000);
 			mSUI	=new ScreenUI(gd.GD, mFontMats, 100);
 
 			mTextProj	=Matrix.OrthoOffCenterLH(0, mResX, mResY, 0, 0.1f, 5f);
@@ -159,7 +160,11 @@ namespace TestMeshes
 			mChar2.ReadFromFile(mGameRootDir + "/Characters/TestTankAndShorts.CharacterInstance");
 			mChar3.ReadFromFile(mGameRootDir + "/Characters/TestUndies.CharacterInstance");
 
-			(mCharArch as CharacterArch).ComputeBoneBounds(mCharAnims.GetSkeleton());
+			List<string>	skipMats	=new List<string>();
+
+			skipMats.Add("Hair");
+
+			mChar3.ComputeBoneBounds(skipMats);
 
 			(mCharArch as CharacterArch).BuildDebugBoundDrawData(mGD.GD, mCPrims);
 
@@ -225,7 +230,7 @@ namespace TestMeshes
 
 			mSUI.ModifyGumpScale("CuteGump", Vector2.One * 0.35f);
 
-			mST.AddString("Pescadero50", "Boing!", "boing",
+			mST.AddString("Pescadero40", "Boing!", "boing",
 				color, Vector2.One * 20f, Vector2.One * 1f);
 
 			mTextMover.SetUpMove(Vector2.One * 20f,
@@ -250,85 +255,19 @@ namespace TestMeshes
 			mHitColor	=Vector4.One * 0.5f;
 
 			mHitColor.Y	=mHitColor.Z	=0f;
+
+			mChar1.AutoInvert(true, 0.1f);
+			mChar2.AutoInvert(true, 0.1f);
+			mChar3.AutoInvert(true, 0.1f);
 		}
 
 
 		internal void Update(float msDelta, List<Input.InputAction> actions)
 		{
-			mTextMover.Update((int)msDelta);
-
-			if(mTextMover.Done())
-			{
-				if(mbForward)
-				{
-					mTextMover.SetUpMove(Vector2.UnitX * (mResX - 100f) + Vector2.UnitY * (mResY - 50),
-						Vector2.One * 20f,
-						10f, 0.2f, 0.2f);
-				}
-				else
-				{
-					mTextMover.SetUpMove(Vector2.One * 20f,
-						Vector2.UnitX * (mResX - 100f) + Vector2.UnitY * (mResY - 50),
-						10f, 0.2f, 0.2f);
-				}
-				mbForward	=!mbForward;
-			}
-
-			mAudio.Update(mGD.GCam);
-
-			foreach(Input.InputAction act in actions)
-			{
-				if(act.mAction.Equals(Program.MyActions.PlaceDynamicLight))
-				{
-					mAudio.PlayAtLocation("WinMusic", 2f, mEmitter);
-				}
-				else if(act.mAction.Equals(Program.MyActions.ClearDynamicLights))
-				{
-					mAudio.Play("GainItem", true, 0.5f);
-				}
-			}
-
-			Vector2	randScale;
-			randScale.X	=Mathery.RandomFloatNext(mRand, 0.5f, 2f);
-			randScale.Y	=Mathery.RandomFloatNext(mRand, 0.5f, 2f);
+			mFrameCheck++;
 
 			Vector3	startPos	=mGD.GCam.Position;
 			Vector3	endPos		=startPos + mGD.GCam.Forward * -2000f;
-
-			Mesh	partHit;
-
-			float?	bHit	=mTestCol.RayIntersect(startPos, endPos, true, out partHit);
-			if(bHit != null)
-			{
-				if(partHit == null)
-				{
-					mST.ModifyStringColor("boing", Vector4.UnitW + Vector4.UnitX);
-				}
-				else
-				{
-					mST.ModifyStringColor("boing", Vector4.UnitW + Vector4.UnitY);
-				}
-			}
-			else
-			{
-				mST.ModifyStringColor("boing", Mathery.RandomColorVector4(mRand));
-			}
-			
-			mST.ModifyStringScale("boing", randScale);
-
-			mST.ModifyStringPosition("boing", mTextMover.GetPos());
-
-			mST.Update(mGD.DC);
-
-			mSUI.Update(mGD.DC);
-
-			mStaticMats.SetParameterForAll("mView", mGD.GCam.View);
-			mStaticMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
-			mStaticMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
-
-			mCharMats.SetParameterForAll("mView", mGD.GCam.View);
-			mCharMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
-			mCharMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
 
 			long	timeNow	=Stopwatch.GetTimestamp();
 			long	delta	=timeNow - mLastTime;
@@ -375,16 +314,101 @@ namespace TestMeshes
 			endPos		=Vector3.TransformCoordinate(endPos, shiftMat);
 
 			mChar1.Animate("TestIdle", mChar1AnimTime);
+//			mChar1.UpdateInvertedBones(true);
 			mC1Bones	=(mCharArch as CharacterArch).GetBoneTransforms(mCharAnims.GetSkeleton());
-			mChar1.RayIntersectBones2(startPos, endPos, out mC1Bone);
 
 			mChar2.Animate("WalkLoop", mChar2AnimTime);
+//			mChar2.UpdateInvertedBones(true);
 			mC2Bones	=(mCharArch as CharacterArch).GetBoneTransforms(mCharAnims.GetSkeleton());
-			mChar2.RayIntersectBones2(startPos, endPos, out mC2Bone);
 
 			mChar3.Animate("TestAnim", mChar3AnimTime);
+//			mChar3.UpdateInvertedBones(true);
 			mC3Bones	=(mCharArch as CharacterArch).GetBoneTransforms(mCharAnims.GetSkeleton());
-			mChar3.RayIntersectBones2(startPos, endPos, out mC3Bone);
+
+			mTextMover.Update((int)msDelta);
+
+			if(mTextMover.Done())
+			{
+				if(mbForward)
+				{
+					mTextMover.SetUpMove(Vector2.UnitX * (mResX - 100f) + Vector2.UnitY * (mResY - 50),
+						Vector2.One * 20f,
+						10f, 0.2f, 0.2f);
+				}
+				else
+				{
+					mTextMover.SetUpMove(Vector2.One * 20f,
+						Vector2.UnitX * (mResX - 100f) + Vector2.UnitY * (mResY - 50),
+						10f, 0.2f, 0.2f);
+				}
+				mbForward	=!mbForward;
+			}
+
+			mAudio.Update(mGD.GCam);
+
+			foreach(Input.InputAction act in actions)
+			{
+				if(act.mAction.Equals(Program.MyActions.PlaceDynamicLight))
+				{
+					mAudio.PlayAtLocation("WinMusic", 2f, mEmitter);
+				}
+				else if(act.mAction.Equals(Program.MyActions.ClearDynamicLights))
+				{
+					mAudio.Play("GainItem", true, 0.5f);
+				}
+			}
+
+			Vector2	randScale;
+			randScale.X	=Mathery.RandomFloatNext(mRand, 0.5f, 2f);
+			randScale.Y	=Mathery.RandomFloatNext(mRand, 0.5f, 2f);
+
+			Mesh	partHit;
+
+			float?	bHit	=mTestCol.RayIntersect(startPos, endPos, true, out partHit);
+			if(bHit != null)
+			{
+				if(partHit == null)
+				{
+					mST.ModifyStringColor("boing", Vector4.UnitW + Vector4.UnitX);
+				}
+				else
+				{
+					mST.ModifyStringColor("boing", Vector4.UnitW + Vector4.UnitY);
+				}
+			}
+			else
+			{
+				mST.ModifyStringColor("boing", Mathery.RandomColorVector4(mRand));
+			}
+			
+//			mST.ModifyStringScale("boing", randScale);
+
+//			mST.ModifyStringPosition("boing", mTextMover.GetPos());
+
+			mST.Update(mGD.DC);
+
+			mSUI.Update(mGD.DC);
+
+			mStaticMats.SetParameterForAll("mView", mGD.GCam.View);
+			mStaticMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
+			mStaticMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
+
+			mCharMats.SetParameterForAll("mView", mGD.GCam.View);
+			mCharMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
+			mCharMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
+
+			mChar1.RayIntersectBones(startPos, endPos, false, out mC1Bone);
+			mChar2.RayIntersectBones(startPos, endPos, false, out mC2Bone);
+			mChar3.RayIntersectBones(startPos, endPos, false, out mC3Bone);
+
+			if(mFrameCheck == 10)
+			{
+				mFrameCheck	=0;
+
+				mST.ModifyStringText("Pescadero40", "1:" + mChar1.GetThreadMisses() +
+					", 2: " + mChar2.GetThreadMisses() + ", 3: "
+					+ mChar3.GetThreadMisses(), "boing");
+			}
 		}
 
 
