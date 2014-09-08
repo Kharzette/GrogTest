@@ -62,10 +62,13 @@ namespace TestMeshes
 			Input			inp			=SetUpInput();
 			Random			rand		=new Random();
 
-			Vector3	pos				=Vector3.One * 5f;
-			Vector3	lightDir		=-Vector3.UnitY;
-			bool	bMouseLookOn	=false;
-			long	lastTime		=Stopwatch.GetTimestamp();
+			Vector3		pos				=Vector3.One * 5f;
+			Vector3		lightDir		=-Vector3.UnitY;
+			bool		bMouseLookOn	=false;
+			long		lastTime		=Stopwatch.GetTimestamp();
+			TimeSpan	frameTime		=new TimeSpan();
+			long		freq			=Stopwatch.Frequency;
+			long		freqMS			=freq / 1000;
 
 			RenderLoop.Run(gd.RendForm, () =>
 			{
@@ -117,10 +120,10 @@ namespace TestMeshes
 
 				long	timeNow	=Stopwatch.GetTimestamp();
 				long	delta	=timeNow - lastTime;
-				long	freq	=Stopwatch.Frequency;
-				long	freqMS	=freq / 1000;
 
-				theGame.Update((float)delta / (float)freqMS, actions);
+				frameTime	=TimeSpan.FromMilliseconds(delta / freqMS);
+
+				theGame.Update(frameTime, actions);
 
 				theGame.Render(gd.DC);
 

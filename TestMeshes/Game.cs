@@ -28,7 +28,6 @@ namespace TestMeshes
 		//data
 		string		mGameRootDir;
 		StuffKeeper	mSKeeper;
-		long		mLastTime;
 
 		Random	mRand	=new Random();
 
@@ -136,9 +135,11 @@ namespace TestMeshes
 			mKey1.SetTransform(Matrix.Translation(Vector3.UnitZ * 10f));
 			mKey2.SetTransform(Matrix.Translation(Vector3.UnitZ * 10f + Vector3.UnitX * 30));
 			mKey3.SetTransform(Matrix.Translation(Vector3.UnitZ * 10f - Vector3.UnitX * 30));
-			mTestCol.SetTransform(Matrix.Translation(Vector3.One * 100f));
+			mTestCol.SetTransform(Matrix.Translation(Vector3.One * 100f)
+				* Matrix.RotationX(5f)
+				* Matrix.RotationY(24f));
 
-			mCPrims.ReBuildBoundsDrawData(gd.GD, mTestCol);
+//			mCPrims.ReBuildBoundsDrawData(gd.GD, mTestCol);
 
 			mStaticMats.InitCelShading(1);
 			mStaticMats.GenerateCelTexturePreset(gd.GD,
@@ -218,8 +219,6 @@ namespace TestMeshes
 			mChar2EndTime	=mChar2StartTime + mCharAnims.GetAnimTime("WalkLoop");
 			mChar3EndTime	=mChar3StartTime + mCharAnims.GetAnimTime("TestAnim");
 
-			mLastTime	=Stopwatch.GetTimestamp();
-
 			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
 
 			mSUI.AddGump("UI\\CrossHair", "CrossHair", Vector4.One,
@@ -256,28 +255,29 @@ namespace TestMeshes
 
 			mHitColor.Y	=mHitColor.Z	=0f;
 
-			mChar1.AutoInvert(true, 0.1f);
-			mChar2.AutoInvert(true, 0.1f);
-			mChar3.AutoInvert(true, 0.1f);
+			mChar1.AutoInvert(true, 0.15f);
+			mChar2.AutoInvert(true, 0.15f);
+			mChar3.AutoInvert(true, 0.15f);
 		}
 
 
-		internal void Update(float msDelta, List<Input.InputAction> actions)
+		internal void Update(TimeSpan frameTime, List<Input.InputAction> actions)
 		{
 			mFrameCheck++;
 
 			Vector3	startPos	=mGD.GCam.Position;
 			Vector3	endPos		=startPos + mGD.GCam.Forward * -2000f;
 
-			long	timeNow	=Stopwatch.GetTimestamp();
-			long	delta	=timeNow - mLastTime;
-			float	deltaMS	=((float)delta / (float)Stopwatch.Frequency);
+			float	deltaMS		=(float)frameTime.TotalMilliseconds;
+			float	deltaSec	=(float)frameTime.TotalSeconds;
 
-			mLastTime	=timeNow;
+			mChar1.Update(deltaSec);
+			mChar2.Update(deltaSec);
+			mChar3.Update(deltaSec);
 
-			mChar1AnimTime	+=deltaMS;
-			mChar2AnimTime	+=deltaMS;
-			mChar3AnimTime	+=deltaMS;
+			mChar1AnimTime	+=deltaSec;
+			mChar2AnimTime	+=deltaSec;
+			mChar3AnimTime	+=deltaSec;
 
 			if(mChar1AnimTime > mChar1EndTime)
 			{
@@ -306,13 +306,6 @@ namespace TestMeshes
 				mChar3AnimTime	=mChar3StartTime;
 			}
 
-			//adjust coordinate system
-			Matrix	shiftMat	=Matrix.RotationX(MathUtil.PiOverTwo);
-			shiftMat.Invert();
-
-			startPos	=Vector3.TransformCoordinate(startPos, shiftMat);
-			endPos		=Vector3.TransformCoordinate(endPos, shiftMat);
-
 			mChar1.Animate("TestIdle", mChar1AnimTime);
 //			mChar1.UpdateInvertedBones(true);
 			mC1Bones	=(mCharArch as CharacterArch).GetBoneTransforms(mCharAnims.GetSkeleton());
@@ -325,7 +318,7 @@ namespace TestMeshes
 //			mChar3.UpdateInvertedBones(true);
 			mC3Bones	=(mCharArch as CharacterArch).GetBoneTransforms(mCharAnims.GetSkeleton());
 
-			mTextMover.Update((int)msDelta);
+			mTextMover.Update((int)deltaMS);
 
 			if(mTextMover.Done())
 			{
@@ -364,23 +357,34 @@ namespace TestMeshes
 
 			Mesh	partHit;
 
-			float?	bHit	=mTestCol.RayIntersect(startPos, endPos, true, out partHit);
+			float	?bHit	=mTestCol.RayIntersect(startPos, endPos, true);
 			if(bHit != null)
 			{
-				if(partHit == null)
+				bHit	=mTestCol.RayIntersect(startPos, endPos, true, out partHit);
+				if(bHit != null)
 				{
-					mST.ModifyStringColor("boing", Vector4.UnitW + Vector4.UnitX);
+					if(partHit == null)
+					{
+						mST.ModifyStringColor("boing", Vector4.UnitW + Vector4.UnitX);
+					}
+					else
+					{
+						mST.ModifyStringColor("boing", Vector4.UnitW + Vector4.UnitY);
+					}
 				}
 				else
 				{
-					mST.ModifyStringColor("boing", Vector4.UnitW + Vector4.UnitY);
+					mST.ModifyStringColor("boing", Mathery.RandomColorVector4(mRand));
 				}
 			}
-			else
-			{
-				mST.ModifyStringColor("boing", Mathery.RandomColorVector4(mRand));
-			}
 			
+			//adjust coordinate system
+			Matrix	shiftMat	=Matrix.RotationX(MathUtil.PiOverTwo);
+			shiftMat.Invert();
+
+			startPos	=Vector3.TransformCoordinate(startPos, shiftMat);
+			endPos		=Vector3.TransformCoordinate(endPos, shiftMat);
+
 //			mST.ModifyStringScale("boing", randScale);
 
 //			mST.ModifyStringPosition("boing", mTextMover.GetPos());
@@ -397,9 +401,23 @@ namespace TestMeshes
 			mCharMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
 			mCharMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
 
-			mChar1.RayIntersectBones(startPos, endPos, false, out mC1Bone);
-			mChar2.RayIntersectBones(startPos, endPos, false, out mC2Bone);
-			mChar3.RayIntersectBones(startPos, endPos, false, out mC3Bone);
+			bHit	=mChar1.RayIntersect(startPos, endPos);
+			if(bHit != null)
+			{
+				mChar1.RayIntersectBones(startPos, endPos, false, out mC1Bone);
+			}
+
+			bHit	=mChar2.RayIntersect(startPos, endPos);
+			if(bHit != null)
+			{
+				mChar2.RayIntersectBones(startPos, endPos, false, out mC2Bone);
+			}
+
+			bHit	=mChar3.RayIntersect(startPos, endPos);
+			if(bHit != null)
+			{
+				mChar3.RayIntersectBones(startPos, endPos, false, out mC3Bone);
+			}
 
 			if(mFrameCheck == 10)
 			{
@@ -409,6 +427,8 @@ namespace TestMeshes
 					", 2: " + mChar2.GetThreadMisses() + ", 3: "
 					+ mChar3.GetThreadMisses(), "boing");
 			}
+
+			mCPrims.ReBuildBoundsDrawData(mGD.GD, mChar2);
 		}
 
 
@@ -422,10 +442,11 @@ namespace TestMeshes
 			mKey3.Draw(dc, mStaticMats);
 			mTestCol.Draw(dc, mStaticMats);
 
-			mCPrims.DrawBox(dc, mTestCol.GetTransform());
-
 			//adjust coordinate system
 			Matrix	shiftMat	=Matrix.RotationX(MathUtil.PiOverTwo);
+
+//			mCPrims.DrawBox(dc, mTestCol.GetTransform());
+			mCPrims.DrawBox(dc, mChar2.GetTransform() * shiftMat);
 
 			foreach(KeyValuePair<int, Matrix> bone in mC1Bones)
 			{
