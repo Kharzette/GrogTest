@@ -149,17 +149,17 @@ namespace TestMeshes
 
 			//player character
 			mCharAnims	=new AnimLib();
-			mCharAnims.ReadFromFile(mGameRootDir + "/Characters/Frankenstein45.AnimLib");
+			mCharAnims.ReadFromFile(mGameRootDir + "/Characters/YG45.AnimLib");
 
 			mCharArch	=new CharacterArch();
 			mChar1		=new Character(mCharArch, mCharAnims);
 			mChar2		=new Character(mCharArch, mCharAnims);
 			mChar3		=new Character(mCharArch, mCharAnims);
 
-			mCharArch.ReadFromFile(mGameRootDir + "/Characters/TestNaked.Character", mGD.GD, true);
-			mChar1.ReadFromFile(mGameRootDir + "/Characters/TestShortSleeveAndJeans.CharacterInstance");
-			mChar2.ReadFromFile(mGameRootDir + "/Characters/TestTankAndShorts.CharacterInstance");
-			mChar3.ReadFromFile(mGameRootDir + "/Characters/TestUndies.CharacterInstance");
+			mCharArch.ReadFromFile(mGameRootDir + "/Characters/YG45Naked.Character", mGD.GD, true);
+			mChar1.ReadFromFile(mGameRootDir + "/Characters/YG45CamiJeans.CharacterInstance");
+			mChar2.ReadFromFile(mGameRootDir + "/Characters/YG45CamiShorts.CharacterInstance");
+			mChar3.ReadFromFile(mGameRootDir + "/Characters/YG45ShortSleeveJeans.CharacterInstance");
 
 			List<string>	skipMats	=new List<string>();
 
@@ -382,6 +382,8 @@ namespace TestMeshes
 			Matrix	shiftMat	=Matrix.RotationX(MathUtil.PiOverTwo);
 			shiftMat.Invert();
 
+			shiftMat	=Matrix.Identity;
+
 			startPos	=Vector3.TransformCoordinate(startPos, shiftMat);
 			endPos		=Vector3.TransformCoordinate(endPos, shiftMat);
 
@@ -444,6 +446,8 @@ namespace TestMeshes
 
 			//adjust coordinate system
 			Matrix	shiftMat	=Matrix.RotationX(MathUtil.PiOverTwo);
+
+			shiftMat	=Matrix.Identity;
 
 //			mCPrims.DrawBox(dc, mTestCol.GetTransform());
 			mCPrims.DrawBox(dc, mChar2.GetTransform() * shiftMat);
