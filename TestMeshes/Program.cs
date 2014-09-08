@@ -120,8 +120,12 @@ namespace TestMeshes
 
 				long	timeNow	=Stopwatch.GetTimestamp();
 				long	delta	=timeNow - lastTime;
+				double	deltaMS	=delta / (double)freqMS;
 
-				frameTime	=TimeSpan.FromMilliseconds(delta / freqMS);
+				//limit long frame times
+				deltaMS	=Math.Min(deltaMS, 100.0);
+
+				frameTime	=TimeSpan.FromMilliseconds(deltaMS);
 
 				theGame.Update(frameTime, actions);
 
