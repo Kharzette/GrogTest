@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Diagnostics;
 using System.Text;
+using System.IO;
 using BSPZone;
 using MeshLib;
 using UtilityLib;
@@ -30,11 +32,17 @@ namespace LibTest
 		string		mGameRootDir;
 		StuffKeeper	mSKeeper;
 
+		//list of levels
+		List<string>	mLevels	=new List<string>();
+
 		//dyn lights
 		DynamicLights	mDynLights;
 		List<int>		mActiveLights	=new List<int>();
 
 		Random	mRand	=new Random();
+
+		//shader compile progress indicator
+		SharedForms.ThreadedProgress	mSProg;
 
 		//helpers
 		TriggerHelper		mTHelper		=new TriggerHelper();
@@ -90,7 +98,13 @@ namespace LibTest
 			mResX			=gd.RendForm.ClientRectangle.Width;
 			mResY			=gd.RendForm.ClientRectangle.Height;
 
-			mSKeeper	=new StuffKeeper(mGD, gameRootDir);
+			mSKeeper	=new StuffKeeper();
+
+			mSKeeper.eCompilesNeeded	+=OnCompilesNeeded;
+			mSKeeper.eCompileDone		+=OnCompileDone;
+
+			mSKeeper.Init(mGD, gameRootDir);
+
 			mZoneMats	=new MatLib(gd, mSKeeper);
 			mZone		=new Zone();
 			mZoneDraw	=new MeshLib.IndoorMesh(gd, mZoneMats);
@@ -102,19 +116,34 @@ namespace LibTest
 			mFontMats.SetMaterialEffect("Text", "2D.fx");
 			mFontMats.SetMaterialTechnique("Text", "Text");
 
-			mST		=new ScreenText(gd.GD, mFontMats, "Pescadero20x256", 1000);
+			List<string>	fonts	=mSKeeper.GetFontList();
+
+			mST		=new ScreenText(gd.GD, mFontMats, fonts[0], 1000);
 			mSUI	=new ScreenUI(gd.GD, mFontMats, 100);
 
 			mTextProj	=Matrix.OrthoOffCenterLH(0, mResX, mResY, 0, 0.1f, 5f);
 
 			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
 
-			mSUI.AddGump("UI\\GumpElement", "CuteGump", Vector4.One, Vector2.One * 20f, Vector2.One);
-			mSUI.AddGump("UI\\SteamAva", "CuteGump2", Vector4.One, Vector2.One * 20f, Vector2.One);
+			//grab two UI textures to show how to do gumpery
+			List<string>	texs	=mSKeeper.GetTexture2DList();
+			List<string>	uiTex	=new List<string>();
+			foreach(string tex in texs)
+			{
+				if(tex.StartsWith("UI"))
+				{
+					uiTex.Add(tex);
+				}
+			}
 
-			mSUI.ModifyGumpScale("CuteGump2", Vector2.One * 0.25f);
+			if(uiTex.Count > 1)
+			{
+				mSUI.AddGump(uiTex[0], "CuteGump", Vector4.One, Vector2.One * 20f, Vector2.One);
+				mSUI.AddGump(uiTex[1], "CuteGump2", Vector4.One, Vector2.One * 20f, Vector2.One);
+				mSUI.ModifyGumpScale("CuteGump2", Vector2.One * 0.25f);
+			}
 
-			mST.AddString("Pescadero20x256", "Boing!", "boing",
+			mST.AddString(fonts[0], "Boing!", "boing",
 				color, Vector2.UnitX * 20f + Vector2.UnitY * 700f, Vector2.One * 1f);
 
 			mTextMover.SetUpMove(Vector2.One * 20f,
@@ -173,60 +202,91 @@ namespace LibTest
 				mDynLights	=new DynamicLights(mGD, mZoneMats, "BSP.fx");
 			}
 
-			//static stuff
-			mStaticMats	=new MatLib(gd, mSKeeper);
-			mStaticMats.ReadFromFile(mGameRootDir + "/Statics/Statics.MatLib");
-			mStatics	=Mesh.LoadAllStaticMeshes(mGameRootDir + "\\Statics", gd.GD);
+			//see if any static stuff
+			if(Directory.Exists(mGameRootDir + "/Statics"))
+			{
+				DirectoryInfo	di	=new DirectoryInfo(mGameRootDir + "/Statics");
 
-			mStaticMats.InitCelShading(1);
-			mStaticMats.GenerateCelTexturePreset(gd.GD,
-				(gd.GD.FeatureLevel == FeatureLevel.Level_9_3),
-				true, 0);
-			mStaticMats.SetCelTexture(0);
+				FileInfo[]	fi	=di.GetFiles("*.MatLib", SearchOption.TopDirectoryOnly);
 
-			//player character
-			mPAnims	=new AnimLib();
-			mPAnims.ReadFromFile(mGameRootDir + "/Characters/YG45.AnimLib");
+				if(fi.Length > 0)
+				{
+					mStaticMats	=new MatLib(gd, mSKeeper);
+					mStaticMats.ReadFromFile(fi[0].DirectoryName + "\\" + fi[0].Name);
 
-			mPArch	=new CharacterArch();
-			mPArch.ReadFromFile(mGameRootDir + "/Characters/YG45Naked.Character", mGD.GD, false);
+					mStaticMats.InitCelShading(1);
+					mStaticMats.GenerateCelTexturePreset(gd.GD,
+						(gd.GD.FeatureLevel == FeatureLevel.Level_9_3),
+						true, 0);
+					mStaticMats.SetCelTexture(0);
+				}
+				mStatics	=Mesh.LoadAllStaticMeshes(mGameRootDir + "\\Statics", gd.GD);
+			}
 
-			mPChar	=new Character(mPArch, mPAnims);
-			mPChar.ReadFromFile(mGameRootDir + "/Characters/YG45CamiJeans.CharacterInstance");
+			//load character stuff if any around
+			if(Directory.Exists(mGameRootDir + "/Characters"))
+			{
+				DirectoryInfo	di	=new DirectoryInfo(mGameRootDir + "/Characters");
 
-			//character cel 2 stage
-			float	[]levels	=new float[2];
-			float	[]thresh	=new float[1];
+				FileInfo[]	fi	=di.GetFiles("*.AnimLib", SearchOption.TopDirectoryOnly);
+				if(fi.Length > 0)
+				{
+					mPAnims	=new AnimLib();
+					mPAnims.ReadFromFile(fi[0].DirectoryName + "\\" + fi[0].Name);
+				}
 
-			levels[0]	=0.4f;
-			levels[1]	=1f;
-			thresh[0]	=0.3f;
+				fi	=di.GetFiles("*.MatLib", SearchOption.TopDirectoryOnly);
+				if(fi.Length > 0)
+				{
+					mPMats	=new MatLib(mGD, mSKeeper);
+					mPMats.ReadFromFile(fi[0].DirectoryName + "\\" + fi[0].Name);
+					mPMats.InitCelShading(1);
+					mPMats.GenerateCelTexturePreset(gd.GD,
+						gd.GD.FeatureLevel == FeatureLevel.Level_9_3, false, 0);
+					mPMats.SetCelTexture(0);
+				}
 
-			mPMats	=new MatLib(mGD, mSKeeper);
-			mPMats.ReadFromFile(mGameRootDir + "/Characters/CharCelSkin.MatLib");
-			mPMats.InitCelShading(1);
-			mPMats.GenerateCelTexturePreset(gd.GD,
-				gd.GD.FeatureLevel == FeatureLevel.Level_9_3, false, 0);
-//			mPMats.GenerateCelTexture(mGD.GD,
-//				(gd.GD.FeatureLevel != FeatureLevel.Level_9_3),
-//				0, 64, thresh, levels);
-			mPMats.SetCelTexture(0);
+				fi	=di.GetFiles("*.Character", SearchOption.TopDirectoryOnly);
+				if(fi.Length > 0)
+				{
+					mPArch	=new CharacterArch();
+					mPArch.ReadFromFile(fi[0].DirectoryName + "\\" + fi[0].Name, mGD.GD, false);
+				}
 
-			mPChar.SetMatLib(mPMats);
+				fi	=di.GetFiles("*.CharacterInstance", SearchOption.TopDirectoryOnly);
+				if(fi.Length > 0)
+				{
+					mPChar	=new Character(mPArch, mPAnims);
+					mPChar.ReadFromFile(fi[0].DirectoryName + "\\" + fi[0].Name);
+					mPChar.SetMatLib(mPMats);
 
-			mPShad	=new ShadowHelper.Shadower();
+					mPShad	=new ShadowHelper.Shadower();
 
-			mPShad.mChar	=mPChar;
-			mPShad.mContext	=this;
+					mPShad.mChar	=mPChar;
+					mPShad.mContext	=this;
+				}
+			}
 
 			mPMob	=new Mobile(mPChar, 16f, 50f, 45f, true, mTHelper);
 
 			mPLHelper	=new LightHelper();
 
 			mKeeper.AddLib(mZoneMats);
-			mKeeper.AddLib(mStaticMats);
-			mKeeper.AddLib(mPMats);
 
+			if(mStaticMats != null)
+			{
+				mKeeper.AddLib(mStaticMats);
+			}
+
+			if(mPMats != null)
+			{
+				mKeeper.AddLib(mPMats);
+			}
+
+			//example material groups
+			//these treat all materials in the group
+			//as a single material for the purposes
+			//of drawing cartoony outlines around them
 			List<string>	skinMats	=new List<string>();
 
 			skinMats.Add("Face");
@@ -242,7 +302,18 @@ namespace LibTest
 
 			mSHelper.ePickUp	+=OnPickUp;
 
-			ChangeLevel("IAmIn");
+			if(Directory.Exists(mGameRootDir + "/Levels"))
+			{
+				DirectoryInfo	di	=new DirectoryInfo(mGameRootDir + "/Levels");
+
+				FileInfo[]	fi	=di.GetFiles("*.Zone", SearchOption.TopDirectoryOnly);
+				foreach(FileInfo f in fi)
+				{
+					mLevels.Add(f.Name.Substring(0, f.Name.Length - 5));
+				}
+			}
+
+			ChangeLevel(mLevels[0]);
 		}
 
 
@@ -283,12 +354,14 @@ namespace LibTest
 			mStaticMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
 			mStaticMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
 
-			mPMats.SetParameterForAll("mView", mGD.GCam.View);
-			mPMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
-			mPMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
+			if(mPMats != null)
+			{
+				mPMats.SetParameterForAll("mView", mGD.GCam.View);
+				mPMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
+				mPMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
+			}
 
-			//slow this down for testing
-			mSHelper.Update(1);
+			mSHelper.Update((int)msDelta);
 
 			foreach(KeyValuePair<ZoneEntity, LightHelper> shelp in mSLHelpers)
 			{
@@ -302,11 +375,14 @@ namespace LibTest
 			Vector3	ppos	=mPMob.GetGroundPos();
 			Matrix	pmat	=Matrix.Translation(ppos);
 
-			mPChar.SetTransform(pmat);
+			if(mPChar != null)
+			{
+				mPChar.SetTransform(pmat);
 
-			mPChar.Animate("MoveWalk", 0.5f);
+				mPChar.Animate("MoveWalk", 0.5f);
 
-			mPLHelper.Update((int)msDelta, ppos + Vector3.Up * 32f, mDynLights);
+				mPLHelper.Update((int)msDelta, ppos + Vector3.Up * 32f, mDynLights);
+			}
 
 			mPB.Update(mGD.DC, msDelta);
 
@@ -395,11 +471,20 @@ namespace LibTest
 			mStaticMats.FreeAll();
 			mPB.FreeAll();
 			mKeeper.Clear();
-			mPMats.FreeAll();
-			mPChar.FreeAll();
+			if(mPMats != null)
+			{
+				mPMats.FreeAll();
+			}
+			if(mPChar != null)
+			{
+				mPChar.FreeAll();
+			}
 			mPartMats.FreeAll();
 
-			mPArch.FreeAll();
+			if(mPAnims != null)
+			{
+				mPArch.FreeAll();
+			}
 
 			if(mDynLights != null)
 			{
@@ -427,7 +512,10 @@ namespace LibTest
 		{
 			mSHelper.Draw(DrawStaticDMN);
 
-			mPChar.DrawDMN(mGD.DC, mPMats);
+			if(mPChar != null)
+			{
+				mPChar.DrawDMN(mGD.DC, mPMats);
+			}
 
 			mPB.DrawDMN(mGD.DC, gcam.View, gcam.Projection, gcam.Position);
 		}
@@ -445,9 +533,11 @@ namespace LibTest
 				out lightCol0, out lightCol1, out lightCol2,
 				out intensity, out lightPos, out lightDir, out bDir);
 
-			mPMats.SetTriLightValues(lightCol0, lightCol1, lightCol2, lightDir);
-
-			mPChar.Draw(mGD.DC, mPMats);
+			if(mPChar != null)
+			{
+				mPMats.SetTriLightValues(lightCol0, lightCol1, lightCol2, lightDir);
+				mPChar.Draw(mGD.DC, mPMats);
+			}
 
 			mPB.Draw(ap, gcam.View, gcam.Projection);
 		}
@@ -521,8 +611,6 @@ namespace LibTest
 			mShadowHelper.Initialize(mGD, 512, mDirShadowAtten,
 				mZoneMats, mPost, GetCurShadowLightInfo, GetTransdBounds);
 
-			mShadowHelper.RegisterShadower(mPShad, mPMats);
-
 			//make lighthelpers for statics
 			mSLHelpers	=mSHelper.MakeLightHelpers(mZone, mZoneDraw.GetStyleStrength);
 
@@ -569,7 +657,11 @@ namespace LibTest
 			mKeeper.Scan();
 			mKeeper.AssignIDsToEffectMaterials("BSP.fx");
 
-			mPChar.AssignMaterialIDs(mKeeper);
+			if(mPChar != null)
+			{
+				mShadowHelper.RegisterShadower(mPShad, mPMats);
+				mPChar.AssignMaterialIDs(mKeeper);
+			}
 
 			foreach(KeyValuePair<ZoneEntity, StaticMesh> instances in mStaticInsts)
 			{
@@ -675,6 +767,37 @@ namespace LibTest
 			{
 			}
 			return	true;
+		}
+
+
+		void OnCompilesNeeded(object sender, EventArgs ea)
+		{
+			Thread	uiThread	=new Thread(() =>
+				{
+					mSProg	=new SharedForms.ThreadedProgress("Compiling Shaders...");
+					System.Windows.Forms.Application.Run(mSProg);
+				});
+
+			uiThread.SetApartmentState(ApartmentState.STA);
+			uiThread.Start();
+
+			while(mSProg == null)
+			{
+				Thread.Sleep(0);
+			}
+
+			mSProg.SetSizeInfo(0, (int)sender);
+		}
+
+
+		void OnCompileDone(object sender, EventArgs ea)
+		{
+			mSProg.SetCurrent((int)sender);
+
+			if((int)sender == mSProg.GetMax())
+			{
+				mSProg.Nuke();
+			}
 		}
 	}
 }
