@@ -123,6 +123,10 @@
       <Project>{64751FBC-17AF-48E2-9C09-912C6CA6E9C6}</Project>
       <Name>ParticleLib</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\Libs\SharedForms\SharedForms.csproj">
+      <Project>{C1BE43B3-1AAE-4CF5-8F45-DBF6A80F7C0E}</Project>
+      <Name>SharedForms</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Libs\UtilityLib\UtilityLib.csproj">
       <Project>{DE433DFE-411F-447E-9035-B8480FCFC7D1}</Project>
       <Name>UtilityLib</Name>
