@@ -68,7 +68,7 @@ namespace TestMeshes
 
 		//collision debuggery
 		CommonPrims	mCPrims;
-		Vector4		mHitColor;
+		Vector4		mHitColor, mTextColor;
 		int			mFrameCheck;
 		int[]		mCBone;
 
@@ -271,7 +271,9 @@ namespace TestMeshes
 			skinMats.Add("Nails");
 			mKeeper.AddMaterialGroup("SkinGroup", skinMats);
 
-			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
+			mTextColor	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
+			mHitColor	=Vector4.One * 0.9f;
+			mHitColor.Y	=mHitColor.Z	=0f;
 
 			mSUI.AddGump("UI\\CrossHair", "CrossHair", Vector4.One,
 				Vector2.UnitX * ((mResX / 2) - 16)
@@ -280,18 +282,18 @@ namespace TestMeshes
 
 			//string indicators for various statusy things
 			mST.AddString(mFonts[0], "", "AnimStatus",
-				color, Vector2.UnitX * 20f + Vector2.UnitY * 500f, Vector2.One);
+				mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 500f, Vector2.One);
 			mST.AddString(mFonts[0], "", "CharStatus",
-				color, Vector2.UnitX * 20f + Vector2.UnitY * 520f, Vector2.One);
+				mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 520f, Vector2.One);
 			mST.AddString(mFonts[0], "", "PosStatus",
-				color, Vector2.UnitX * 20f + Vector2.UnitY * 540f, Vector2.One);
-			mST.AddString(mFonts[0], "", "BoundsStatus",
-				color, Vector2.UnitX * 20f + Vector2.UnitY * 560f, Vector2.One);
+				mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 540f, Vector2.One);
+			mST.AddString(mFonts[0], "", "HitStatus",
+				mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 560f, Vector2.One);
+			mST.AddString(mFonts[0], "", "ThreadStatus",
+				mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 580f, Vector2.One);
 
 			UpdateCAStatus();
 
-			mHitColor	=Vector4.One * 0.9f;
-			mHitColor.Y	=mHitColor.Z	=0f;
 		}
 
 
@@ -395,37 +397,32 @@ namespace TestMeshes
 			mCharMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
 
 			mCPrims.Update(mGD.GCam, Vector3.Down);
-			/*
-			bHit	=mChar1.RayIntersect(startPos, endPos);
-			if(bHit != null)
+			
+			for(int i=0;i < mCharacters.Count;i++)
 			{
-				mChar1.RayIntersectBones(startPos, endPos, false, out mC1Bone);
-			}
-
-			bHit	=mChar2.RayIntersect(startPos, endPos);
-			if(bHit != null)
-			{
-				mChar2.RayIntersectBones(startPos, endPos, false, out mC2Bone);
-			}
-
-			bHit	=mChar3.RayIntersect(startPos, endPos);
-			if(bHit != null)
-			{
-				mChar3.RayIntersectBones(startPos, endPos, false, out mC3Bone);
+				Character	c	=mCharacters[i];
+				float?	bHit	=c.RayIntersect(startPos, endPos);
+				if(bHit != null)
+				{
+					c.RayIntersectBones(startPos, endPos, false, out mCBone[i]);
+				}
+				else
+				{
+					mCBone[i]	=0;
+				}
 			}
 
 			if(mFrameCheck == 10)
 			{
 				mFrameCheck	=0;
 
-				mST.ModifyStringText(mFonts[0], "1:" + mChar1.GetThreadMisses() +
-					", 2: " + mChar2.GetThreadMisses() + ", 3: "
-					+ mChar3.GetThreadMisses(), "boing");
+//				mST.ModifyStringText(mFonts[0], "1:" + mChar1.GetThreadMisses() +
+//					", 2: " + mChar2.GetThreadMisses() + ", 3: "
+//					+ mChar3.GetThreadMisses(), "boing");
 			}
-			mCPrims.ReBuildBoundsDrawData(mGD.GD, mCharacters[0]);
-			*/
 
 			UpdatePosStatus();
+			UpdateHitStatus();
 		}
 
 
@@ -458,6 +455,8 @@ namespace TestMeshes
 				}
 			}
 
+			mCPrims.DrawAxis(dc);
+
 			mSUI.Draw(dc, Matrix.Identity, mTextProj);
 			mST.Draw(dc, Matrix.Identity, mTextProj);
 		}
@@ -486,6 +485,42 @@ namespace TestMeshes
 				+ (int)mGD.GCam.Position.X + ", "
 				+ (int)mGD.GCam.Position.Y + ", "
 				+ (int)mGD.GCam.Position.Z, "PosStatus");
+		}
+
+
+		void UpdateHitStatus()
+		{
+			bool	bAnyHit	=false;
+			for(int i=0;i < mCharacters.Count;i++)
+			{
+				if(mCBone[i] > 0)
+				{
+					bAnyHit	=true;
+				}
+			}
+
+			if(!bAnyHit)
+			{
+				mST.ModifyStringText(mFonts[0], "No Collisions", "HitStatus");
+				mST.ModifyStringColor("HitStatus", mTextColor);
+				return;
+			}
+
+			mST.ModifyStringColor("HitStatus", mHitColor);
+
+			string	hitString	="Hit";
+			for(int i=0;i < mCharacters.Count;i++)
+			{
+				if(mCBone[i] <= 0)
+				{
+					continue;
+				}
+
+				hitString	+=" Character " + i + " in bone " +
+					mCharAnims.GetSkeleton().GetBoneName(mCBone[i]);
+			}
+
+			mST.ModifyStringText(mFonts[0], hitString, "HitStatus");
 		}
 
 
