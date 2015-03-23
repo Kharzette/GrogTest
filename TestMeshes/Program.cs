@@ -30,7 +30,9 @@ namespace TestMeshes
 			Turn, TurnLeft, TurnRight,
 			Pitch, PitchUp, PitchDown,
 			ToggleMouseLookOn, ToggleMouseLookOff,
-			NextCharacter, NextAnim
+			NextCharacter, NextAnim,
+			IncreaseInvertInterval,
+			DecreaseInvertInterval
 		};
 
 
@@ -173,6 +175,11 @@ namespace TestMeshes
 				Modifiers.None, System.Windows.Forms.Keys.C);
 			inp.MapAction(MyActions.NextAnim, ActionTypes.PressAndRelease,
 				Modifiers.None, System.Windows.Forms.Keys.N);
+
+			inp.MapAction(MyActions.IncreaseInvertInterval, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.PageUp);
+			inp.MapAction(MyActions.DecreaseInvertInterval, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.PageDown);
 
 			return	inp;
 		}

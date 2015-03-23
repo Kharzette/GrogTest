@@ -49,6 +49,7 @@ namespace TestMeshes
 		MatLib							mCharMats;
 		AnimLib							mCharAnims;
 		int								mCurChar;
+		float							mInvertInterval	=0.15f;	//default 150ms
 
 		//fontery
 		ScreenText		mST;
@@ -74,6 +75,9 @@ namespace TestMeshes
 
 		//collision bones
 		Dictionary<int, Matrix>[]	mCBones;
+
+		//constants
+		const float	InvertIncrement	=0.01f;	//10ms
 
 
 		internal Game(GraphicsDevice gd, string gameRootDir)
@@ -119,7 +123,7 @@ namespace TestMeshes
 					mStaticMats.InitCelShading(1);
 					mStaticMats.GenerateCelTexturePreset(gd.GD,
 						(gd.GD.FeatureLevel == FeatureLevel.Level_9_3),
-						true, 0);
+						false, 0);
 					mStaticMats.SetCelTexture(0);
 					mKeeper.AddLib(mStaticMats);
 				}
@@ -128,11 +132,13 @@ namespace TestMeshes
 				fi	=di.GetFiles("*.StaticInstance", SearchOption.TopDirectoryOnly);
 				foreach(FileInfo f in fi)
 				{
-					string	archName	=f.Name;
+					string	archName	=FileUtil.StripExtension(f.Name);
 					if(archName.Contains('_'))
 					{
-						archName	=f.Name.Substring(0, f.Name.IndexOf('_'));
+						archName	=archName.Substring(0, f.Name.IndexOf('_'));
 					}
+
+					archName	+=".Static";
 
 					if(!mStatics.ContainsKey(archName))
 					{
@@ -153,12 +159,6 @@ namespace TestMeshes
 							Vector3.UnitZ * 100f)));
 				}
 			}
-
-			mStaticMats.InitCelShading(1);
-			mStaticMats.GenerateCelTexturePreset(gd.GD,
-				(gd.GD.FeatureLevel == FeatureLevel.Level_11_0),
-				true, 0);
-			mStaticMats.SetCelTexture(0);
 
 			//skip hair stuff when computing bone bounds
 			//hits to hair usually wouldn't activate much
@@ -234,7 +234,7 @@ namespace TestMeshes
 
 					c.ComputeBoneBounds(skipMats);
 
-					c.AutoInvert(true, 0.15f);
+					c.AutoInvert(true, mInvertInterval);
 
 					mCharacters.Add(c);
 				}
@@ -281,6 +281,8 @@ namespace TestMeshes
 				Vector2.One);
 
 			//string indicators for various statusy things
+			mST.AddString(mFonts[0], "", "InvertStatus",
+				mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 480f, Vector2.One);
 			mST.AddString(mFonts[0], "", "AnimStatus",
 				mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 500f, Vector2.One);
 			mST.AddString(mFonts[0], "", "CharStatus",
@@ -293,7 +295,7 @@ namespace TestMeshes
 				mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 580f, Vector2.One);
 
 			UpdateCAStatus();
-
+			UpdateInvertStatus();
 		}
 
 
@@ -350,6 +352,28 @@ namespace TestMeshes
 					}
 					UpdateCAStatus();
 				}
+				else if(act.mAction.Equals(Program.MyActions.IncreaseInvertInterval))
+				{
+					mInvertInterval	+=InvertIncrement;
+					foreach(Character c in mCharacters)
+					{
+						c.AutoInvert(true, mInvertInterval);
+					}
+					UpdateInvertStatus();
+				}
+				else if(act.mAction.Equals(Program.MyActions.DecreaseInvertInterval))
+				{
+					mInvertInterval	-=InvertIncrement;
+					if(mInvertInterval < InvertIncrement)
+					{
+						mInvertInterval	=InvertIncrement;
+					}
+					foreach(Character c in mCharacters)
+					{
+						c.AutoInvert(true, mInvertInterval);
+					}
+					UpdateInvertStatus();
+				}
 			}
 			/*
 			Mesh	partHit;
@@ -384,17 +408,8 @@ namespace TestMeshes
 			startPos	=Vector3.TransformCoordinate(startPos, shiftMat);
 			endPos		=Vector3.TransformCoordinate(endPos, shiftMat);
 
-			mST.Update(mGD.DC);
-
-			mSUI.Update(mGD.DC);
-
-			mStaticMats.SetParameterForAll("mView", mGD.GCam.View);
-			mStaticMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
-			mStaticMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
-
-			mCharMats.SetParameterForAll("mView", mGD.GCam.View);
-			mCharMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
-			mCharMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
+			mStaticMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
+			mCharMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
 
 			mCPrims.Update(mGD.GCam, Vector3.Down);
 			
@@ -415,14 +430,16 @@ namespace TestMeshes
 			if(mFrameCheck == 10)
 			{
 				mFrameCheck	=0;
-
-//				mST.ModifyStringText(mFonts[0], "1:" + mChar1.GetThreadMisses() +
-//					", 2: " + mChar2.GetThreadMisses() + ", 3: "
-//					+ mChar3.GetThreadMisses(), "boing");
+				UpdateThreadStatus();
 			}
 
 			UpdatePosStatus();
 			UpdateHitStatus();
+
+			//this has to behind any text changes
+			//otherwise the offsets will be messed up
+			mST.Update(mGD.DC);
+			mSUI.Update(mGD.DC);
 		}
 
 
@@ -521,6 +538,23 @@ namespace TestMeshes
 			}
 
 			mST.ModifyStringText(mFonts[0], hitString, "HitStatus");
+		}
+
+
+		void UpdateThreadStatus()
+		{
+			string	threadString	="Thread Misses: ";
+			for(int i=0;i < mCharacters.Count;i++)
+			{
+				threadString	+="Char" + i + ": " + mCharacters[i].GetThreadMisses() + " ";
+			}
+			mST.ModifyStringText(mFonts[0], threadString, "ThreadStatus");
+		}
+
+
+		void UpdateInvertStatus()
+		{
+			mST.ModifyStringText(mFonts[0], "(PGUP/PGDN) Invert Interval: " + mInvertInterval, "InvertStatus");
 		}
 
 
