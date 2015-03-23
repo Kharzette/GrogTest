@@ -37,46 +37,43 @@ namespace TestMeshes
 		//static stuff
 		MatLib						mStaticMats;
 		Dictionary<string, IArch>	mStatics	=new Dictionary<string, IArch>();
-		StaticMesh					mKey1, mKey2, mKey3;
-		StaticMesh					mTestCol;
+		List<StaticMesh>			mMeshes		=new List<StaticMesh>();
 
 		//test characters
-		IArch		mCharArch;
-		Character	mChar1, mChar2, mChar3;
-		MatLib		mCharMats;
-		AnimLib		mCharAnims;
-		float		mChar1AnimTime, mChar2AnimTime, mChar3AnimTime;
-		float		mChar1StartTime, mChar2StartTime, mChar3StartTime;
-		float		mChar1EndTime, mChar2EndTime, mChar3EndTime;
+		Dictionary<string, IArch>		mCharArchs	=new Dictionary<string, IArch>();
+		Dictionary<Character, IArch>	mCharToArch	=new Dictionary<Character,IArch>();
+		List<Character>					mCharacters	=new List<Character>();
+		List<string>					mAnims		=new List<string>();
+		float[]							mAnimTimes;
+		int[]							mCurAnims;
+		MatLib							mCharMats;
+		AnimLib							mCharAnims;
+		int								mCurChar;
 
 		//fontery
-		ScreenText	mST;
-		MatLib		mFontMats;
-		Matrix		mTextProj;
-		Mover2		mTextMover	=new Mover2();
-		bool		mbForward;
-		int			mResX, mResY;
+		ScreenText		mST;
+		MatLib			mFontMats;
+		Matrix			mTextProj;
+		int				mResX, mResY;
+		List<string>	mFonts	=new List<string>();
 
 		//2d stuff
 		ScreenUI	mSUI;
+
+		//shader compile progress indicator
+		SharedForms.ThreadedProgress	mSProg;
 
 		//gpu
 		GraphicsDevice	mGD;
 
 		//collision debuggery
 		CommonPrims	mCPrims;
-		int			mC1Bone, mC2Bone, mC3Bone;
 		Vector4		mHitColor;
 		int			mFrameCheck;
+		int[]		mCBone;
 
 		//collision bones
-		Dictionary<int, Matrix>	mC1Bones	=new Dictionary<int, Matrix>();
-		Dictionary<int, Matrix>	mC2Bones	=new Dictionary<int, Matrix>();
-		Dictionary<int, Matrix>	mC3Bones	=new Dictionary<int, Matrix>();
-
-		//audio
-		Audio	mAudio	=new Audio();
-		Emitter	mEmitter;
+		Dictionary<int, Matrix>[]	mCBones;
 
 
 		internal Game(GraphicsDevice gd, string gameRootDir)
@@ -86,60 +83,76 @@ namespace TestMeshes
 			mResX			=gd.RendForm.ClientRectangle.Width;
 			mResY			=gd.RendForm.ClientRectangle.Height;
 
-			mSKeeper	=new StuffKeeper(mGD, gameRootDir);
+			mSKeeper	=new StuffKeeper();
+
+			mSKeeper.eCompilesNeeded	+=OnCompilesNeeded;
+			mSKeeper.eCompileDone		+=OnCompileDone;
+
+			mSKeeper.Init(mGD, gameRootDir);
+
 			mFontMats	=new MatLib(gd, mSKeeper);
 			mCPrims		=new CommonPrims(gd, mSKeeper);
+
+			mFonts	=mSKeeper.GetFontList();
 
 			mFontMats.CreateMaterial("Text");
 			mFontMats.SetMaterialEffect("Text", "2D.fx");
 			mFontMats.SetMaterialTechnique("Text", "Text");
 
-			mST		=new ScreenText(gd.GD, mFontMats, "Pescadero40", 1000);
+			mST		=new ScreenText(gd.GD, mFontMats, mFonts[0], 1000);
 			mSUI	=new ScreenUI(gd.GD, mFontMats, 100);
 
 			mTextProj	=Matrix.OrthoOffCenterLH(0, mResX, mResY, 0, 0.1f, 5f);
 
-			//static stuff
-			mStaticMats	=new MatLib(gd, mSKeeper);
-			mStaticMats.ReadFromFile(mGameRootDir + "/Statics/Statics.MatLib");
-			mStatics	=Mesh.LoadAllStaticMeshes(mGameRootDir + "\\Statics", gd.GD);
+			//load avail static stuff
+			if(Directory.Exists(mGameRootDir + "/Statics"))
+			{
+				DirectoryInfo	di	=new DirectoryInfo(mGameRootDir + "/Statics");
 
-			mStatics["Key.Static"].UpdateBounds();
-			mStatics["TestCol.Static"].UpdateBounds();
+				FileInfo[]	fi	=di.GetFiles("*.MatLib", SearchOption.TopDirectoryOnly);
 
-			mKey1		=new StaticMesh(mStatics["Key.Static"]);
-			mKey2		=new StaticMesh(mStatics["Key.Static"]);
-			mKey3		=new StaticMesh(mStatics["Key.Static"]);
-			mTestCol	=new StaticMesh(mStatics["TestCol.Static"]);
-			
-			mKey1.UpdateBounds();
-			mKey2.UpdateBounds();
-			mKey3.UpdateBounds();
-			mTestCol.UpdateBounds();
+				if(fi.Length > 0)
+				{
+					mStaticMats	=new MatLib(gd, mSKeeper);
+					mStaticMats.ReadFromFile(fi[0].DirectoryName + "\\" + fi[0].Name);
 
-			mTestCol.ReadFromFile(mGameRootDir + "/Statics/TestCol.StaticInstance");
-			mTestCol.SetMatLib(mStaticMats);
+					mStaticMats.InitCelShading(1);
+					mStaticMats.GenerateCelTexturePreset(gd.GD,
+						(gd.GD.FeatureLevel == FeatureLevel.Level_9_3),
+						true, 0);
+					mStaticMats.SetCelTexture(0);
+					mKeeper.AddLib(mStaticMats);
+				}
+				mStatics	=Mesh.LoadAllStaticMeshes(mGameRootDir + "\\Statics", gd.GD);
 
-			mKey1.AddPart(mStaticMats);
-			mKey1.SetMatLib(mStaticMats);
-			mKey1.SetPartMaterialName(0, "RedSteel");
+				fi	=di.GetFiles("*.StaticInstance", SearchOption.TopDirectoryOnly);
+				foreach(FileInfo f in fi)
+				{
+					string	archName	=f.Name;
+					if(archName.Contains('_'))
+					{
+						archName	=f.Name.Substring(0, f.Name.IndexOf('_'));
+					}
 
-			mKey2.AddPart(mStaticMats);
-			mKey2.SetMatLib(mStaticMats);
-			mKey2.SetPartMaterialName(0, "Wood");
+					if(!mStatics.ContainsKey(archName))
+					{
+						continue;
+					}
 
-			mKey3.AddPart(mStaticMats);
-			mKey3.SetMatLib(mStaticMats);
-			mKey3.SetPartMaterialName(0, "BlueSteel");
+					StaticMesh	sm	=new StaticMesh(mStatics[archName]);
 
-			mKey1.SetTransform(Matrix.Translation(Vector3.UnitZ * 10f));
-			mKey2.SetTransform(Matrix.Translation(Vector3.UnitZ * 10f + Vector3.UnitX * 30));
-			mKey3.SetTransform(Matrix.Translation(Vector3.UnitZ * 10f - Vector3.UnitX * 30));
-			mTestCol.SetTransform(Matrix.Translation(Vector3.One * 100f)
-				* Matrix.RotationX(5f)
-				* Matrix.RotationY(24f));
+					sm.ReadFromFile(f.DirectoryName + "\\" + f.Name);
 
-//			mCPrims.ReBuildBoundsDrawData(gd.GD, mTestCol);
+					mMeshes.Add(sm);
+
+					sm.UpdateBounds();
+					sm.SetMatLib(mStaticMats);
+					sm.SetTransform(Matrix.Translation(
+						Mathery.RandomPosition(mRand,
+							Vector3.UnitX * 100f +
+							Vector3.UnitZ * 100f)));
+				}
+			}
 
 			mStaticMats.InitCelShading(1);
 			mStaticMats.GenerateCelTexturePreset(gd.GD,
@@ -147,53 +160,104 @@ namespace TestMeshes
 				true, 0);
 			mStaticMats.SetCelTexture(0);
 
-			//player character
-			mCharAnims	=new AnimLib();
-			mCharAnims.ReadFromFile(mGameRootDir + "/Characters/YG45.AnimLib");
-
-			mCharArch	=new CharacterArch();
-			mChar1		=new Character(mCharArch, mCharAnims);
-			mChar2		=new Character(mCharArch, mCharAnims);
-			mChar3		=new Character(mCharArch, mCharAnims);
-
-			mCharArch.ReadFromFile(mGameRootDir + "/Characters/YG45Naked.Character", mGD.GD, true);
-			mChar1.ReadFromFile(mGameRootDir + "/Characters/YG45CamiJeans.CharacterInstance");
-			mChar2.ReadFromFile(mGameRootDir + "/Characters/YG45CamiShorts.CharacterInstance");
-			mChar3.ReadFromFile(mGameRootDir + "/Characters/YG45ShortSleeveJeans.CharacterInstance");
-
+			//skip hair stuff when computing bone bounds
+			//hits to hair usually wouldn't activate much
 			List<string>	skipMats	=new List<string>();
-
 			skipMats.Add("Hair");
 
-			mChar3.ComputeBoneBounds(skipMats);
+			//load character stuff if any around
+			if(Directory.Exists(mGameRootDir + "/Characters"))
+			{
+				DirectoryInfo	di	=new DirectoryInfo(mGameRootDir + "/Characters");
 
-			(mCharArch as CharacterArch).BuildDebugBoundDrawData(mGD.GD, mCPrims);
+				FileInfo[]	fi	=di.GetFiles("*.AnimLib", SearchOption.TopDirectoryOnly);
+				if(fi.Length > 0)
+				{
+					mCharAnims	=new AnimLib();
+					mCharAnims.ReadFromFile(fi[0].DirectoryName + "\\" + fi[0].Name);
 
-			//character cel 2 stage
-			float	[]levels	=new float[2];
-			float	[]thresh	=new float[1];
+					List<Anim>	anims	=mCharAnims.GetAnims();
+					foreach(Anim a in anims)
+					{
+						mAnims.Add(a.Name);
+					}
+				}
 
-			levels[0]	=0.4f;
-			levels[1]	=1f;
-			thresh[0]	=0.3f;
+				fi	=di.GetFiles("*.MatLib", SearchOption.TopDirectoryOnly);
+				if(fi.Length > 0)
+				{
+					mCharMats	=new MatLib(mGD, mSKeeper);
+					mCharMats.ReadFromFile(fi[0].DirectoryName + "\\" + fi[0].Name);
+					mCharMats.InitCelShading(1);
+					mCharMats.GenerateCelTexturePreset(gd.GD,
+						gd.GD.FeatureLevel == FeatureLevel.Level_9_3, false, 0);
+					mCharMats.SetCelTexture(0);
+					mKeeper.AddLib(mCharMats);
+				}
 
-			mCharMats	=new MatLib(mGD, mSKeeper);
-			mCharMats.ReadFromFile(mGameRootDir + "/Characters/CharCelSkin.MatLib");
-			mCharMats.InitCelShading(1);
-			mCharMats.GenerateCelTexturePreset(gd.GD,
-				gd.GD.FeatureLevel == FeatureLevel.Level_9_3, false, 0);
-//			mPMats.GenerateCelTexture(mGD.GD,
-//				(gd.GD.FeatureLevel != FeatureLevel.Level_9_3),
-//				0, 64, thresh, levels);
-			mCharMats.SetCelTexture(0);
+				fi	=di.GetFiles("*.Character", SearchOption.TopDirectoryOnly);
+				foreach(FileInfo f in fi)
+				{
+					IArch	arch	=new CharacterArch();
+					arch.ReadFromFile(f.DirectoryName + "\\" + f.Name, mGD.GD, true);
 
-			mChar1.SetMatLib(mCharMats);
-			mChar2.SetMatLib(mCharMats);
-			mChar3.SetMatLib(mCharMats);
+					mCharArchs.Add(FileUtil.StripExtension(f.Name), arch);
+				}
 
-			mKeeper.AddLib(mStaticMats);
-			mKeeper.AddLib(mCharMats);
+				fi	=di.GetFiles("*.CharacterInstance", SearchOption.TopDirectoryOnly);
+				foreach(FileInfo f in fi)
+				{
+					string	archName	=f.Name;
+					if(archName.Contains('_'))
+					{
+						archName	=f.Name.Substring(0, f.Name.IndexOf('_'));
+					}
 
+					if(!mCharArchs.ContainsKey(archName))
+					{
+						continue;
+					}
+
+					Character	c	=new Character(mCharArchs[archName], mCharAnims);
+
+					//map this to an arch
+					mCharToArch.Add(c, mCharArchs[archName]);
+
+					c.ReadFromFile(f.DirectoryName + "\\" + f.Name);
+
+					c.SetMatLib(mCharMats);
+
+					c.SetTransform(Matrix.Translation(
+						Mathery.RandomPosition(mRand,
+							Vector3.UnitX * 100f +
+							Vector3.UnitZ * 100f)));
+
+					c.ComputeBoneBounds(skipMats);
+
+					c.AutoInvert(true, 0.15f);
+
+					mCharacters.Add(c);
+				}
+
+				if(mCharacters.Count > 0)
+				{
+					mAnimTimes	=new float[mCharacters.Count];
+					mCurAnims	=new int[mCharacters.Count];
+					mCBone		=new int[mCharacters.Count];
+					mCBones		=new Dictionary<int,Matrix>[mCharacters.Count];
+				}
+
+				foreach(KeyValuePair<string, IArch> arch in mCharArchs)
+				{
+					//build draw data for bone bounds
+					(arch.Value as CharacterArch).BuildDebugBoundDrawData(mGD.GD, mCPrims);
+				}
+			}
+
+			//typical material group for characters
+			//or at least it works with the ones
+			//I have right now
+			//TODO: way to define these in the asset?
 			List<string>	skinMats	=new List<string>();
 
 			skinMats.Add("Face");
@@ -207,57 +271,27 @@ namespace TestMeshes
 			skinMats.Add("Nails");
 			mKeeper.AddMaterialGroup("SkinGroup", skinMats);
 
-			mChar1.SetTransform(Matrix.Identity);
-			mChar2.SetTransform(Matrix.Translation(Vector3.UnitX * 50f));
-			mChar3.SetTransform(Matrix.Translation(Vector3.UnitX * -50f));
-
-			mChar1StartTime	=mCharAnims.GetAnimStartTime("TestIdle");
-			mChar2StartTime	=mCharAnims.GetAnimStartTime("WalkLoop");
-			mChar3StartTime	=mCharAnims.GetAnimStartTime("TestAnim");
-
-			mChar1EndTime	=mChar1StartTime + mCharAnims.GetAnimTime("TestIdle");
-			mChar2EndTime	=mChar2StartTime + mCharAnims.GetAnimTime("WalkLoop");
-			mChar3EndTime	=mChar3StartTime + mCharAnims.GetAnimTime("TestAnim");
-
 			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
 
 			mSUI.AddGump("UI\\CrossHair", "CrossHair", Vector4.One,
 				Vector2.UnitX * ((mResX / 2) - 16)
 				+ Vector2.UnitY * ((mResY / 2) - 16),
 				Vector2.One);
-			mSUI.AddGump("UI\\GumpElement", "CuteGump", Vector4.One, Vector2.One * 20f, Vector2.One);
 
-			mSUI.ModifyGumpScale("CuteGump", Vector2.One * 0.35f);
+			//string indicators for various statusy things
+			mST.AddString(mFonts[0], "", "AnimStatus",
+				color, Vector2.UnitX * 20f + Vector2.UnitY * 500f, Vector2.One);
+			mST.AddString(mFonts[0], "", "CharStatus",
+				color, Vector2.UnitX * 20f + Vector2.UnitY * 520f, Vector2.One);
+			mST.AddString(mFonts[0], "", "PosStatus",
+				color, Vector2.UnitX * 20f + Vector2.UnitY * 540f, Vector2.One);
+			mST.AddString(mFonts[0], "", "BoundsStatus",
+				color, Vector2.UnitX * 20f + Vector2.UnitY * 560f, Vector2.One);
 
-			mST.AddString("Pescadero40", "Boing!", "boing",
-				color, Vector2.One * 20f, Vector2.One * 1f);
+			UpdateCAStatus();
 
-			mTextMover.SetUpMove(Vector2.One * 20f,
-				Vector2.UnitX * (mResX - 100f) + Vector2.UnitY * (mResY - 50),
-				10f, 0.2f, 0.2f);
-
-			mbForward	=true;
-
-			mAudio.LoadSound("GainItem", mGameRootDir + "/Audio/SoundFX/GainItem.wav");
-			mAudio.LoadSound("WinMusic", mGameRootDir + "/Audio/SoundFX/WinMusic.wav");
-
-			mEmitter	=new Emitter();
-
-			mEmitter.Position				=(Vector3.UnitZ * 10f - Vector3.UnitX * 30);
-			mEmitter.OrientFront			=Vector3.ForwardRH;
-			mEmitter.OrientTop				=Vector3.Up;
-			mEmitter.Velocity				=Vector3.Zero;
-			mEmitter.CurveDistanceScaler	=50f;
-			mEmitter.ChannelCount			=1;
-			mEmitter.DopplerScaler			=1f;
-
-			mHitColor	=Vector4.One * 0.5f;
-
+			mHitColor	=Vector4.One * 0.9f;
 			mHitColor.Y	=mHitColor.Z	=0f;
-
-			mChar1.AutoInvert(true, 0.15f);
-			mChar2.AutoInvert(true, 0.15f);
-			mChar3.AutoInvert(true, 0.15f);
 		}
 
 
@@ -271,90 +305,51 @@ namespace TestMeshes
 			float	deltaMS		=(float)frameTime.TotalMilliseconds;
 			float	deltaSec	=(float)frameTime.TotalSeconds;
 
-			mChar1.Update(deltaSec);
-			mChar2.Update(deltaSec);
-			mChar3.Update(deltaSec);
-
-			mChar1AnimTime	+=deltaSec;
-			mChar2AnimTime	+=deltaSec;
-			mChar3AnimTime	+=deltaSec;
-
-			if(mChar1AnimTime > mChar1EndTime)
+			//animate characters
+			for(int i=0;i < mCharacters.Count;i++)
 			{
-				mChar1AnimTime	%=mChar1EndTime;
-			}
-			if(mChar1AnimTime < mChar1StartTime)
-			{
-				mChar1AnimTime	=mChar1StartTime;
-			}
+				Character	c	=mCharacters[i];
 
-			if(mChar2AnimTime > mChar2EndTime)
-			{
-				mChar2AnimTime	%=mChar2EndTime;
-			}
-			if(mChar2AnimTime < mChar2StartTime)
-			{
-				mChar2AnimTime	=mChar2StartTime;
-			}
+				c.Update(deltaSec);
 
-			if(mChar3AnimTime > mChar3EndTime)
-			{
-				mChar3AnimTime	%=mChar3EndTime;
-			}
-			if(mChar3AnimTime < mChar3StartTime)
-			{
-				mChar3AnimTime	=mChar3StartTime;
-			}
+				float	totTime	=mCharAnims.GetAnimTime(mAnims[mCurAnims[i]]);
+				float	strTime	=mCharAnims.GetAnimStartTime(mAnims[mCurAnims[i]]);
+				float	endTime	=totTime + strTime;
 
-			mChar1.Animate("TestIdle", mChar1AnimTime);
-//			mChar1.UpdateInvertedBones(true);
-			mC1Bones	=(mCharArch as CharacterArch).GetBoneTransforms(mCharAnims.GetSkeleton());
-
-			mChar2.Animate("WalkLoop", mChar2AnimTime);
-//			mChar2.UpdateInvertedBones(true);
-			mC2Bones	=(mCharArch as CharacterArch).GetBoneTransforms(mCharAnims.GetSkeleton());
-
-			mChar3.Animate("TestAnim", mChar3AnimTime);
-//			mChar3.UpdateInvertedBones(true);
-			mC3Bones	=(mCharArch as CharacterArch).GetBoneTransforms(mCharAnims.GetSkeleton());
-
-			mTextMover.Update((int)deltaMS);
-
-			if(mTextMover.Done())
-			{
-				if(mbForward)
+				mAnimTimes[i]	+=deltaSec;
+				if(mAnimTimes[i] > endTime)
 				{
-					mTextMover.SetUpMove(Vector2.UnitX * (mResX - 100f) + Vector2.UnitY * (mResY - 50),
-						Vector2.One * 20f,
-						10f, 0.2f, 0.2f);
+					mAnimTimes[i]	=strTime + (mAnimTimes[i] - endTime);
 				}
-				else
-				{
-					mTextMover.SetUpMove(Vector2.One * 20f,
-						Vector2.UnitX * (mResX - 100f) + Vector2.UnitY * (mResY - 50),
-						10f, 0.2f, 0.2f);
-				}
-				mbForward	=!mbForward;
+
+				c.Animate(mAnims[mCurAnims[i]], mAnimTimes[i]);
+
+				mCBones[i]	=(mCharToArch[c] as CharacterArch).GetBoneTransforms(mCharAnims.GetSkeleton());
 			}
 
-			mAudio.Update(mGD.GCam);
-
+			//check for keys
 			foreach(Input.InputAction act in actions)
 			{
-				if(act.mAction.Equals(Program.MyActions.PlaceDynamicLight))
+				if(act.mAction.Equals(Program.MyActions.NextCharacter))
 				{
-					mAudio.PlayAtLocation("WinMusic", 2f, mEmitter);
+					mCurChar++;
+					if(mCurChar >= mCharacters.Count)
+					{
+						mCurChar	=0;
+					}
+					UpdateCAStatus();
 				}
-				else if(act.mAction.Equals(Program.MyActions.ClearDynamicLights))
+				else if(act.mAction.Equals(Program.MyActions.NextAnim))
 				{
-					mAudio.Play("GainItem", true, 0.5f);
+					mCurAnims[mCurChar]++;
+					if(mCurAnims[mCurChar] >= mAnims.Count)
+					{
+						mCurAnims[mCurChar]	=0;
+					}
+					UpdateCAStatus();
 				}
 			}
-
-			Vector2	randScale;
-			randScale.X	=Mathery.RandomFloatNext(mRand, 0.5f, 2f);
-			randScale.Y	=Mathery.RandomFloatNext(mRand, 0.5f, 2f);
-
+			/*
 			Mesh	partHit;
 
 			float	?bHit	=mTestCol.RayIntersect(startPos, endPos, true);
@@ -376,7 +371,7 @@ namespace TestMeshes
 				{
 					mST.ModifyStringColor("boing", Mathery.RandomColorVector4(mRand));
 				}
-			}
+			}*/
 			
 			//adjust coordinate system
 			Matrix	shiftMat	=Matrix.RotationX(MathUtil.PiOverTwo);
@@ -386,10 +381,6 @@ namespace TestMeshes
 
 			startPos	=Vector3.TransformCoordinate(startPos, shiftMat);
 			endPos		=Vector3.TransformCoordinate(endPos, shiftMat);
-
-//			mST.ModifyStringScale("boing", randScale);
-
-//			mST.ModifyStringPosition("boing", mTextMover.GetPos());
 
 			mST.Update(mGD.DC);
 
@@ -403,6 +394,8 @@ namespace TestMeshes
 			mCharMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
 			mCharMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
 
+			mCPrims.Update(mGD.GCam, Vector3.Down);
+			/*
 			bHit	=mChar1.RayIntersect(startPos, endPos);
 			if(bHit != null)
 			{
@@ -425,72 +418,43 @@ namespace TestMeshes
 			{
 				mFrameCheck	=0;
 
-				mST.ModifyStringText("Pescadero40", "1:" + mChar1.GetThreadMisses() +
+				mST.ModifyStringText(mFonts[0], "1:" + mChar1.GetThreadMisses() +
 					", 2: " + mChar2.GetThreadMisses() + ", 3: "
 					+ mChar3.GetThreadMisses(), "boing");
 			}
+			mCPrims.ReBuildBoundsDrawData(mGD.GD, mCharacters[0]);
+			*/
 
-			mCPrims.ReBuildBoundsDrawData(mGD.GD, mChar2);
+			UpdatePosStatus();
 		}
 
 
 		internal void Render(DeviceContext dc)
 		{
-			mChar1.Draw(dc, mCharMats);
-			mChar2.Draw(dc, mCharMats);
-			mChar3.Draw(dc, mCharMats);
-			mKey1.Draw(dc, mStaticMats);
-			mKey2.Draw(dc, mStaticMats);
-			mKey3.Draw(dc, mStaticMats);
-			mTestCol.Draw(dc, mStaticMats);
-
-			//adjust coordinate system
-			Matrix	shiftMat	=Matrix.RotationX(MathUtil.PiOverTwo);
-
-			shiftMat	=Matrix.Identity;
-
-//			mCPrims.DrawBox(dc, mTestCol.GetTransform());
-			mCPrims.DrawBox(dc, mChar2.GetTransform() * shiftMat);
-
-			foreach(KeyValuePair<int, Matrix> bone in mC1Bones)
+			foreach(Character c in mCharacters)
 			{
-				Matrix	boneTrans	=bone.Value;
-
-				if(bone.Key == mC1Bone)
-				{
-					mCPrims.DrawBox(dc, bone.Key, boneTrans * shiftMat * mChar1.GetTransform(), mHitColor);
-				}
-				else
-				{
-					mCPrims.DrawBox(dc, bone.Key, boneTrans * shiftMat * mChar1.GetTransform(), Vector4.One * 0.5f);
-				}
+				c.Draw(dc, mCharMats);
 			}
 
-			foreach(KeyValuePair<int, Matrix> bone in mC2Bones)
+			foreach(StaticMesh sm in mMeshes)
 			{
-				Matrix	boneTrans	=bone.Value;
-
-				if(bone.Key == mC2Bone)
-				{
-					mCPrims.DrawBox(dc, bone.Key, boneTrans * shiftMat * mChar2.GetTransform(), mHitColor);
-				}
-				else
-				{
-					mCPrims.DrawBox(dc, bone.Key, boneTrans * shiftMat * mChar2.GetTransform(), Vector4.One * 0.5f);
-				}
+				sm.Draw(dc, mStaticMats);
 			}
 
-			foreach(KeyValuePair<int, Matrix> bone in mC3Bones)
+			for(int i=0;i < mCharacters.Count;i++)
 			{
-				Matrix	boneTrans	=bone.Value;
+				foreach(KeyValuePair<int, Matrix> bone in mCBones[i])
+				{
+					Matrix	boneTrans	=bone.Value;
 
-				if(bone.Key == mC3Bone)
-				{
-					mCPrims.DrawBox(dc, bone.Key, boneTrans * shiftMat * mChar3.GetTransform(), mHitColor);
-				}
-				else
-				{
-					mCPrims.DrawBox(dc, bone.Key, boneTrans * shiftMat * mChar3.GetTransform(), Vector4.One * 0.5f);
+					if(bone.Key == mCBone[i])
+					{
+						mCPrims.DrawBox(dc, bone.Key, boneTrans * mCharacters[i].GetTransform(), mHitColor);
+					}
+					else
+					{
+						mCPrims.DrawBox(dc, bone.Key, boneTrans * mCharacters[i].GetTransform(), Vector4.One * 0.5f);
+					}
 				}
 			}
 
@@ -504,9 +468,55 @@ namespace TestMeshes
 			mStaticMats.FreeAll();
 			mKeeper.Clear();
 			mCharMats.FreeAll();
-			mAudio.FreeAll();
 
 			mSKeeper.FreeAll();
+		}
+
+
+		void UpdateCAStatus()
+		{
+			mST.ModifyStringText(mFonts[0], "(C) CurCharacter: " + mCurChar, "CharStatus");
+			mST.ModifyStringText(mFonts[0], "(N) CurAnim: " + mAnims[mCurAnims[mCurChar]], "AnimStatus");
+		}
+
+
+		void UpdatePosStatus()
+		{
+			mST.ModifyStringText(mFonts[0], "(WASD) :"
+				+ (int)mGD.GCam.Position.X + ", "
+				+ (int)mGD.GCam.Position.Y + ", "
+				+ (int)mGD.GCam.Position.Z, "PosStatus");
+		}
+
+
+		void OnCompilesNeeded(object sender, EventArgs ea)
+		{
+			Thread	uiThread	=new Thread(() =>
+				{
+					mSProg	=new SharedForms.ThreadedProgress("Compiling Shaders...");
+					System.Windows.Forms.Application.Run(mSProg);
+				});
+
+			uiThread.SetApartmentState(ApartmentState.STA);
+			uiThread.Start();
+
+			while(mSProg == null)
+			{
+				Thread.Sleep(0);
+			}
+
+			mSProg.SetSizeInfo(0, (int)sender);
+		}
+
+
+		void OnCompileDone(object sender, EventArgs ea)
+		{
+			mSProg.SetCurrent((int)sender);
+
+			if((int)sender == mSProg.GetMax())
+			{
+				mSProg.Nuke();
+			}
 		}
 	}
 }

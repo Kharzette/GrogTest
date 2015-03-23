@@ -9,7 +9,6 @@ using UtilityLib;
 using MeshLib;
 
 using SharpDX;
-using SharpDX.D3DCompiler;
 using SharpDX.Direct3D;
 using SharpDX.Direct3D11;
 using SharpDX.DXGI;
@@ -30,16 +29,15 @@ namespace TestMeshes
 			MoveLeftRight, MoveLeft, MoveRight,
 			Turn, TurnLeft, TurnRight,
 			Pitch, PitchUp, PitchDown,
-			LightX, LightY, LightZ,
 			ToggleMouseLookOn, ToggleMouseLookOff,
-			PlaceDynamicLight, ClearDynamicLights
+			NextCharacter, NextAnim
 		};
 
 
 		[STAThread]
 		static void Main()
 		{
-			GraphicsDevice	gd	=new GraphicsDevice("YSNAIWNH",
+			GraphicsDevice	gd	=new GraphicsDevice("Test Meshes",
 				FeatureLevel.Level_11_0);
 
 			//save renderform position
@@ -161,14 +159,6 @@ namespace TestMeshes
 			inp.MapAction(MyActions.MoveLeft, ActionTypes.ContinuousHold, Modifiers.None, 30);
 			inp.MapAction(MyActions.MoveBack, ActionTypes.ContinuousHold, Modifiers.None, 31);
 			inp.MapAction(MyActions.MoveRight, ActionTypes.ContinuousHold, Modifiers.None, 32);
-			inp.MapAction(MyActions.LightX, ActionTypes.ContinuousHold, Modifiers.None, 36);
-			inp.MapAction(MyActions.LightY, ActionTypes.ContinuousHold, Modifiers.None, 37);
-			inp.MapAction(MyActions.LightZ, ActionTypes.ContinuousHold, Modifiers.None, 38);
-
-			inp.MapAction(MyActions.PlaceDynamicLight, ActionTypes.ActivateOnce,
-				Modifiers.None, System.Windows.Forms.Keys.G);
-			inp.MapAction(MyActions.ClearDynamicLights, ActionTypes.PressAndRelease,
-				Modifiers.None, System.Windows.Forms.Keys.H);
 
 			inp.MapToggleAction(MyActions.ToggleMouseLookOn,
 				MyActions.ToggleMouseLookOff, Modifiers.None,
@@ -179,9 +169,10 @@ namespace TestMeshes
 			inp.MapAxisAction(MyActions.MoveLeftRight, Input.MoveAxis.GamePadLeftXAxis);
 			inp.MapAxisAction(MyActions.MoveForwardBack, Input.MoveAxis.GamePadLeftYAxis);
 
-			inp.MapAction(MyActions.LightX, ActionTypes.ContinuousHold, Modifiers.None, Input.VariousButtons.GamePadDPadLeft);
-			inp.MapAction(MyActions.LightY, ActionTypes.ContinuousHold, Modifiers.None, Input.VariousButtons.GamePadDPadDown);
-			inp.MapAction(MyActions.LightZ, ActionTypes.ContinuousHold, Modifiers.None, Input.VariousButtons.GamePadDPadRight);
+			inp.MapAction(MyActions.NextCharacter, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.C);
+			inp.MapAction(MyActions.NextAnim, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.N);
 
 			return	inp;
 		}
