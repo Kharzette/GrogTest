@@ -68,33 +68,12 @@ namespace TestAudio
 
 			Emitter	emitter	=Audio.MakeEmitter(Vector3.Zero);
 
-			SharedForms.ThreadedProgress	tprog	=null;
-			
+			SharedForms.ShaderCompileHelper.mTitle	="Compiling Shaders...";
+
 			StuffKeeper	sk		=new StuffKeeper();
 
-			sk.eCompilesNeeded	+=(sender, args) => {
-				Thread	uiThread	=new Thread(() =>
-					{
-						tprog	=new SharedForms.ThreadedProgress("Compiling Shaders...");
-						Application.Run(tprog);
-					});
-
-				uiThread.SetApartmentState(ApartmentState.STA);
-				uiThread.Start();
-
-				while(tprog == null)
-				{
-					Thread.Sleep(0);
-				}
-
-				tprog.SetSizeInfo(0, (int)sender);	};
-
-			sk.eCompileDone	+=(sender, args) => {
-				tprog.SetCurrent((int)sender);
-				if((int)sender == tprog.GetMax())
-				{
-					tprog.Nuke();
-				} };
+			sk.eCompileNeeded	+=SharedForms.ShaderCompileHelper.CompileNeededHandler;
+			sk.eCompileDone		+=SharedForms.ShaderCompileHelper.CompileDoneHandler;
 
 			sk.Init(gd, gameRootDir);
 
@@ -102,6 +81,12 @@ namespace TestAudio
 			Input			inp			=SetUpInput();
 			Random			rand		=new Random();
 			CommonPrims		comPrims	=new CommonPrims(gd, sk);
+
+			EventHandler	actHandler	=new EventHandler(
+				delegate(object s, EventArgs ea)
+				{	inp.ClearInputs();	});
+
+			gd.RendForm.Activated	+=actHandler;
 
 			int	resx	=gd.RendForm.ClientRectangle.Width;
 			int	resy	=gd.RendForm.ClientRectangle.Height;
@@ -215,13 +200,20 @@ namespace TestAudio
 
 			Settings.Default.Save();
 			
+			gd.RendForm.Activated	-=actHandler;
+
 			//Release all resources
 			st.FreeAll();
 			fontMats.FreeAll();
-			sk.FreeAll();
-			gd.ReleaseAll();
-			aud.FreeAll();
+			comPrims.FreeAll();
 			inp.FreeAll();
+
+			sk.eCompileDone		-=SharedForms.ShaderCompileHelper.CompileDoneHandler;
+			sk.eCompileNeeded	-=SharedForms.ShaderCompileHelper.CompileNeededHandler;
+			sk.FreeAll();
+
+			aud.FreeAll();
+			gd.ReleaseAll();
 		}
 
 		static Input SetUpInput()

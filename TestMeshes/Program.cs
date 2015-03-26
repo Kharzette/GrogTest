@@ -50,6 +50,7 @@ namespace TestMeshes
 
 			gd.RendForm.Location	=Settings.Default.MainWindowPos;
 
+
 #if DEBUG
 			string	rootDir	="C:\\Games\\CurrentGame";
 #else
@@ -61,6 +62,12 @@ namespace TestMeshes
 			PlayerSteering	pSteering	=SetUpSteering();
 			Input			inp			=SetUpInput();
 			Random			rand		=new Random();
+
+			EventHandler	actHandler	=new EventHandler(
+				delegate(object s, EventArgs ea)
+				{	inp.ClearInputs();	});
+
+			gd.RendForm.Activated	+=actHandler;
 
 			Vector3		pos				=Vector3.One * 5f;
 			Vector3		lightDir		=-Vector3.UnitY;
@@ -136,19 +143,17 @@ namespace TestMeshes
 				lastTime	=timeNow;
 			}, true);
 
+			Settings.Default.Save();
+
+			gd.RendForm.Activated	-=actHandler;
 
 			theGame.FreeAll();
 
 			inp.FreeAll();
 
-			Settings.Default.Save();
 			
 			//Release all resources
 			gd.ReleaseAll();
-		}
-
-		static void RenderCB()
-		{
 		}
 
 		static Input SetUpInput()

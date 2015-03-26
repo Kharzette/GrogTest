@@ -39,6 +39,9 @@ namespace TestMeshes
 		Dictionary<string, IArch>	mStatics	=new Dictionary<string, IArch>();
 		List<StaticMesh>			mMeshes		=new List<StaticMesh>();
 
+		//submesh bounds
+		List<Dictionary<Mesh, BoundingBox>>	mMeshBounds	=new List<Dictionary<Mesh, BoundingBox>>();
+
 		//test characters
 		Dictionary<string, IArch>		mCharArchs	=new Dictionary<string, IArch>();
 		Dictionary<Character, IArch>	mCharToArch	=new Dictionary<Character,IArch>();
@@ -72,6 +75,7 @@ namespace TestMeshes
 		Vector4		mHitColor, mTextColor;
 		int			mFrameCheck;
 		int[]		mCBone;
+		Mesh		mPartHit;
 
 		//collision bones
 		Dictionary<int, Matrix>[]	mCBones;
@@ -89,7 +93,7 @@ namespace TestMeshes
 
 			mSKeeper	=new StuffKeeper();
 
-			mSKeeper.eCompilesNeeded	+=OnCompilesNeeded;
+			mSKeeper.eCompileNeeded	+=OnCompilesNeeded;
 			mSKeeper.eCompileDone		+=OnCompileDone;
 
 			mSKeeper.Init(mGD, gameRootDir);
@@ -127,7 +131,13 @@ namespace TestMeshes
 					mStaticMats.SetCelTexture(0);
 					mKeeper.AddLib(mStaticMats);
 				}
+
 				mStatics	=Mesh.LoadAllStaticMeshes(mGameRootDir + "\\Statics", gd.GD);
+
+				foreach(KeyValuePair<string, IArch> arch in mStatics)
+				{
+					arch.Value.UpdateBounds();
+				}
 
 				fi	=di.GetFiles("*.StaticInstance", SearchOption.TopDirectoryOnly);
 				foreach(FileInfo f in fi)
@@ -158,6 +168,7 @@ namespace TestMeshes
 							Vector3.UnitX * 100f +
 							Vector3.UnitZ * 100f)));
 				}
+				AddStaticCollision();
 			}
 
 			//skip hair stuff when computing bone bounds
@@ -375,29 +386,22 @@ namespace TestMeshes
 					UpdateInvertStatus();
 				}
 			}
-			/*
-			Mesh	partHit;
-
-			float	?bHit	=mTestCol.RayIntersect(startPos, endPos, true);
-			if(bHit != null)
+			
+			mPartHit	=null;
+			for(int i=0;i < mMeshes.Count;i++)
 			{
-				bHit	=mTestCol.RayIntersect(startPos, endPos, true, out partHit);
+				StaticMesh	sm	=mMeshes[i];
+
+				float	?bHit	=sm.RayIntersect(startPos, endPos, true);
 				if(bHit != null)
 				{
-					if(partHit == null)
-					{
-						mST.ModifyStringColor("boing", Vector4.UnitW + Vector4.UnitX);
-					}
-					else
-					{
-						mST.ModifyStringColor("boing", Vector4.UnitW + Vector4.UnitY);
-					}
+					bHit	=sm.RayIntersect(startPos, endPos, true, out mPartHit);
 				}
-				else
+				if(mPartHit != null)
 				{
-					mST.ModifyStringColor("boing", Mathery.RandomColorVector4(mRand));
+					break;
 				}
-			}*/
+			}
 			
 			//adjust coordinate system
 			Matrix	shiftMat	=Matrix.RotationX(MathUtil.PiOverTwo);
@@ -472,6 +476,26 @@ namespace TestMeshes
 				}
 			}
 
+			int	idx	=10000;
+			for(int i=0;i < mMeshes.Count;i++)
+			{
+				Matrix	mat	=mMeshes[i].GetTransform();
+
+				Dictionary<Mesh, BoundingBox>	bnd	=mMeshBounds[i];
+
+				foreach(KeyValuePair<Mesh, BoundingBox> b in bnd)
+				{
+					if(b.Key == mPartHit)
+					{
+						mCPrims.DrawBox(dc, idx++, b.Key.GetTransform() * mat, mHitColor);
+					}
+					else
+					{
+						mCPrims.DrawBox(dc, idx++, b.Key.GetTransform() * mat, Vector4.One * 0.5f);
+					}
+				}
+			}
+
 			mCPrims.DrawAxis(dc);
 
 			mSUI.Draw(dc, Matrix.Identity, mTextProj);
@@ -486,6 +510,23 @@ namespace TestMeshes
 			mCharMats.FreeAll();
 
 			mSKeeper.FreeAll();
+		}
+
+
+		void AddStaticCollision()
+		{
+			int	statIndex	=10000;
+			foreach(StaticMesh sm in mMeshes)
+			{
+				Dictionary<Mesh, BoundingBox>	bd	=sm.GetBoundData();
+
+				foreach(KeyValuePair<Mesh, BoundingBox> box in bd)
+				{
+					mCPrims.AddBox(mGD.GD, statIndex++, box.Value);
+				}
+
+				mMeshBounds.Add(bd);
+			}
 		}
 
 
