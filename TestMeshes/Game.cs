@@ -39,6 +39,11 @@ namespace TestMeshes
 		Dictionary<string, IArch>	mStatics	=new Dictionary<string, IArch>();
 		List<StaticMesh>			mMeshes		=new List<StaticMesh>();
 
+		//static transform details
+		List<Vector3>	mMeshPositions	=new List<Vector3>();
+		List<Vector3>	mMeshRotations	=new List<Vector3>();
+		List<Vector3>	mMeshScales		=new List<Vector3>();
+
 		//submesh bounds
 		List<Dictionary<Mesh, BoundingBox>>	mMeshBounds	=new List<Dictionary<Mesh, BoundingBox>>();
 
@@ -73,9 +78,10 @@ namespace TestMeshes
 		//collision debuggery
 		CommonPrims	mCPrims;
 		Vector4		mHitColor, mTextColor;
-		int			mFrameCheck;
+		int			mFrameCheck, mCurStatic;
 		int[]		mCBone;
 		Mesh		mPartHit;
+		StaticMesh	mMeshHit;
 
 		//collision bones
 		Dictionary<int, Matrix>[]	mCBones;
@@ -163,10 +169,13 @@ namespace TestMeshes
 
 					sm.UpdateBounds();
 					sm.SetMatLib(mStaticMats);
-					sm.SetTransform(Matrix.Translation(
-						Mathery.RandomPosition(mRand,
+					Vector3	randPos	=Mathery.RandomPosition(mRand,
 							Vector3.UnitX * 100f +
-							Vector3.UnitZ * 100f)));
+							Vector3.UnitZ * 100f);
+					mMeshPositions.Add(randPos);
+					mMeshRotations.Add(Vector3.Zero);
+					mMeshScales.Add(Vector3.One);
+					UpdateStaticTransform(mMeshes.Count - 1);
 				}
 				AddStaticCollision();
 			}
@@ -292,6 +301,8 @@ namespace TestMeshes
 				Vector2.One);
 
 			//string indicators for various statusy things
+			mST.AddString(mFonts[0], "", "StaticStatus",
+				mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 460f, Vector2.One);
 			mST.AddString(mFonts[0], "", "InvertStatus",
 				mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 480f, Vector2.One);
 			mST.AddString(mFonts[0], "", "AnimStatus",
@@ -307,6 +318,7 @@ namespace TestMeshes
 
 			UpdateCAStatus();
 			UpdateInvertStatus();
+			UpdateStaticStatus();
 		}
 
 
@@ -354,14 +366,26 @@ namespace TestMeshes
 					}
 					UpdateCAStatus();
 				}
+				else if(act.mAction.Equals(Program.MyActions.NextStatic))
+				{
+					mCurStatic++;
+					if(mCurStatic >= mMeshes.Count)
+					{
+						mCurStatic	=0;
+					}
+					UpdateStaticStatus();
+				}
 				else if(act.mAction.Equals(Program.MyActions.NextAnim))
 				{
-					mCurAnims[mCurChar]++;
-					if(mCurAnims[mCurChar] >= mAnims.Count)
+					if(mCharacters.Count > 0)
 					{
-						mCurAnims[mCurChar]	=0;
+						mCurAnims[mCurChar]++;
+						if(mCurAnims[mCurChar] >= mAnims.Count)
+						{
+							mCurAnims[mCurChar]	=0;
+						}
+						UpdateCAStatus();
 					}
-					UpdateCAStatus();
 				}
 				else if(act.mAction.Equals(Program.MyActions.IncreaseInvertInterval))
 				{
@@ -385,9 +409,36 @@ namespace TestMeshes
 					}
 					UpdateInvertStatus();
 				}
+				else if(act.mAction.Equals(Program.MyActions.RandRotateStatic))
+				{
+					if(mMeshes.Count > 0)
+					{
+						//make a random rotation
+						mMeshRotations[mCurStatic]	=new Vector3(
+							Mathery.RandomFloatNext(mRand, 0, MathUtil.TwoPi),
+							Mathery.RandomFloatNext(mRand, 0, MathUtil.TwoPi),
+							Mathery.RandomFloatNext(mRand, 0, MathUtil.TwoPi));
+						UpdateStaticTransform(mCurStatic);
+					}
+				}
+				else if(act.mAction.Equals(Program.MyActions.RandScaleStatic))
+				{
+					if(mMeshes.Count > 0)
+					{
+						//make a random scale
+						mMeshScales[mCurStatic]	=new Vector3(
+							Mathery.RandomFloatNext(mRand, 0.25f, 5f),
+							Mathery.RandomFloatNext(mRand, 0.25f, 5f),
+							Mathery.RandomFloatNext(mRand, 0.25f, 5f));
+						UpdateStaticTransform(mCurStatic);
+					}
+				}
 			}
 			
 			mPartHit	=null;
+			mMeshHit	=null;
+
+			float		bestDist	=float.MaxValue;
 			for(int i=0;i < mMeshes.Count;i++)
 			{
 				StaticMesh	sm	=mMeshes[i];
@@ -395,25 +446,29 @@ namespace TestMeshes
 				float	?bHit	=sm.RayIntersect(startPos, endPos, true);
 				if(bHit != null)
 				{
-					bHit	=sm.RayIntersect(startPos, endPos, true, out mPartHit);
-				}
-				if(mPartHit != null)
-				{
-					break;
+					Mesh	partHit	=null;
+
+					bHit	=sm.RayIntersect(startPos, endPos, true, out partHit);
+					if(bHit != null)
+					{
+						if(bHit.Value < bestDist)
+						{
+							bestDist	=bHit.Value;
+							mPartHit	=partHit;
+							mMeshHit	=sm;
+						}
+					}
 				}
 			}
 			
-			//adjust coordinate system
-			Matrix	shiftMat	=Matrix.RotationX(MathUtil.PiOverTwo);
-			shiftMat.Invert();
-
-			shiftMat	=Matrix.Identity;
-
-			startPos	=Vector3.TransformCoordinate(startPos, shiftMat);
-			endPos		=Vector3.TransformCoordinate(endPos, shiftMat);
-
-			mStaticMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
-			mCharMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
+			if(mStaticMats != null)
+			{
+				mStaticMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
+			}
+			if(mCharMats != null)
+			{
+				mCharMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
+			}
 
 			mCPrims.Update(mGD.GCam, Vector3.Down);
 			
@@ -479,13 +534,15 @@ namespace TestMeshes
 			int	idx	=10000;
 			for(int i=0;i < mMeshes.Count;i++)
 			{
-				Matrix	mat	=mMeshes[i].GetTransform();
+				StaticMesh	sm	=mMeshes[i];
+
+				Matrix	mat	=sm.GetTransform();
 
 				Dictionary<Mesh, BoundingBox>	bnd	=mMeshBounds[i];
 
 				foreach(KeyValuePair<Mesh, BoundingBox> b in bnd)
 				{
-					if(b.Key == mPartHit)
+					if(b.Key == mPartHit && mMeshHit == sm)
 					{
 						mCPrims.DrawBox(dc, idx++, b.Key.GetTransform() * mat, mHitColor);
 					}
@@ -505,11 +562,35 @@ namespace TestMeshes
 
 		internal void FreeAll()
 		{
-			mStaticMats.FreeAll();
+			if(mStaticMats != null)
+			{
+				mStaticMats.FreeAll();
+			}
 			mKeeper.Clear();
-			mCharMats.FreeAll();
+			if(mCharMats != null)
+			{
+				mCharMats.FreeAll();
+			}
 
 			mSKeeper.FreeAll();
+		}
+
+
+		void UpdateStaticTransform(int index)
+		{
+			StaticMesh	sm	=mMeshes[index];
+
+			Matrix	trans	=Matrix.Translation(mMeshPositions[index]);
+			Matrix	rot		=Matrix.RotationYawPitchRoll(
+				mMeshRotations[index].X,
+				mMeshRotations[index].Y,
+				mMeshRotations[index].Z);
+			Matrix	scl		=Matrix.Scaling(
+				mMeshScales[index].X,
+				mMeshScales[index].Y,
+				mMeshScales[index].Z);
+
+			sm.SetTransform(scl * rot * trans);
 		}
 
 
@@ -530,8 +611,19 @@ namespace TestMeshes
 		}
 
 
+		void UpdateStaticStatus()
+		{
+			mST.ModifyStringText(mFonts[0], "(,) CurStatic: " + mCurStatic
+				+ " (Y) To Random Rotate, (U) To Randomly Scale", "StaticStatus");
+		}
+
+
 		void UpdateCAStatus()
 		{
+			if(mAnims.Count == 0 || mCharacters.Count == 0)
+			{
+				return;
+			}
 			mST.ModifyStringText(mFonts[0], "(C) CurCharacter: " + mCurChar, "CharStatus");
 			mST.ModifyStringText(mFonts[0], "(N) CurAnim: " + mAnims[mCurAnims[mCurChar]], "AnimStatus");
 		}

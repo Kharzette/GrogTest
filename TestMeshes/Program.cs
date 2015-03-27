@@ -32,7 +32,9 @@ namespace TestMeshes
 			ToggleMouseLookOn, ToggleMouseLookOff,
 			NextCharacter, NextAnim,
 			IncreaseInvertInterval,
-			DecreaseInvertInterval
+			DecreaseInvertInterval,
+			NextStatic, RandRotateStatic,
+			RandScaleStatic
 		};
 
 
@@ -98,7 +100,6 @@ namespace TestMeshes
 						if(act.mAction.Equals(MyActions.ToggleMouseLookOn))
 						{
 							bMouseLookOn	=true;
-							Debug.WriteLine("Mouse look: " + bMouseLookOn);
 
 							gd.SetCapture(true);
 
@@ -108,7 +109,6 @@ namespace TestMeshes
 						else if(act.mAction.Equals(MyActions.ToggleMouseLookOff))
 						{
 							bMouseLookOn	=false;
-							Debug.WriteLine("Mouse look: " + bMouseLookOn);
 
 							gd.SetCapture(false);
 
@@ -185,6 +185,13 @@ namespace TestMeshes
 				Modifiers.None, System.Windows.Forms.Keys.PageUp);
 			inp.MapAction(MyActions.DecreaseInvertInterval, ActionTypes.PressAndRelease,
 				Modifiers.None, System.Windows.Forms.Keys.PageDown);
+
+			inp.MapAction(MyActions.NextStatic, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.Oemcomma);
+			inp.MapAction(MyActions.RandRotateStatic, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.Y);
+			inp.MapAction(MyActions.RandScaleStatic, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.U);
 
 			return	inp;
 		}
