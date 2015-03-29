@@ -28,7 +28,8 @@ namespace LibTest
 		{
 			MoveForwardBack, MoveForward, MoveBack,
 			MoveLeftRight, MoveLeft, MoveRight,
-			MoveForwardFast,
+			MoveForwardFast, MoveBackFast,
+			MoveLeftFast, MoveRightFast,
 			Turn, TurnLeft, TurnRight, Jump,
 			Pitch, PitchUp, PitchDown,
 			ToggleMouseLookOn, ToggleMouseLookOff,
@@ -176,13 +177,22 @@ namespace LibTest
 		{
 			Input	inp	=new InputLib.Input();
 			
-			inp.MapAction(MyActions.PitchUp, ActionTypes.ContinuousHold, Modifiers.None, 16);
-			inp.MapAction(MyActions.MoveForward, ActionTypes.ContinuousHold, Modifiers.None, 17);
-			inp.MapAction(MyActions.PitchDown, ActionTypes.ContinuousHold, Modifiers.None, 18);
-			inp.MapAction(MyActions.MoveLeft, ActionTypes.ContinuousHold, Modifiers.None, 30);
-			inp.MapAction(MyActions.MoveBack, ActionTypes.ContinuousHold, Modifiers.None, 31);
-			inp.MapAction(MyActions.MoveRight, ActionTypes.ContinuousHold, Modifiers.None, 32);
-			inp.MapAction(MyActions.MoveForwardFast, ActionTypes.ContinuousHold, Modifiers.ShiftHeld, 17);
+			inp.MapAction(MyActions.MoveForward, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.W);
+			inp.MapAction(MyActions.MoveLeft, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.A);
+			inp.MapAction(MyActions.MoveBack, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.S);
+			inp.MapAction(MyActions.MoveRight, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.D);
+			inp.MapAction(MyActions.MoveForwardFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.W);
+			inp.MapAction(MyActions.MoveBackFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.S);
+			inp.MapAction(MyActions.MoveLeftFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.A);
+			inp.MapAction(MyActions.MoveRightFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.D);
 
 			inp.MapAction(MyActions.ToggleFly, ActionTypes.PressAndRelease,
 				Modifiers.None, System.Windows.Forms.Keys.F);
@@ -224,9 +234,11 @@ namespace LibTest
 			pSteering.Method			=PlayerSteering.SteeringMethod.FirstPerson;
 			pSteering.Speed				=0.06f;
 
-			pSteering.SetMoveEnums(MyActions.MoveLeftRight, MyActions.MoveLeft, MyActions.MoveRight,
-				MyActions.MoveForwardBack, MyActions.MoveForward,
-				MyActions.MoveBack, MyActions.MoveForwardFast);
+			pSteering.SetMoveEnums(MyActions.MoveForwardBack, MyActions.MoveLeftRight,
+				MyActions.MoveForward, MyActions.MoveBack,
+				MyActions.MoveLeft, MyActions.MoveRight,
+				MyActions.MoveForwardFast, MyActions.MoveBackFast,
+				MyActions.MoveLeftFast, MyActions.MoveRightFast);
 
 			pSteering.SetTurnEnums(MyActions.Turn, MyActions.TurnLeft, MyActions.TurnRight);
 
