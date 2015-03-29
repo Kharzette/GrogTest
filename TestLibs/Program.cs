@@ -28,9 +28,11 @@ namespace LibTest
 		{
 			MoveForwardBack, MoveForward, MoveBack,
 			MoveLeftRight, MoveLeft, MoveRight,
-			Turn, TurnLeft, TurnRight,
+			MoveForwardFast,
+			Turn, TurnLeft, TurnRight, Jump,
 			Pitch, PitchUp, PitchDown,
 			ToggleMouseLookOn, ToggleMouseLookOff,
+			NextAnim, NextLevel, ToggleFly,
 			PlaceDynamicLight, ClearDynamicLights
 		};
 
@@ -71,10 +73,19 @@ namespace LibTest
 			Input			inp			=SetUpInput();
 			Random			rand		=new Random();
 
+			EventHandler	actHandler	=new EventHandler(
+				delegate(object s, EventArgs ea)
+				{	inp.ClearInputs();	});
+
+			gd.RendForm.Activated	+=actHandler;
+
 			Vector3	pos				=Vector3.One * 5f;
 			Vector3	lightDir		=-Vector3.UnitY;
 			bool	bMouseLookOn	=false;
 			long	lastTime		=Stopwatch.GetTimestamp();
+			bool	bFixedStep		=false;
+			float	step			=16.6666f;
+			float	fullTime		=0f;
 
 			RenderLoop.Run(gd.RendForm, () =>
 			{
@@ -117,10 +128,6 @@ namespace LibTest
 					}
 				}
 
-				pos	=pSteering.Update(pos, gd.GCam.Forward, gd.GCam.Left, gd.GCam.Up, actions);
-				
-				gd.GCam.Update(pos, pSteering.Pitch, pSteering.Yaw, pSteering.Roll);
-
 				//Clear views
 				gd.ClearViews();
 
@@ -128,21 +135,38 @@ namespace LibTest
 				long	delta	=timeNow - lastTime;
 				long	freq	=Stopwatch.Frequency;
 				long	freqMS	=freq / 1000;
+				float	msDelta	=(float)delta / (float)freqMS;
 
-				mapLoop.Update((float)delta / (float)freqMS, actions);
+				if(bFixedStep)
+				{
+					fullTime	+=msDelta;
+					while(fullTime >= step)
+					{
+						mapLoop.Update(step, actions, pSteering);
+						fullTime	-=step;
+					}
+				}
+				else
+				{
+					mapLoop.Update(msDelta, actions, pSteering);
+				}
 
-				mapLoop.Render();
+				mapLoop.RenderUpdate(msDelta);
+
+				mapLoop.Render(msDelta);
 
 				gd.Present();
 
 				lastTime	=timeNow;
 			});
 
+			Settings.Default.Save();
+
+			gd.RendForm.Activated	-=actHandler;
+
 			mapLoop.FreeAll();
 
 			inp.FreeAll();
-
-			Settings.Default.Save();
 			
 			//Release all resources
 			gd.ReleaseAll();
@@ -158,6 +182,19 @@ namespace LibTest
 			inp.MapAction(MyActions.MoveLeft, ActionTypes.ContinuousHold, Modifiers.None, 30);
 			inp.MapAction(MyActions.MoveBack, ActionTypes.ContinuousHold, Modifiers.None, 31);
 			inp.MapAction(MyActions.MoveRight, ActionTypes.ContinuousHold, Modifiers.None, 32);
+			inp.MapAction(MyActions.MoveForwardFast, ActionTypes.ContinuousHold, Modifiers.ShiftHeld, 17);
+
+			inp.MapAction(MyActions.ToggleFly, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.F);
+
+			inp.MapAction(MyActions.Jump, ActionTypes.ActivateOnce,
+				Modifiers.None, System.Windows.Forms.Keys.Space);
+			inp.MapAction(MyActions.Jump, ActionTypes.ActivateOnce,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.Space);
+			inp.MapAction(MyActions.Jump, ActionTypes.ActivateOnce,
+				Modifiers.ControlHeld, System.Windows.Forms.Keys.Space);
+			inp.MapAction(MyActions.Jump, ActionTypes.ActivateOnce,
+				Modifiers.None,	Input.VariousButtons.GamePadY);
 
 			inp.MapAction(MyActions.PlaceDynamicLight, ActionTypes.ActivateOnce,
 				Modifiers.None, System.Windows.Forms.Keys.G);
@@ -173,17 +210,23 @@ namespace LibTest
 			inp.MapAxisAction(MyActions.MoveLeftRight, Input.MoveAxis.GamePadLeftXAxis);
 			inp.MapAxisAction(MyActions.MoveForwardBack, Input.MoveAxis.GamePadLeftYAxis);
 
+			inp.MapAction(MyActions.NextAnim, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.K);
+			inp.MapAction(MyActions.NextLevel, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.L);
+
 			return	inp;
 		}
 
 		static PlayerSteering SetUpSteering()
 		{
 			PlayerSteering	pSteering	=new PlayerSteering();
-			pSteering.Method			=PlayerSteering.SteeringMethod.Fly;
-			pSteering.Speed				=5f;
+			pSteering.Method			=PlayerSteering.SteeringMethod.FirstPerson;
+			pSteering.Speed				=0.06f;
 
 			pSteering.SetMoveEnums(MyActions.MoveLeftRight, MyActions.MoveLeft, MyActions.MoveRight,
-				MyActions.MoveForwardBack, MyActions.MoveForward, MyActions.MoveBack);
+				MyActions.MoveForwardBack, MyActions.MoveForward,
+				MyActions.MoveBack, MyActions.MoveForwardFast);
 
 			pSteering.SetTurnEnums(MyActions.Turn, MyActions.TurnLeft, MyActions.TurnRight);
 
