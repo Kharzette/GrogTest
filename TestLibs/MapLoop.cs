@@ -33,7 +33,13 @@ namespace LibTest
 		StuffKeeper	mSKeeper;
 
 		//list of levels
-		List<string>	mLevels	=new List<string>();
+		List<string>	mLevels		=new List<string>();
+		int				mCurLevel	=0;
+
+		//list of available anims
+		List<string>	mAnims			=new List<string>();
+		int				mCurAnim		=0;
+		float			mCurAnimTime	=0f;
 
 		//dyn lights
 		DynamicLights	mDynLights;
@@ -67,6 +73,7 @@ namespace LibTest
 		ShadowHelper.Shadower	mPShad;
 		Mobile					mPMob;
 		LightHelper				mPLHelper;
+		bool					mbFly;
 
 		//gpu
 		GraphicsDevice	mGD;
@@ -80,12 +87,13 @@ namespace LibTest
 		//2d stuff
 		ScreenUI	mSUI;
 
-		//fontery
-		ScreenText	mST;
-		MatLib		mFontMats;
-		Matrix		mTextProj;
-		Mover2		mTextMover	=new Mover2();
-		int			mResX, mResY;
+		//Fonts / UI
+		ScreenText		mST;
+		MatLib			mFontMats;
+		Matrix			mTextProj;
+		Mover2			mTextMover	=new Mover2();
+		int				mResX, mResY;
+		List<string>	mFonts	=new List<string>();
 
 		//constants
 		const float	ShadowSlop		=12f;
@@ -100,7 +108,7 @@ namespace LibTest
 
 			mSKeeper	=new StuffKeeper();
 
-			mSKeeper.eCompilesNeeded	+=OnCompilesNeeded;
+			mSKeeper.eCompileNeeded	+=OnCompilesNeeded;
 			mSKeeper.eCompileDone		+=OnCompileDone;
 
 			mSKeeper.Init(mGD, gameRootDir);
@@ -116,14 +124,12 @@ namespace LibTest
 			mFontMats.SetMaterialEffect("Text", "2D.fx");
 			mFontMats.SetMaterialTechnique("Text", "Text");
 
-			List<string>	fonts	=mSKeeper.GetFontList();
+			mFonts	=mSKeeper.GetFontList();
 
-			mST		=new ScreenText(gd.GD, mFontMats, fonts[0], 1000);
+			mST		=new ScreenText(gd.GD, mFontMats, mFonts[0], 1000);
 			mSUI	=new ScreenUI(gd.GD, mFontMats, 100);
 
 			mTextProj	=Matrix.OrthoOffCenterLH(0, mResX, mResY, 0, 0.1f, 5f);
-
-			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
 
 			//grab two UI textures to show how to do gumpery
 			List<string>	texs	=mSKeeper.GetTexture2DList();
@@ -136,19 +142,21 @@ namespace LibTest
 				}
 			}
 
+			//draw some ui bits
 			if(uiTex.Count > 1)
 			{
-				mSUI.AddGump(uiTex[0], "CuteGump", Vector4.One, Vector2.One * 20f, Vector2.One);
-				mSUI.AddGump(uiTex[1], "CuteGump2", Vector4.One, Vector2.One * 20f, Vector2.One);
-				mSUI.ModifyGumpScale("CuteGump2", Vector2.One * 0.25f);
+				mSUI.AddGump(uiTex[0], "TestGump", Vector4.One, Vector2.One * 20f, Vector2.One);
+				mSUI.AddGump(uiTex[1], "TestGump2", Vector4.One, Vector2.One * 60f, Vector2.One);
+				//mSUI.ModifyGumpScale("TestGump", Vector2.One * 0.25f);
 			}
 
-			mST.AddString(fonts[0], "Boing!", "boing",
-				color, Vector2.UnitX * 20f + Vector2.UnitY * 700f, Vector2.One * 1f);
+			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
 
-			mTextMover.SetUpMove(Vector2.One * 20f,
-				Vector2.UnitX * (mResX - 100f) + Vector2.UnitY * (mResY - 50),
-				10f, 0.2f, 0.2f);
+			//string indicators for various statusy things
+			mST.AddString(mFonts[0], "Stuffs", "LevelStatus",
+				color, Vector2.UnitX * 20f + Vector2.UnitY * 620f, Vector2.One);
+			mST.AddString(mFonts[0], "Stuffs", "PosStatus",
+				color, Vector2.UnitX * 20f + Vector2.UnitY * 640f, Vector2.One);
 
 			mZoneMats.InitCelShading(1);
 			mZoneMats.GenerateCelTexturePreset(gd.GD,
@@ -162,39 +170,36 @@ namespace LibTest
 			//set up post processing module
 			mPost	=new PostProcess(gd, mZoneMats, "Post.fx");
 
-			int	resx	=gd.RendForm.ClientRectangle.Width;
-			int	resy	=gd.RendForm.ClientRectangle.Height;
-
 #if true
-			mPost.MakePostTarget(gd, "SceneColor", resx, resy, Format.R16G16B16A16_Float);
-			mPost.MakePostDepth(gd, "SceneDepth", resx, resy,
+			mPost.MakePostTarget(gd, "SceneColor", mResX, mResY, Format.R16G16B16A16_Float);
+			mPost.MakePostDepth(gd, "SceneDepth", mResX, mResY,
 				(gd.GD.FeatureLevel != FeatureLevel.Level_9_3)?
 					Format.D32_Float_S8X24_UInt : Format.D24_UNorm_S8_UInt);
-			mPost.MakePostTarget(gd, "SceneDepthMatNorm", resx, resy, Format.R16G16B16A16_Float);
-			mPost.MakePostTarget(gd, "Bleach", resx, resy, Format.R16G16B16A16_Float);
-			mPost.MakePostTarget(gd, "Outline", resx, resy, Format.R16G16B16A16_Float);
-			mPost.MakePostTarget(gd, "Bloom1", resx/2, resy/2, Format.R16G16B16A16_Float);
-			mPost.MakePostTarget(gd, "Bloom2", resx/2, resy/2, Format.R16G16B16A16_Float);
+			mPost.MakePostTarget(gd, "SceneDepthMatNorm", mResX, mResY, Format.R16G16B16A16_Float);
+			mPost.MakePostTarget(gd, "Bleach", mResX, mResY, Format.R16G16B16A16_Float);
+			mPost.MakePostTarget(gd, "Outline", mResX, mResY, Format.R16G16B16A16_Float);
+			mPost.MakePostTarget(gd, "Bloom1", mResX/2, mResY/2, Format.R16G16B16A16_Float);
+			mPost.MakePostTarget(gd, "Bloom2", mResX/2, mResY/2, Format.R16G16B16A16_Float);
 #elif ThirtyTwo
-			mPost.MakePostTarget(gd, "SceneColor", resx, resy, Format.R8G8B8A8_UNorm);
-			mPost.MakePostDepth(gd, "SceneDepth", resx, resy,
+			mPost.MakePostTarget(gd, "SceneColor", mResX, mResY, Format.R8G8B8A8_UNorm);
+			mPost.MakePostDepth(gd, "SceneDepth", mResX, mResY,
 				(gd.GD.FeatureLevel != FeatureLevel.Level_9_3)?
 					Format.D32_Float_S8X24_UInt : Format.D24_UNorm_S8_UInt);
-			mPost.MakePostTarget(gd, "SceneDepthMatNorm", resx, resy, Format.R16G16B16A16_Float);
-			mPost.MakePostTarget(gd, "Bleach", resx, resy, Format.R8G8B8A8_UNorm);
-			mPost.MakePostTarget(gd, "Outline", resx, resy, Format.R8G8B8A8_UNorm);
-			mPost.MakePostTarget(gd, "Bloom1", resx/2, resy/2, Format.R8G8B8A8_UNorm);
-			mPost.MakePostTarget(gd, "Bloom2", resx/2, resy/2, Format.R8G8B8A8_UNorm);
+			mPost.MakePostTarget(gd, "SceneDepthMatNorm", mResX, mResY, Format.R16G16B16A16_Float);
+			mPost.MakePostTarget(gd, "Bleach", mResX, mResY, Format.R8G8B8A8_UNorm);
+			mPost.MakePostTarget(gd, "Outline", mResX, mResY, Format.R8G8B8A8_UNorm);
+			mPost.MakePostTarget(gd, "Bloom1", mResX/2, mResY/2, Format.R8G8B8A8_UNorm);
+			mPost.MakePostTarget(gd, "Bloom2", mResX/2, mResY/2, Format.R8G8B8A8_UNorm);
 #else
-			mPost.MakePostTarget(gd, "SceneColor", resx, resy, Format.B5G5R5A1_UNorm);
-			mPost.MakePostDepth(gd, "SceneDepth", resx, resy,
+			mPost.MakePostTarget(gd, "SceneColor", mResX, mResY, Format.B5G5R5A1_UNorm);
+			mPost.MakePostDepth(gd, "SceneDepth", mResX, mResY,
 				(gd.GD.FeatureLevel != FeatureLevel.Level_9_3)?
 					Format.D32_Float_S8X24_UInt : Format.D24_UNorm_S8_UInt);
-			mPost.MakePostTarget(gd, "SceneDepthMatNorm", resx, resy, Format.R16G16B16A16_Float);
-			mPost.MakePostTarget(gd, "Bleach", resx, resy, Format.B5G5R5A1_UNorm);
-			mPost.MakePostTarget(gd, "Outline", resx, resy, Format.B5G5R5A1_UNorm);
-			mPost.MakePostTarget(gd, "Bloom1", resx/2, resy/2, Format.B5G5R5A1_UNorm);
-			mPost.MakePostTarget(gd, "Bloom2", resx/2, resy/2, Format.B5G5R5A1_UNorm);
+			mPost.MakePostTarget(gd, "SceneDepthMatNorm", mResX, mResY, Format.R16G16B16A16_Float);
+			mPost.MakePostTarget(gd, "Bleach", mResX, mResY, Format.B5G5R5A1_UNorm);
+			mPost.MakePostTarget(gd, "Outline", mResX, mResY, Format.B5G5R5A1_UNorm);
+			mPost.MakePostTarget(gd, "Bloom1", mResX/2, mResY/2, Format.B5G5R5A1_UNorm);
+			mPost.MakePostTarget(gd, "Bloom2", mResX/2, mResY/2, Format.B5G5R5A1_UNorm);
 #endif
 
 			if(gd.GD.FeatureLevel != FeatureLevel.Level_9_3)
@@ -233,6 +238,12 @@ namespace LibTest
 				{
 					mPAnims	=new AnimLib();
 					mPAnims.ReadFromFile(fi[0].DirectoryName + "\\" + fi[0].Name);
+
+					List<Anim>	anims	=mPAnims.GetAnims();
+					foreach(Anim a in anims)
+					{
+						mAnims.Add(a.Name);
+					}
 				}
 
 				fi	=di.GetFiles("*.MatLib", SearchOption.TopDirectoryOnly);
@@ -313,52 +324,114 @@ namespace LibTest
 				}
 			}
 
-			ChangeLevel(mLevels[0]);
+			ChangeLevel(mLevels[mCurLevel]);
 		}
 
 
-		internal void Update(float msDelta, List<Input.InputAction> actions)
+		//if running on a fixed timestep, this might be called
+		//more often with a smaller delta time than RenderUpdate()
+		internal void Update(float msDelta, List<Input.InputAction> actions, PlayerSteering ps)
 		{
-			if(mDynLights != null)
+			mZone.UpdateModels((int)msDelta);
+
+			foreach(Input.InputAction act in actions)
 			{
-				foreach(Input.InputAction act in actions)
+				if(act.mAction.Equals(Program.MyActions.Jump))
 				{
-					if(act.mAction.Equals(Program.MyActions.PlaceDynamicLight))
+					mPMob.Jump();
+				}
+				else if(act.mAction.Equals(Program.MyActions.NextAnim))
+				{
+					mCurAnim++;
+					if(mCurAnim >= mAnims.Count)
 					{
-						int	id;
-						mDynLights.CreateDynamicLight(mGD.GCam.Position,
-							Mathery.RandomColorVector(mRand),
-							300, out id);
-						mActiveLights.Add(id);
-					}
-					else if(act.mAction.Equals(Program.MyActions.ClearDynamicLights))
-					{
-						foreach(int id in mActiveLights)
-						{
-							mDynLights.Destroy(id);
-						}
-						mActiveLights.Clear();
+						mCurAnim	=0;
 					}
 				}
-
-				mDynLights.Update((int)msDelta, mGD);
+				else if(act.mAction.Equals(Program.MyActions.NextLevel))
+				{
+					mCurLevel++;
+					if(mCurLevel >= mLevels.Count)
+					{
+						mCurLevel	=0;
+					}
+					ChangeLevel(mLevels[mCurLevel]);
+				}
+				else if(act.mAction.Equals(Program.MyActions.ToggleFly))
+				{
+					mbFly		=!mbFly;
+					ps.Method	=(mbFly)? PlayerSteering.SteeringMethod.Fly : PlayerSteering.SteeringMethod.FirstPerson;
+				}
 			}
 
+			UpdateDynamicLights((int)msDelta, actions);
+
+			//get player movement vector (running so flat in Y)
+			Vector3	startPos	=mPMob.GetGroundPos();
+			Vector3	endPos		=ps.Update(startPos, mGD.GCam.Forward, mGD.GCam.Left, mGD.GCam.Up, actions);
+			Vector3	camPos		=Vector3.Zero;
+
+			mPMob.Move(endPos, (int)msDelta, false, true, mbFly, true, true, out endPos, out camPos);
+
+			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
+
+			Vector3	ppos	=mPMob.GetGroundPos();
+			Matrix	pmat	=Matrix.Translation(ppos);
+
+			if(mPChar != null)
+			{
+				mPChar.SetTransform(pmat);
+
+				float	totTime	=mPAnims.GetAnimTime(mAnims[mCurAnim]);
+				float	strTime	=mPAnims.GetAnimStartTime(mAnims[mCurAnim]);
+				float	endTime	=totTime + strTime;
+
+				mCurAnimTime	+=(msDelta * 0.001f);
+				if(mCurAnimTime > endTime)
+				{
+					mCurAnimTime	=strTime + (mCurAnimTime - endTime);
+				}
+
+				mPChar.Animate(mAnims[mCurAnim], mCurAnimTime);
+
+				mPLHelper.Update((int)msDelta, ppos + Vector3.Up * 32f, mDynLights);
+			}
+
+			mPB.Update(mGD.DC, msDelta);
+
+			mSHelper.HitCheck(mPMob, mGD.GCam.Position);
+
+			mAudio.Update(mGD.GCam);
+
+			mST.ModifyStringText(mFonts[0], "CurAnim: " + mAnims[mCurAnim] + ", " + mCurAnimTime, "AnimStatus");
+
+			mST.ModifyStringText(mFonts[0], "CurLevel: " + mLevels[mCurLevel], "LevelStatus");
+
+			mST.ModifyStringText(mFonts[0], "ModelOn: " + mPMob.GetModelOn() + " : "
+				+ (int)mGD.GCam.Position.X + ", "
+				+ (int)mGD.GCam.Position.Y + ", "
+				+ (int)mGD.GCam.Position.Z + " FlyMode: " + mbFly, "PosStatus");
+
+			mST.Update(mGD.DC);
+			mSUI.Update(mGD.DC);
+		}
+
+
+		//called once before render with accumulated delta
+		//do all once per render style updates in here
+		internal void RenderUpdate(float msDelta)
+		{
 			mZoneDraw.Update(msDelta);
 
-			mZoneMats.SetParameterForAll("mView", mGD.GCam.View);
-			mZoneMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
-			mZoneMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
+			mZoneMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
 
-			mStaticMats.SetParameterForAll("mView", mGD.GCam.View);
-			mStaticMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
-			mStaticMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
-
+			if(mStaticMats !=null)
+			{
+				mStaticMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
+			}
 			if(mPMats != null)
 			{
-				mPMats.SetParameterForAll("mView", mGD.GCam.View);
-				mPMats.SetParameterForAll("mEyePos", mGD.GCam.Position);
-				mPMats.SetParameterForAll("mProjection", mGD.GCam.Projection);
+				mPMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
 			}
 
 			mSHelper.Update((int)msDelta);
@@ -371,37 +444,10 @@ namespace LibTest
 
 				shelp.Value.Update((int)msDelta, pos, mDynLights);
 			}
-
-			Vector3	ppos	=mPMob.GetGroundPos();
-			Matrix	pmat	=Matrix.Translation(ppos);
-
-			if(mPChar != null)
-			{
-				mPChar.SetTransform(pmat);
-
-				mPChar.Animate("MoveWalk", 0.5f);
-
-				mPLHelper.Update((int)msDelta, ppos + Vector3.Up * 32f, mDynLights);
-			}
-
-			mPB.Update(mGD.DC, msDelta);
-
-			mSHelper.HitCheck(mPMob, mGD.GCam.Position);
-
-			mAudio.Update(mGD.GCam);
-
-			mST.ModifyStringText("Pescadero20x256", "ModelOn: " + mPMob.GetModelOn() + " : "
-				+ (int)mGD.GCam.Position.X + ", "
-				+ (int)mGD.GCam.Position.Y + ", "
-				+ (int)mGD.GCam.Position.Z
-				, "boing");
-
-			mST.Update(mGD.DC);
-			mSUI.Update(mGD.DC);
 		}
 
 
-		internal void Render()
+		internal void Render(float msDelta)
 		{
 			mPost.SetTargets(mGD, "SceneDepthMatNorm", "SceneDepth");
 
@@ -667,6 +713,36 @@ namespace LibTest
 			{
 				instances.Value.AssignMaterialIDs(mKeeper);
 			}
+		}
+
+
+		void UpdateDynamicLights(int msDelta, List<Input.InputAction> actions)
+		{
+			if(mDynLights == null)
+			{
+				return;
+			}
+			foreach(Input.InputAction act in actions)
+			{
+				if(act.mAction.Equals(Program.MyActions.PlaceDynamicLight))
+				{
+					int	id;
+					mDynLights.CreateDynamicLight(mGD.GCam.Position,
+						Mathery.RandomColorVector(mRand),
+						300, out id);
+					mActiveLights.Add(id);
+				}
+				else if(act.mAction.Equals(Program.MyActions.ClearDynamicLights))
+				{
+					foreach(int id in mActiveLights)
+					{
+						mDynLights.Destroy(id);
+					}
+					mActiveLights.Clear();
+				}
+			}
+
+			mDynLights.Update((int)msDelta, mGD);
 		}
 
 
