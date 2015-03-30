@@ -138,6 +138,11 @@ namespace LibTest
 				long	freqMS	=freq / 1000;
 				float	msDelta	=(float)delta / (float)freqMS;
 
+				//set an upper limit on deltas
+				//these can get huge if time is spent
+				//at a breakpoint etc
+				msDelta	=Math.Min(msDelta, 100f);
+
 				if(bFixedStep)
 				{
 					fullTime	+=msDelta;

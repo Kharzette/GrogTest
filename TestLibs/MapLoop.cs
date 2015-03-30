@@ -631,6 +631,8 @@ namespace LibTest
 		{
 			string	lev	=mGameRootDir + "/Levels/" + level;
 
+			mZone	=new Zone();
+
 			mZoneMats.ReadFromFile(lev + ".MatLib");
 			mZone.Read(lev + ".Zone", false);
 			mZoneDraw.Read(mGD, mSKeeper, lev + ".ZoneDraw", false);
