@@ -157,6 +157,8 @@ namespace LibTest
 				color, Vector2.UnitX * 20f + Vector2.UnitY * 620f, Vector2.One);
 			mST.AddString(mFonts[0], "Stuffs", "PosStatus",
 				color, Vector2.UnitX * 20f + Vector2.UnitY * 640f, Vector2.One);
+			mST.AddString(mFonts[0], "(G), (H) to clear:  Dynamic Lights: 0", "DynStatus",
+				color, Vector2.UnitX * 20f + Vector2.UnitY * 660f, Vector2.One);
 
 			mZoneMats.InitCelShading(1);
 			mZoneMats.GenerateCelTexturePreset(gd.GD,
@@ -324,7 +326,10 @@ namespace LibTest
 				}
 			}
 
+			//if debugger lands here, levels are sort of needed
+			//otherwise there's not much point for this test prog
 			ChangeLevel(mLevels[mCurLevel]);
+			mST.ModifyStringText(mFonts[0], "(L) CurLevel: " + mLevels[mCurLevel], "LevelStatus");
 		}
 
 
@@ -340,13 +345,15 @@ namespace LibTest
 				{
 					mPMob.Jump();
 				}
-				else if(act.mAction.Equals(Program.MyActions.NextAnim))
+				else if(act.mAction.Equals(Program.MyActions.NextAnim)
+					&& mAnims.Count > 0)
 				{
 					mCurAnim++;
 					if(mCurAnim >= mAnims.Count)
 					{
 						mCurAnim	=0;
 					}
+					mST.ModifyStringText(mFonts[0], "(K) CurAnim: " + mAnims[mCurAnim] + ", " + mCurAnimTime, "AnimStatus");
 				}
 				else if(act.mAction.Equals(Program.MyActions.NextLevel))
 				{
@@ -356,6 +363,7 @@ namespace LibTest
 						mCurLevel	=0;
 					}
 					ChangeLevel(mLevels[mCurLevel]);
+					mST.ModifyStringText(mFonts[0], "(L) CurLevel: " + mLevels[mCurLevel], "LevelStatus");
 				}
 				else if(act.mAction.Equals(Program.MyActions.ToggleFly))
 				{
@@ -403,14 +411,10 @@ namespace LibTest
 
 			mAudio.Update(mGD.GCam);
 
-			mST.ModifyStringText(mFonts[0], "CurAnim: " + mAnims[mCurAnim] + ", " + mCurAnimTime, "AnimStatus");
-
-			mST.ModifyStringText(mFonts[0], "CurLevel: " + mLevels[mCurLevel], "LevelStatus");
-
 			mST.ModifyStringText(mFonts[0], "ModelOn: " + mPMob.GetModelOn() + " : "
 				+ (int)mGD.GCam.Position.X + ", "
 				+ (int)mGD.GCam.Position.Y + ", "
-				+ (int)mGD.GCam.Position.Z + " FlyMode: " + mbFly, "PosStatus");
+				+ (int)mGD.GCam.Position.Z + " (F)lyMode: " + mbFly, "PosStatus");
 
 			mST.Update(mGD.DC);
 			mSUI.Update(mGD.DC);
@@ -514,9 +518,12 @@ namespace LibTest
 			mPost.FreeAll();
 			mZoneMats.FreeAll();
 			mZoneDraw.FreeAll();
-			mStaticMats.FreeAll();
 			mPB.FreeAll();
 			mKeeper.Clear();
+			if(mStaticMats != null)
+			{
+				mStaticMats.FreeAll();
+			}
 			if(mPMats != null)
 			{
 				mPMats.FreeAll();
@@ -733,6 +740,8 @@ namespace LibTest
 						Mathery.RandomColorVector(mRand),
 						300, out id);
 					mActiveLights.Add(id);
+					mST.ModifyStringText(mFonts[0], "(G), (H) to clear:  Dynamic Lights: "
+						+ mActiveLights.Count, "DynStatus");
 				}
 				else if(act.mAction.Equals(Program.MyActions.ClearDynamicLights))
 				{
@@ -741,6 +750,7 @@ namespace LibTest
 						mDynLights.Destroy(id);
 					}
 					mActiveLights.Clear();
+					mST.ModifyStringText(mFonts[0], "(G), (H) to clear:  Dynamic Lights: 0", "DynStatus");
 				}
 			}
 

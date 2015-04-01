@@ -27,6 +27,8 @@ namespace TestMeshes
 		{
 			MoveForwardBack, MoveForward, MoveBack,
 			MoveLeftRight, MoveLeft, MoveRight,
+			MoveForwardFast, MoveBackFast,
+			MoveLeftFast, MoveRightFast,
 			Turn, TurnLeft, TurnRight,
 			Pitch, PitchUp, PitchDown,
 			ToggleMouseLookOn, ToggleMouseLookOff,
@@ -120,7 +122,7 @@ namespace TestMeshes
 
 				pos	=pSteering.Update(pos, gd.GCam.Forward, gd.GCam.Left, gd.GCam.Up, actions);
 				
-				gd.GCam.Update(pos, pSteering.Pitch, pSteering.Yaw, pSteering.Roll);
+				gd.GCam.Update(-pos, pSteering.Pitch, pSteering.Yaw, pSteering.Roll);
 
 				//Clear views
 				gd.ClearViews();
@@ -160,12 +162,25 @@ namespace TestMeshes
 		{
 			Input	inp	=new InputLib.Input();
 			
+			inp.MapAction(MyActions.MoveForward, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.W);
+			inp.MapAction(MyActions.MoveLeft, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.A);
+			inp.MapAction(MyActions.MoveBack, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.S);
+			inp.MapAction(MyActions.MoveRight, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.D);
+			inp.MapAction(MyActions.MoveForwardFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.W);
+			inp.MapAction(MyActions.MoveBackFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.S);
+			inp.MapAction(MyActions.MoveLeftFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.A);
+			inp.MapAction(MyActions.MoveRightFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.D);
+
 			inp.MapAction(MyActions.PitchUp, ActionTypes.ContinuousHold, Modifiers.None, 16);
-			inp.MapAction(MyActions.MoveForward, ActionTypes.ContinuousHold, Modifiers.None, 17);
 			inp.MapAction(MyActions.PitchDown, ActionTypes.ContinuousHold, Modifiers.None, 18);
-			inp.MapAction(MyActions.MoveLeft, ActionTypes.ContinuousHold, Modifiers.None, 30);
-			inp.MapAction(MyActions.MoveBack, ActionTypes.ContinuousHold, Modifiers.None, 31);
-			inp.MapAction(MyActions.MoveRight, ActionTypes.ContinuousHold, Modifiers.None, 32);
 
 			inp.MapToggleAction(MyActions.ToggleMouseLookOn,
 				MyActions.ToggleMouseLookOff, Modifiers.None,
@@ -200,10 +215,13 @@ namespace TestMeshes
 		{
 			PlayerSteering	pSteering	=new PlayerSteering();
 			pSteering.Method			=PlayerSteering.SteeringMethod.Fly;
-			pSteering.Speed				=5f;
+			pSteering.Speed				=0.25f;
 
-			pSteering.SetMoveEnums(MyActions.MoveLeftRight, MyActions.MoveLeft, MyActions.MoveRight,
-				MyActions.MoveForwardBack, MyActions.MoveForward, MyActions.MoveBack);
+			pSteering.SetMoveEnums(MyActions.MoveForwardBack, MyActions.MoveLeftRight,
+				MyActions.MoveForward, MyActions.MoveBack,
+				MyActions.MoveLeft, MyActions.MoveRight,
+				MyActions.MoveForwardFast, MyActions.MoveBackFast,
+				MyActions.MoveLeftFast, MyActions.MoveRightFast);
 
 			pSteering.SetTurnEnums(MyActions.Turn, MyActions.TurnLeft, MyActions.TurnRight);
 
