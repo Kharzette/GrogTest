@@ -101,13 +101,14 @@ namespace LibTest
 
 		//constants
 		const float	ShadowSlop			=12f;
-		const float	PlayerMass			=0.055f;	//Tons
-		const float	JogMoveForce		=100f;		//Fig Newtons
-		const float	MidAirMoveForce		=50f;		//slight wiggle midair
-		const float	PlayerInertiaTensor	=7f;		//Wild guess
-		const float	GroundFriction		=3f;		//Frictols
-		const float	AirFriction			=1f;		//Frictols
-		const float	JumpForce			=35f;		//leapometers
+		const float	PlayerMass			=1f;		//Gronks
+		const float	JogMoveForce		=20000f;	//Fig Newtons
+		const float	MidAirMoveForce		=1000f;		//Slight wiggle midair
+		const float	GravityForce		=600f;		//Gravitons
+		const float	PlayerInertiaTensor	=80f;		//Wild guess
+		const float	GroundFriction		=2f;		//Frictols
+		const float	AirFriction			=0.1f;		//Frictols
+		const float	JumpForce			=15000f;	//leapometers
 
 
 		internal MapLoop(GraphicsDevice gd, string gameRootDir)
@@ -123,7 +124,7 @@ namespace LibTest
 			mSKeeper	=new StuffKeeper();
 
 			mSKeeper.eCompileNeeded	+=OnCompilesNeeded;
-			mSKeeper.eCompileDone		+=OnCompileDone;
+			mSKeeper.eCompileDone	+=OnCompileDone;
 
 			mSKeeper.Init(mGD, gameRootDir);
 
@@ -363,7 +364,7 @@ namespace LibTest
 			if(!mPMob.IsOnGround())
 			{
 				//gravity
-				mPhys.ApplyForce(Vector3.Down * 2f);
+				mPhys.ApplyForce(Vector3.Down * GravityForce);
 				mPhys.SetFriction(AirFriction);
 			}
 			else
@@ -377,7 +378,7 @@ namespace LibTest
 				//gravity
 				if(!mbFly)
 				{
-					mCamPhys.ApplyForce(Vector3.Down * 2f);
+					mCamPhys.ApplyForce(Vector3.Down * GravityForce);
 				}
 				mCamPhys.SetFriction(AirFriction);
 			}
@@ -453,7 +454,7 @@ namespace LibTest
 			Vector3	startPos	=mPCamMob.GetGroundPos();
 			Vector3	moveVec		=ps.Update(startPos, mGD.GCam.Forward, mGD.GCam.Left, mGD.GCam.Up, actions);
 
-			if(mPCamMob.IsOnGround())
+			if(mPCamMob.IsOnGround() || mbFly)
 			{
 				moveVec	*=JogMoveForce;
 			}
@@ -826,6 +827,7 @@ namespace LibTest
 			mPMob.SetGroundPos(gpos);
 			mPCamMob.SetGroundPos(gpos);
 			mPhys.SetPosition(gpos);
+			mCamPhys.SetPosition(gpos);
 
 			mKeeper.Scan();
 			mKeeper.AssignIDsToEffectMaterials("BSP.fx");

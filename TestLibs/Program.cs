@@ -246,7 +246,6 @@ namespace LibTest
 		{
 			PlayerSteering	pSteering	=new PlayerSteering();
 			pSteering.Method			=PlayerSteering.SteeringMethod.Fly;
-//			pSteering.Speed				=0.06f;
 
 			pSteering.SetMoveEnums(MyActions.MoveForwardBack, MyActions.MoveLeftRight,
 				MyActions.MoveForward, MyActions.MoveBack,
