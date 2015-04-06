@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,8 +35,11 @@ namespace LibTest
 			Pitch, PitchUp, PitchDown,
 			ToggleMouseLookOn, ToggleMouseLookOff,
 			NextAnim, NextLevel, ToggleFly,
-			PlaceDynamicLight, ClearDynamicLights
+			PlaceDynamicLight, ClearDynamicLights,
+			AccelTest, AccelTest2
 		};
+
+		const float	MouseTurnMultiplier	=.07f;
 
 
 		[STAThread]
@@ -84,12 +88,18 @@ namespace LibTest
 			Vector3	lightDir		=-Vector3.UnitY;
 			bool	bMouseLookOn	=false;
 			long	lastTime		=Stopwatch.GetTimestamp();
-			bool	bFixedStep		=false;
-			float	step			=16.6666f;
+			bool	bFixedStep		=true;
+			float	step			=1f / 60f;
 			float	fullTime		=0f;
+			long	freq			=Stopwatch.Frequency;
+			float	accumTest		=0f;
 
 			RenderLoop.Run(gd.RendForm, () =>
 			{
+				if(!gd.RendForm.Focused)
+				{
+					Thread.Sleep(33);
+				}
 				gd.CheckResize();
 
 				if(bMouseLookOn)
@@ -97,69 +107,39 @@ namespace LibTest
 					gd.ResetCursorPos();
 				}
 
-				List<Input.InputAction>	actions	=inp.GetAction();
-				if(!gd.RendForm.Focused)
-				{
-					actions.Clear();
-				}
-				else
-				{
-					foreach(Input.InputAction act in actions)
-					{
-						if(act.mAction.Equals(MyActions.ToggleMouseLookOn))
-						{
-							bMouseLookOn	=true;
-							Debug.WriteLine("Mouse look: " + bMouseLookOn);
-
-							gd.SetCapture(true);
-
-							inp.MapAxisAction(MyActions.Pitch, Input.MoveAxis.MouseYAxis);
-							inp.MapAxisAction(MyActions.Turn, Input.MoveAxis.MouseXAxis);
-						}
-						else if(act.mAction.Equals(MyActions.ToggleMouseLookOff))
-						{
-							bMouseLookOn	=false;
-							Debug.WriteLine("Mouse look: " + bMouseLookOn);
-
-							gd.SetCapture(false);
-
-							inp.UnMapAxisAction(MyActions.Pitch, Input.MoveAxis.MouseYAxis);
-							inp.UnMapAxisAction(MyActions.Turn, Input.MoveAxis.MouseXAxis);
-						}
-					}
-				}
-
 				//Clear views
 				gd.ClearViews();
 
-				long	timeNow	=Stopwatch.GetTimestamp();
-				long	delta	=timeNow - lastTime;
-				long	freq	=Stopwatch.Frequency;
-				long	freqMS	=freq / 1000;
-				float	msDelta	=(float)delta / (float)freqMS;
+				long	timeNow		=Stopwatch.GetTimestamp();
+				long	delta		=timeNow - lastTime;
+				float	secDelta	=(float)delta / freq;
+
+				accumTest	+=secDelta;
 
 				//set an upper limit on deltas
 				//these can get huge if time is spent
 				//at a breakpoint etc
-				msDelta	=Math.Min(msDelta, 100f);
+				secDelta	=Math.Min(secDelta, 0.1f);
 
 				if(bFixedStep)
 				{
-					fullTime	+=msDelta;
+					fullTime	+=secDelta;
 					while(fullTime >= step)
 					{
-						mapLoop.Update(step, actions, pSteering);
+						List<Input.InputAction>	acts	=UpdateInput(inp, gd, step, ref bMouseLookOn);
+						mapLoop.Update(step, acts, pSteering);
 						fullTime	-=step;
 					}
 				}
 				else
 				{
-					mapLoop.Update(msDelta, actions, pSteering);
+					List<Input.InputAction>	acts	=UpdateInput(inp, gd, secDelta, ref bMouseLookOn);
+					mapLoop.Update(secDelta, acts, pSteering);
 				}
 
-				mapLoop.RenderUpdate(msDelta);
+				mapLoop.RenderUpdate(secDelta * 1000f);
 
-				mapLoop.Render(msDelta);
+				mapLoop.Render();
 
 				gd.Present();
 
@@ -178,9 +158,33 @@ namespace LibTest
 			gd.ReleaseAll();
 		}
 
+		static List<Input.InputAction> UpdateInput(Input inp, GraphicsDevice gd,
+			float delta, ref bool bMouseLookOn)
+		{
+			List<Input.InputAction>	actions	=inp.GetAction();
+			foreach(Input.InputAction act in actions)
+			{
+				if(act.mAction.Equals(MyActions.ToggleMouseLookOn))
+				{
+					bMouseLookOn	=true;
+					gd.SetCapture(true);
+					inp.MapAxisAction(MyActions.Pitch, Input.MoveAxis.MouseYAxis);
+					inp.MapAxisAction(MyActions.Turn, Input.MoveAxis.MouseXAxis);
+				}
+				else if(act.mAction.Equals(MyActions.ToggleMouseLookOff))
+				{
+					bMouseLookOn	=false;
+					gd.SetCapture(false);
+					inp.UnMapAxisAction(MyActions.Pitch, Input.MoveAxis.MouseYAxis);
+					inp.UnMapAxisAction(MyActions.Turn, Input.MoveAxis.MouseXAxis);
+				}
+			}
+			return	actions;
+		}
+
 		static Input SetUpInput()
 		{
-			Input	inp	=new InputLib.Input();
+			Input	inp	=new InputLib.Input(MouseTurnMultiplier, 1f / Stopwatch.Frequency);
 			
 			inp.MapAction(MyActions.MoveForward, ActionTypes.ContinuousHold,
 				Modifiers.None, System.Windows.Forms.Keys.W);
@@ -230,14 +234,19 @@ namespace LibTest
 			inp.MapAction(MyActions.NextLevel, ActionTypes.PressAndRelease,
 				Modifiers.None, System.Windows.Forms.Keys.L);
 
+			inp.MapAction(MyActions.AccelTest, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.T);
+			inp.MapAction(MyActions.AccelTest2, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.T);
+
 			return	inp;
 		}
 
 		static PlayerSteering SetUpSteering()
 		{
 			PlayerSteering	pSteering	=new PlayerSteering();
-			pSteering.Method			=PlayerSteering.SteeringMethod.FirstPerson;
-			pSteering.Speed				=0.06f;
+			pSteering.Method			=PlayerSteering.SteeringMethod.Fly;
+//			pSteering.Speed				=0.06f;
 
 			pSteering.SetMoveEnums(MyActions.MoveForwardBack, MyActions.MoveLeftRight,
 				MyActions.MoveForward, MyActions.MoveBack,

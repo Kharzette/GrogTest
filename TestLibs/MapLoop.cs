@@ -71,9 +71,13 @@ namespace LibTest
 		MatLib					mPMats;
 		AnimLib					mPAnims;
 		ShadowHelper.Shadower	mPShad;
-		Mobile					mPMob;
+		Mobile					mPMob, mPCamMob;
 		LightHelper				mPLHelper;
-		bool					mbFly;
+		bool					mbFly	=true;
+
+		//physics testing stuffs
+		Physics	mPhys		=new Physics();
+		Physics	mCamPhys	=new Physics();
 
 		//gpu
 		GraphicsDevice	mGD;
@@ -96,11 +100,21 @@ namespace LibTest
 		List<string>	mFonts	=new List<string>();
 
 		//constants
-		const float	ShadowSlop		=12f;
+		const float	ShadowSlop			=12f;
+		const float	PlayerMass			=0.055f;	//Tons
+		const float	JogMoveForce		=100f;		//Fig Newtons
+		const float	MidAirMoveForce		=50f;		//slight wiggle midair
+		const float	PlayerInertiaTensor	=7f;		//Wild guess
+		const float	GroundFriction		=3f;		//Frictols
+		const float	AirFriction			=1f;		//Frictols
+		const float	JumpForce			=35f;		//leapometers
 
 
 		internal MapLoop(GraphicsDevice gd, string gameRootDir)
 		{
+			mPhys.SetProps(PlayerMass, PlayerInertiaTensor, GroundFriction);
+			mCamPhys.SetProps(PlayerMass, PlayerInertiaTensor, GroundFriction);
+
 			mGD				=gd;
 			mGameRootDir	=gameRootDir;
 			mResX			=gd.RendForm.ClientRectangle.Width;
@@ -180,8 +194,8 @@ namespace LibTest
 			mPost.MakePostTarget(gd, "SceneDepthMatNorm", mResX, mResY, Format.R16G16B16A16_Float);
 			mPost.MakePostTarget(gd, "Bleach", mResX, mResY, Format.R16G16B16A16_Float);
 			mPost.MakePostTarget(gd, "Outline", mResX, mResY, Format.R16G16B16A16_Float);
-			mPost.MakePostTarget(gd, "Bloom1", mResX/2, mResY/2, Format.R16G16B16A16_Float);
-			mPost.MakePostTarget(gd, "Bloom2", mResX/2, mResY/2, Format.R16G16B16A16_Float);
+			mPost.MakePostTargetHalfRes(gd, "Bloom1", mResX/2, mResY/2, Format.R16G16B16A16_Float);
+			mPost.MakePostTargetHalfRes(gd, "Bloom2", mResX/2, mResY/2, Format.R16G16B16A16_Float);
 #elif ThirtyTwo
 			mPost.MakePostTarget(gd, "SceneColor", mResX, mResY, Format.R8G8B8A8_UNorm);
 			mPost.MakePostDepth(gd, "SceneDepth", mResX, mResY,
@@ -280,8 +294,8 @@ namespace LibTest
 				}
 			}
 
-			mPMob	=new Mobile(mPChar, 16f, 50f, 45f, true, mTHelper);
-
+			mPMob		=new Mobile(mPChar, 16f, 50f, 45f, true, mTHelper);
+			mPCamMob	=new Mobile(mPChar, 16f, 50f, 45f, true, mTHelper);
 			mPLHelper	=new LightHelper();
 
 			mKeeper.AddLib(mZoneMats);
@@ -335,15 +349,60 @@ namespace LibTest
 
 		//if running on a fixed timestep, this might be called
 		//more often with a smaller delta time than RenderUpdate()
-		internal void Update(float msDelta, List<Input.InputAction> actions, PlayerSteering ps)
+		internal void Update(float secDelta, List<Input.InputAction> actions, PlayerSteering ps)
 		{
+			//Thread.Sleep(30);
+
+			float	msDelta	=secDelta * 1000f;
+
 			mZone.UpdateModels((int)msDelta);
+
+			float	yawAmount	=0f;
+			float	pitchAmount	=0f;
+
+			if(!mPMob.IsOnGround())
+			{
+				//gravity
+				mPhys.ApplyForce(Vector3.Down * 2f);
+				mPhys.SetFriction(AirFriction);
+			}
+			else
+			{
+				//friction
+				mPhys.SetFriction(GroundFriction);
+			}
+
+			if(!mPCamMob.IsOnGround())
+			{
+				//gravity
+				if(!mbFly)
+				{
+					mCamPhys.ApplyForce(Vector3.Down * 2f);
+				}
+				mCamPhys.SetFriction(AirFriction);
+			}
+			else
+			{
+				if(!mbFly)
+				{
+					mCamPhys.SetFriction(GroundFriction);
+				}
+			}
 
 			foreach(Input.InputAction act in actions)
 			{
 				if(act.mAction.Equals(Program.MyActions.Jump))
 				{
-					mPMob.Jump();
+					if(mPMob.IsOnGround())
+					{
+						mPhys.ApplyForce(Vector3.Up * JumpForce);
+						mPhys.SetFriction(AirFriction);
+					}
+					if(mPCamMob.IsOnGround() && !mbFly)
+					{
+						mCamPhys.ApplyForce(Vector3.Up * JumpForce);
+						mPhys.SetFriction(AirFriction);
+					}
 				}
 				else if(act.mAction.Equals(Program.MyActions.NextAnim)
 					&& mAnims.Count > 0)
@@ -370,31 +429,85 @@ namespace LibTest
 					mbFly		=!mbFly;
 					ps.Method	=(mbFly)? PlayerSteering.SteeringMethod.Fly : PlayerSteering.SteeringMethod.FirstPerson;
 				}
+				else if(act.mAction.Equals(Program.MyActions.Turn))
+				{
+					yawAmount	=act.mMultiplier;
+				}
+				else if(act.mAction.Equals(Program.MyActions.Pitch))
+				{
+					pitchAmount	=act.mMultiplier;
+				}
+				else if(act.mAction.Equals(Program.MyActions.AccelTest))
+				{
+					mPhys.ApplyForce(Vector3.UnitX * act.mMultiplier * JogMoveForce);
+				}
+				else if(act.mAction.Equals(Program.MyActions.AccelTest2))
+				{
+					mPhys.ApplyForce(-Vector3.UnitX * act.mMultiplier * JogMoveForce);
+				}
 			}
+			mPhys.Update(secDelta);
 
 			UpdateDynamicLights((int)msDelta, actions);
 
-			//get player movement vector (running so flat in Y)
-			Vector3	startPos	=mPMob.GetGroundPos();
-			Vector3	endPos		=ps.Update(startPos, mGD.GCam.Forward, mGD.GCam.Left, mGD.GCam.Up, actions);
-			Vector3	camPos		=Vector3.Zero;
+			Vector3	startPos	=mPCamMob.GetGroundPos();
+			Vector3	moveVec		=ps.Update(startPos, mGD.GCam.Forward, mGD.GCam.Left, mGD.GCam.Up, actions);
 
-			mPMob.Move(endPos, (int)msDelta, false, true, mbFly, true, true, out endPos, out camPos);
+			if(mPCamMob.IsOnGround())
+			{
+				moveVec	*=JogMoveForce;
+			}
+			else
+			{
+				moveVec	*=MidAirMoveForce;
+			}
+
+			//update phys position in case of model push
+			mCamPhys.SetPosition(startPos);
+			mCamPhys.ApplyForce(moveVec);
+
+			mCamPhys.Update(secDelta);
+
+			Vector3	camPos	=Vector3.Zero;
+			Vector3	endPos	=Vector3.Zero;
+
+//			endPos	=mPCamMob.GetGroundPos() + moveVec;
+
+			endPos	=mCamPhys.GetPosition();
+
+			mPCamMob.Move(endPos, (int)msDelta, false, mbFly, true, true, out endPos, out camPos);
+
+			mCamPhys.SetPosition(endPos);
+
+			if(mPCamMob.IsOnGround() && !mbFly)
+			{
+				mCamPhys.ClearVerticalMomentum();
+			}
 
 			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
 
-			Vector3	ppos	=mPMob.GetGroundPos();
-			Matrix	pmat	=Matrix.Translation(ppos);
-
 			if(mPChar != null)
 			{
-				mPChar.SetTransform(pmat);
+				Vector3	ppos;
+				mPMob.Move(mPhys.GetPosition(), (int)msDelta, false, false, true, true, out ppos, out camPos);
+
+				mPhys.SetPosition(ppos);
+
+				if(mPMob.IsOnGround())
+				{
+					mPhys.ClearVerticalMomentum();
+				}
+
+				Matrix	pmat	=Matrix.Translation(ppos);
+				Matrix	pOrient	=Matrix.RotationQuaternion(mPhys.GetOrient());
+
+				mPChar.SetTransform(pOrient * pmat);
 
 				float	totTime	=mPAnims.GetAnimTime(mAnims[mCurAnim]);
 				float	strTime	=mPAnims.GetAnimStartTime(mAnims[mCurAnim]);
 				float	endTime	=totTime + strTime;
 
-				mCurAnimTime	+=(msDelta * 0.001f);
+				mCurAnimTime	+=secDelta;
 				if(mCurAnimTime > endTime)
 				{
 					mCurAnimTime	=strTime + (mCurAnimTime - endTime);
@@ -411,10 +524,11 @@ namespace LibTest
 
 			mAudio.Update(mGD.GCam);
 
-			mST.ModifyStringText(mFonts[0], "ModelOn: " + mPMob.GetModelOn() + " : "
+			mST.ModifyStringText(mFonts[0], "ModelOn: " + mPCamMob.GetModelOn() + " : "
 				+ (int)mGD.GCam.Position.X + ", "
 				+ (int)mGD.GCam.Position.Y + ", "
-				+ (int)mGD.GCam.Position.Z + " (F)lyMode: " + mbFly, "PosStatus");
+				+ (int)mGD.GCam.Position.Z + " (F)lyMode: " + mbFly
+				+ " X: " + yawAmount + " Y: " + pitchAmount, "PosStatus");
 
 			mST.Update(mGD.DC);
 			mSUI.Update(mGD.DC);
@@ -451,7 +565,7 @@ namespace LibTest
 		}
 
 
-		internal void Render(float msDelta)
+		internal void Render()
 		{
 			mPost.SetTargets(mGD, "SceneDepthMatNorm", "SceneDepth");
 
@@ -703,11 +817,15 @@ namespace LibTest
 //			mPathMobile.SetZone(mZone);
 
 			mPMob.SetZone(mZone);
+			mPCamMob.SetZone(mZone);
 
 			MakeStaticShadowers();
 
 			float	ang;
-			mPMob.SetGroundPos(mZone.GetPlayerStartPos(out ang));
+			Vector3	gpos	=mZone.GetPlayerStartPos(out ang);
+			mPMob.SetGroundPos(gpos);
+			mPCamMob.SetGroundPos(gpos);
+			mPhys.SetPosition(gpos);
 
 			mKeeper.Scan();
 			mKeeper.AssignIDsToEffectMaterials("BSP.fx");
@@ -792,7 +910,11 @@ namespace LibTest
 					out intensity, out lightPos, out lightDir, out bDirectional);
 			}
 
-			if(shadower.mChar != mPChar)
+			if(shadower.mChar == mPChar)
+			{
+				shadowerTransform	=mPChar.GetTransform();
+			}
+			else
 			{
 				intensity			=0f;
 				lightPos			=Vector3.Zero;
@@ -802,8 +924,6 @@ namespace LibTest
 
 				return	false;
 			}
-
-			shadowerTransform	=Matrix.Translation(mPMob.GetGroundPos());
 
 			return	mPLHelper.GetCurrentValues(out col0, out col1, out col2,
 				out intensity, out lightPos, out lightDir, out bDirectional);
