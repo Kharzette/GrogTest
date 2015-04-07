@@ -104,11 +104,12 @@ namespace LibTest
 		const float	PlayerMass			=1f;		//Gronks
 		const float	JogMoveForce		=20000f;	//Fig Newtons
 		const float	MidAirMoveForce		=1000f;		//Slight wiggle midair
-		const float	GravityForce		=600f;		//Gravitons
+		const float	StumbleForce		=10000f;	//Fig Newtons
+		const float	GravityForce		=400f;		//Gravitons
 		const float	PlayerInertiaTensor	=80f;		//Wild guess
 		const float	GroundFriction		=2f;		//Frictols
 		const float	AirFriction			=0.1f;		//Frictols
-		const float	JumpForce			=15000f;	//leapometers
+		const float	JumpForce			=12000f;	//leapometers
 
 
 		internal MapLoop(GraphicsDevice gd, string gameRootDir)
@@ -361,7 +362,7 @@ namespace LibTest
 			float	yawAmount	=0f;
 			float	pitchAmount	=0f;
 
-			if(!mPMob.IsOnGround())
+			if(!mPMob.IsOnGround() && !mPMob.IsBadFooting())
 			{
 				//gravity
 				mPhys.ApplyForce(Vector3.Down * GravityForce);
@@ -373,7 +374,7 @@ namespace LibTest
 				mPhys.SetFriction(GroundFriction);
 			}
 
-			if(!mPCamMob.IsOnGround())
+			if(!mPCamMob.IsOnGround() && !mPCamMob.IsBadFooting())
 			{
 				//gravity
 				if(!mbFly)
@@ -458,6 +459,10 @@ namespace LibTest
 			{
 				moveVec	*=JogMoveForce;
 			}
+			else if(mPCamMob.IsBadFooting())
+			{
+				moveVec	*=StumbleForce;
+			}
 			else
 			{
 				moveVec	*=MidAirMoveForce;
@@ -529,7 +534,8 @@ namespace LibTest
 				+ (int)mGD.GCam.Position.X + ", "
 				+ (int)mGD.GCam.Position.Y + ", "
 				+ (int)mGD.GCam.Position.Z + " (F)lyMode: " + mbFly
-				+ " X: " + yawAmount + " Y: " + pitchAmount, "PosStatus");
+				+ " X: " + yawAmount + " Y: " + pitchAmount
+				+ (mPCamMob.IsBadFooting()? " BadFooting!" : ""), "PosStatus");
 
 			mST.Update(mGD.DC);
 			mSUI.Update(mGD.DC);

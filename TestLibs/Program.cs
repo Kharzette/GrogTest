@@ -115,12 +115,15 @@ namespace LibTest
 			gd.RendForm.Activated		+=actHandler;
 			gd.RendForm.AppDeactivated	+=deActHandler;
 
+			List<Input.InputAction>	acts	=new List<Input.InputAction>();
+
 			RenderLoop.Run(gd.RendForm, () =>
 			{
 				if(!gd.RendForm.Focused)
 				{
 					Thread.Sleep(33);
 				}
+
 				gd.CheckResize();
 
 				if(bMouseLookOn)
@@ -147,26 +150,36 @@ namespace LibTest
 					bClampInputs	=true;
 				}
 
-				List<Input.InputAction>	acts	=new List<Input.InputAction>();
-
 				if(bFixedStep)
 				{
 					fullTime	+=secDelta;
 					while(fullTime >= step)
 					{
-						if(gd.RendForm.Focused)
+						acts	=UpdateInput(inp, gd, bRightClickToTurn, bClampInputs, step, ref bMouseLookOn);
+						if(!gd.RendForm.Focused)
 						{
-							acts	=UpdateInput(inp, gd, bRightClickToTurn, bClampInputs, step, ref bMouseLookOn);
+							acts.Clear();
 						}
 						mapLoop.Update(step, acts, pSteering);
 						fullTime	-=step;
 					}
+
+					if(fullTime > 0f)
+					{
+						acts	=UpdateInput(inp, gd, bRightClickToTurn, bClampInputs, step, ref bMouseLookOn);
+						if(!gd.RendForm.Focused)
+						{
+							acts.Clear();
+						}
+						mapLoop.Update(fullTime, acts, pSteering);
+					}
 				}
 				else
 				{
-					if(gd.RendForm.Focused)
+					acts	=UpdateInput(inp, gd, bRightClickToTurn, bClampInputs, secDelta, ref bMouseLookOn);
+					if(!gd.RendForm.Focused)
 					{
-						acts	=UpdateInput(inp, gd, bRightClickToTurn, bClampInputs, secDelta, ref bMouseLookOn);
+						acts.Clear();
 					}
 					mapLoop.Update(secDelta, acts, pSteering);
 				}
@@ -184,10 +197,10 @@ namespace LibTest
 
 			Settings.Default.Save();
 
-			gd.RendForm.Activated	-=actHandler;
+			gd.RendForm.Activated		-=actHandler;
+			gd.RendForm.AppDeactivated	-=deActHandler;
 
 			mapLoop.FreeAll();
-
 			inp.FreeAll();
 			
 			//Release all resources
@@ -284,10 +297,22 @@ namespace LibTest
 			inp.MapAction(MyActions.MoveRightFast, ActionTypes.ContinuousHold,
 				Modifiers.ShiftHeld, System.Windows.Forms.Keys.D);
 
-			//key turning
+			//arrow keys
+			inp.MapAction(MyActions.MoveForward, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.Up);
+			inp.MapAction(MyActions.MoveBack, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.Down);
+			inp.MapAction(MyActions.MoveForwardFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.Up);
+			inp.MapAction(MyActions.MoveBackFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.Down);
 			inp.MapAction(MyActions.TurnLeft, ActionTypes.ContinuousHold,
-				Modifiers.None, System.Windows.Forms.Keys.Q);
+				Modifiers.None, System.Windows.Forms.Keys.Left);
 			inp.MapAction(MyActions.TurnRight, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.Right);
+			inp.MapAction(MyActions.PitchUp, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.Q);
+			inp.MapAction(MyActions.PitchDown, ActionTypes.ContinuousHold,
 				Modifiers.None, System.Windows.Forms.Keys.E);
 
 			inp.MapAction(MyActions.ToggleFly, ActionTypes.PressAndRelease,
