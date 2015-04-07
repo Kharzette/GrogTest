@@ -28,6 +28,8 @@ namespace TestAudio
 		{
 			MoveForwardBack, MoveForward, MoveBack,
 			MoveLeftRight, MoveLeft, MoveRight,
+			MoveForwardFast, MoveBackFast,
+			MoveLeftFast, MoveRightFast,
 			Turn, TurnLeft, TurnRight,
 			Pitch, PitchUp, PitchDown,
 			ToggleMouseLookOn, ToggleMouseLookOff,
@@ -36,6 +38,11 @@ namespace TestAudio
 			NextSound, PrevSound,
 			SetEmitterPos
 		};
+
+		const float	MouseTurnMultiplier		=0.13f;
+		const float	AnalogTurnMultiplier	=0.5f;
+		const float	KeyTurnMultiplier		=0.5f;
+		const float	MaxTimeDelta			=0.1f;
 
 
 		[STAThread]
@@ -77,16 +84,25 @@ namespace TestAudio
 
 			sk.Init(gd, gameRootDir);
 
-			PlayerSteering	pSteering	=SetUpSteering();
-			Input			inp			=SetUpInput();
-			Random			rand		=new Random();
-			CommonPrims		comPrims	=new CommonPrims(gd, sk);
+			PlayerSteering	pSteering		=SetUpSteering();
+			Input			inp				=SetUpInput();
+			Random			rand			=new Random();
+			CommonPrims		comPrims		=new CommonPrims(gd, sk);
+			bool			bMouseLookOn	=false;
 
 			EventHandler	actHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)
 				{	inp.ClearInputs();	});
 
-			gd.RendForm.Activated	+=actHandler;
+			EventHandler<EventArgs>	deActHandler	=new EventHandler<EventArgs>(
+				delegate(object s, EventArgs ea)
+				{
+					gd.SetCapture(false);
+					bMouseLookOn	=false;
+				});
+
+			gd.RendForm.Activated		+=actHandler;
+			gd.RendForm.AppDeactivated	+=deActHandler;
 
 			int	resx	=gd.RendForm.ClientRectangle.Width;
 			int	resy	=gd.RendForm.ClientRectangle.Height;
@@ -115,13 +131,18 @@ namespace TestAudio
 			st.AddString(fonts[0], "Stuffs", "PosStatus",
 				color, Vector2.UnitX * 20f + Vector2.UnitY * 580f, Vector2.One);
 
-			Vector3	pos				=Vector3.One * 5f;
-			Vector3	lightDir		=-Vector3.UnitY;
-			bool	bMouseLookOn	=false;
-			long	lastTime		=Stopwatch.GetTimestamp();
+			Vector3	pos			=Vector3.One * 5f;
+			Vector3	lightDir	=-Vector3.UnitY;
+			long	lastTime	=Stopwatch.GetTimestamp();
+			long	freq		=Stopwatch.Frequency;
 
 			RenderLoop.Run(gd.RendForm, () =>
 			{
+				if(!gd.RendForm.Focused)
+				{
+					Thread.Sleep(33);
+				}
+
 				gd.CheckResize();
 
 				if(bMouseLookOn)
@@ -129,43 +150,18 @@ namespace TestAudio
 					gd.ResetCursorPos();
 				}
 
-				List<Input.InputAction>	actions	=inp.GetAction();
+				long	timeNow		=Stopwatch.GetTimestamp();
+				long	delta		=timeNow - lastTime;
+				float	secDelta	=(float)delta / freq;
+				float	msDelta		=secDelta * 1000f;
+
+				List<Input.InputAction>	actions	=UpdateInput(inp, gd, msDelta, ref bMouseLookOn);
 				if(!gd.RendForm.Focused)
 				{
 					actions.Clear();
 				}
-				else
-				{
-					foreach(Input.InputAction act in actions)
-					{
-						if(act.mAction.Equals(MyActions.ToggleMouseLookOn))
-						{
-							bMouseLookOn	=true;
-							gd.SetCapture(true);
 
-							inp.MapAxisAction(MyActions.Pitch, Input.MoveAxis.MouseYAxis);
-							inp.MapAxisAction(MyActions.Turn, Input.MoveAxis.MouseXAxis);
-						}
-						else if(act.mAction.Equals(MyActions.ToggleMouseLookOff))
-						{
-							bMouseLookOn	=false;
-							gd.SetCapture(false);
-
-							inp.UnMapAxisAction(MyActions.Pitch, Input.MoveAxis.MouseYAxis);
-							inp.UnMapAxisAction(MyActions.Turn, Input.MoveAxis.MouseXAxis);
-						}
-						else if(act.mAction.Equals(MyActions.BoostSpeedOn))
-						{
-							pSteering.Speed	=2;
-						}
-						else if(act.mAction.Equals(MyActions.BoostSpeedOff))
-						{
-							pSteering.Speed	=0.5f;
-						}
-					}
-				}
-
-				pos	=pSteering.Update(pos, gd.GCam.Forward, gd.GCam.Left, gd.GCam.Up, actions);
+				pos	-=pSteering.Update(pos, gd.GCam.Forward, gd.GCam.Left, gd.GCam.Up, actions);
 				
 				gd.GCam.Update(pos, pSteering.Pitch, pSteering.Yaw, pSteering.Roll);
 
@@ -186,9 +182,6 @@ namespace TestAudio
 				//Clear views
 				gd.ClearViews();
 
-				long	timeNow	=Stopwatch.GetTimestamp();
-				long	delta	=timeNow - lastTime;
-
 				comPrims.DrawAxis(gd.DC);
 
 				st.Draw(gd.DC, Matrix.Identity, textProj);
@@ -200,7 +193,8 @@ namespace TestAudio
 
 			Settings.Default.Save();
 			
-			gd.RendForm.Activated	-=actHandler;
+			gd.RendForm.Activated		-=actHandler;
+			gd.RendForm.AppDeactivated	-=deActHandler;
 
 			//Release all resources
 			st.FreeAll();
@@ -218,18 +212,45 @@ namespace TestAudio
 
 		static Input SetUpInput()
 		{
-			Input	inp	=new InputLib.Input();
+			Input	inp	=new InputLib.Input(1000f / Stopwatch.Frequency);
 			
-			inp.MapAction(MyActions.PitchUp, ActionTypes.ContinuousHold, Modifiers.None, 16);
-			inp.MapAction(MyActions.MoveForward, ActionTypes.ContinuousHold, Modifiers.None, 17);
-			inp.MapAction(MyActions.PitchDown, ActionTypes.ContinuousHold, Modifiers.None, 18);
-			inp.MapAction(MyActions.MoveLeft, ActionTypes.ContinuousHold, Modifiers.None, 30);
-			inp.MapAction(MyActions.MoveBack, ActionTypes.ContinuousHold, Modifiers.None, 31);
-			inp.MapAction(MyActions.MoveRight, ActionTypes.ContinuousHold, Modifiers.None, 32);
+			inp.MapAction(MyActions.MoveForward, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.W);
+			inp.MapAction(MyActions.MoveLeft, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.A);
+			inp.MapAction(MyActions.MoveBack, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.S);
+			inp.MapAction(MyActions.MoveRight, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.D);
+			inp.MapAction(MyActions.MoveForwardFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.W);
+			inp.MapAction(MyActions.MoveBackFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.S);
+			inp.MapAction(MyActions.MoveLeftFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.A);
+			inp.MapAction(MyActions.MoveRightFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.D);
 
-			inp.MapToggleAction(MyActions.BoostSpeedOn,
-				MyActions.BoostSpeedOff, Modifiers.None,
-				42);
+			//arrow keys
+			inp.MapAction(MyActions.MoveForward, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.Up);
+			inp.MapAction(MyActions.MoveBack, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.Down);
+			inp.MapAction(MyActions.MoveForwardFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.Up);
+			inp.MapAction(MyActions.MoveBackFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.Down);
+			inp.MapAction(MyActions.TurnLeft, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.Left);
+			inp.MapAction(MyActions.TurnRight, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.Right);
+			inp.MapAction(MyActions.PitchUp, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.Q);
+			inp.MapAction(MyActions.PitchDown, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.E);
+
+			inp.MapAction(MyActions.PitchUp, ActionTypes.ContinuousHold, Modifiers.None, 16);
+			inp.MapAction(MyActions.PitchDown, ActionTypes.ContinuousHold, Modifiers.None, 18);
 
 			inp.MapToggleAction(MyActions.ToggleMouseLookOn,
 				MyActions.ToggleMouseLookOff, Modifiers.None,
@@ -259,16 +280,76 @@ namespace TestAudio
 			PlayerSteering	pSteering	=new PlayerSteering();
 			pSteering.Method			=PlayerSteering.SteeringMethod.Fly;
 
-			pSteering.SetMoveEnums(MyActions.MoveLeftRight, MyActions.MoveLeft, MyActions.MoveRight,
-				MyActions.MoveForwardBack, MyActions.MoveForward, MyActions.MoveBack);
+			pSteering.SetMoveEnums(MyActions.MoveForwardBack, MyActions.MoveLeftRight,
+				MyActions.MoveForward, MyActions.MoveBack, MyActions.MoveLeft,
+				MyActions.MoveRight, MyActions.MoveForwardFast, MyActions.MoveBackFast,
+				MyActions.MoveLeftFast, MyActions.MoveRightFast);
 
 			pSteering.SetTurnEnums(MyActions.Turn, MyActions.TurnLeft, MyActions.TurnRight);
 
 			pSteering.SetPitchEnums(MyActions.Pitch, MyActions.PitchUp, MyActions.PitchDown);
 
-			pSteering.Speed	=0.5f;
-
 			return	pSteering;
+		}
+
+		static List<Input.InputAction> UpdateInput(Input inp,
+			GraphicsDevice gd, float delta, ref bool bMouseLookOn)
+		{
+			List<Input.InputAction>	actions	=inp.GetAction();
+
+			foreach(Input.InputAction act in actions)
+			{
+				if(act.mAction.Equals(MyActions.ToggleMouseLookOn))
+				{
+					bMouseLookOn	=true;
+					gd.SetCapture(true);
+					inp.MapAxisAction(MyActions.Pitch, Input.MoveAxis.MouseYAxis);
+					inp.MapAxisAction(MyActions.Turn, Input.MoveAxis.MouseXAxis);
+				}
+				else if(act.mAction.Equals(MyActions.ToggleMouseLookOff))
+				{
+					bMouseLookOn	=false;
+					gd.SetCapture(false);
+					inp.UnMapAxisAction(MyActions.Pitch, Input.MoveAxis.MouseYAxis);
+					inp.UnMapAxisAction(MyActions.Turn, Input.MoveAxis.MouseXAxis);
+				}
+			}
+
+			//delta scale analogs, since there's no timestamp stuff in gamepad code
+			foreach(Input.InputAction act in actions)
+			{
+				if(!act.mbTime && act.mDevice == Input.InputAction.DeviceType.ANALOG)
+				{
+					//analog needs a time scale applied
+					act.mMultiplier	*=delta;
+				}
+			}
+
+			//scale inputs to user prefs
+			foreach(Input.InputAction act in actions)
+			{
+				if(act.mAction.Equals(MyActions.Turn)
+					|| act.mAction.Equals(MyActions.TurnLeft)
+					|| act.mAction.Equals(MyActions.TurnRight)
+					|| act.mAction.Equals(MyActions.Pitch)
+					|| act.mAction.Equals(MyActions.PitchDown)
+					|| act.mAction.Equals(MyActions.PitchUp))
+				{
+					if(act.mDevice == Input.InputAction.DeviceType.MOUSE)
+					{
+						act.mMultiplier	*=MouseTurnMultiplier;
+					}
+					else if(act.mDevice == Input.InputAction.DeviceType.ANALOG)
+					{
+						act.mMultiplier	*=AnalogTurnMultiplier;
+					}
+					else if(act.mDevice == Input.InputAction.DeviceType.KEYS)
+					{
+						act.mMultiplier	*=KeyTurnMultiplier;
+					}
+				}
+			}
+			return	actions;
 		}
 
 		static void CheckInputKeys(List<Input.InputAction> acts,

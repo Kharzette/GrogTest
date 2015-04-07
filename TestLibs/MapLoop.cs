@@ -475,11 +475,7 @@ namespace LibTest
 			mCamPhys.Update(secDelta);
 
 			Vector3	camPos	=Vector3.Zero;
-			Vector3	endPos	=Vector3.Zero;
-
-//			endPos	=mPCamMob.GetGroundPos() + moveVec;
-
-			endPos	=mCamPhys.GetPosition();
+			Vector3	endPos	=mCamPhys.GetPosition();
 
 			mPCamMob.Move(endPos, (int)msDelta, false, mbFly, true, true, out endPos, out camPos);
 

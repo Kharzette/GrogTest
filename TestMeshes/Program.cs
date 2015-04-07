@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,6 +40,11 @@ namespace TestMeshes
 			RandScaleStatic
 		};
 
+		const float	MouseTurnMultiplier		=0.13f;
+		const float	AnalogTurnMultiplier	=0.5f;
+		const float	KeyTurnMultiplier		=0.5f;
+		const float	MaxTimeDelta			=0.1f;
+
 
 		[STAThread]
 		static void Main()
@@ -63,19 +69,27 @@ namespace TestMeshes
 
 			Game	theGame	=new Game(gd, rootDir);
 			
-			PlayerSteering	pSteering	=SetUpSteering();
-			Input			inp			=SetUpInput();
-			Random			rand		=new Random();
+			PlayerSteering	pSteering		=SetUpSteering();
+			Input			inp				=SetUpInput();
+			Random			rand			=new Random();
+			bool			bMouseLookOn	=false;
 
 			EventHandler	actHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)
 				{	inp.ClearInputs();	});
 
-			gd.RendForm.Activated	+=actHandler;
+			EventHandler<EventArgs>	deActHandler	=new EventHandler<EventArgs>(
+				delegate(object s, EventArgs ea)
+				{
+					gd.SetCapture(false);
+					bMouseLookOn	=false;
+				});
+
+			gd.RendForm.Activated		+=actHandler;
+			gd.RendForm.AppDeactivated	+=deActHandler;
 
 			Vector3		pos				=Vector3.One * 5f;
 			Vector3		lightDir		=-Vector3.UnitY;
-			bool		bMouseLookOn	=false;
 			long		lastTime		=Stopwatch.GetTimestamp();
 			TimeSpan	frameTime		=new TimeSpan();
 			long		freq			=Stopwatch.Frequency;
@@ -83,6 +97,11 @@ namespace TestMeshes
 
 			RenderLoop.Run(gd.RendForm, () =>
 			{
+				if(!gd.RendForm.Focused)
+				{
+					Thread.Sleep(33);
+				}
+
 				gd.CheckResize();
 
 				if(bMouseLookOn)
@@ -90,51 +109,28 @@ namespace TestMeshes
 					gd.ResetCursorPos();
 				}
 
-				List<Input.InputAction>	actions	=inp.GetAction();
+				//Clear views
+				gd.ClearViews();
+
+				long	timeNow		=Stopwatch.GetTimestamp();
+				long	delta		=timeNow - lastTime;
+				float	secDelta	=(float)delta / freq;
+				float	msDelta		=secDelta * 1000f;
+
+				//limit long frame times
+				msDelta	=Math.Min(msDelta, 100.0f);
+
+				List<Input.InputAction>	actions	=UpdateInput(inp, gd, msDelta, ref bMouseLookOn);
 				if(!gd.RendForm.Focused)
 				{
 					actions.Clear();
 				}
-				else
-				{
-					foreach(Input.InputAction act in actions)
-					{
-						if(act.mAction.Equals(MyActions.ToggleMouseLookOn))
-						{
-							bMouseLookOn	=true;
 
-							gd.SetCapture(true);
-
-							inp.MapAxisAction(MyActions.Pitch, Input.MoveAxis.MouseYAxis);
-							inp.MapAxisAction(MyActions.Turn, Input.MoveAxis.MouseXAxis);
-						}
-						else if(act.mAction.Equals(MyActions.ToggleMouseLookOff))
-						{
-							bMouseLookOn	=false;
-
-							gd.SetCapture(false);
-
-							inp.UnMapAxisAction(MyActions.Pitch, Input.MoveAxis.MouseYAxis);
-							inp.UnMapAxisAction(MyActions.Turn, Input.MoveAxis.MouseXAxis);
-						}
-					}
-				}
-
-				pos	=pSteering.Update(pos, gd.GCam.Forward, gd.GCam.Left, gd.GCam.Up, actions);
+				pos	-=pSteering.Update(pos, gd.GCam.Forward, gd.GCam.Left, gd.GCam.Up, actions);
 				
-				gd.GCam.Update(-pos, pSteering.Pitch, pSteering.Yaw, pSteering.Roll);
+				gd.GCam.Update(pos, pSteering.Pitch, pSteering.Yaw, pSteering.Roll);
 
-				//Clear views
-				gd.ClearViews();
-
-				long	timeNow	=Stopwatch.GetTimestamp();
-				long	delta	=timeNow - lastTime;
-				double	deltaMS	=delta / (double)freqMS;
-
-				//limit long frame times
-				deltaMS	=Math.Min(deltaMS, 100.0);
-
-				frameTime	=TimeSpan.FromMilliseconds(deltaMS);
+				frameTime	=TimeSpan.FromMilliseconds(msDelta);
 
 				theGame.Update(frameTime, actions);
 
@@ -147,20 +143,80 @@ namespace TestMeshes
 
 			Settings.Default.Save();
 
-			gd.RendForm.Activated	-=actHandler;
+			gd.RendForm.Activated		-=actHandler;
+			gd.RendForm.AppDeactivated	-=deActHandler;
 
 			theGame.FreeAll();
 
 			inp.FreeAll();
-
 			
 			//Release all resources
 			gd.ReleaseAll();
 		}
 
+		static List<Input.InputAction> UpdateInput(Input inp,
+			GraphicsDevice gd, float delta, ref bool bMouseLookOn)
+		{
+			List<Input.InputAction>	actions	=inp.GetAction();
+
+			foreach(Input.InputAction act in actions)
+			{
+				if(act.mAction.Equals(MyActions.ToggleMouseLookOn))
+				{
+					bMouseLookOn	=true;
+					gd.SetCapture(true);
+					inp.MapAxisAction(MyActions.Pitch, Input.MoveAxis.MouseYAxis);
+					inp.MapAxisAction(MyActions.Turn, Input.MoveAxis.MouseXAxis);
+				}
+				else if(act.mAction.Equals(MyActions.ToggleMouseLookOff))
+				{
+					bMouseLookOn	=false;
+					gd.SetCapture(false);
+					inp.UnMapAxisAction(MyActions.Pitch, Input.MoveAxis.MouseYAxis);
+					inp.UnMapAxisAction(MyActions.Turn, Input.MoveAxis.MouseXAxis);
+				}
+			}
+
+			//delta scale analogs, since there's no timestamp stuff in gamepad code
+			foreach(Input.InputAction act in actions)
+			{
+				if(!act.mbTime && act.mDevice == Input.InputAction.DeviceType.ANALOG)
+				{
+					//analog needs a time scale applied
+					act.mMultiplier	*=delta;
+				}
+			}
+
+			//scale inputs to user prefs
+			foreach(Input.InputAction act in actions)
+			{
+				if(act.mAction.Equals(MyActions.Turn)
+					|| act.mAction.Equals(MyActions.TurnLeft)
+					|| act.mAction.Equals(MyActions.TurnRight)
+					|| act.mAction.Equals(MyActions.Pitch)
+					|| act.mAction.Equals(MyActions.PitchDown)
+					|| act.mAction.Equals(MyActions.PitchUp))
+				{
+					if(act.mDevice == Input.InputAction.DeviceType.MOUSE)
+					{
+						act.mMultiplier	*=MouseTurnMultiplier;
+					}
+					else if(act.mDevice == Input.InputAction.DeviceType.ANALOG)
+					{
+						act.mMultiplier	*=AnalogTurnMultiplier;
+					}
+					else if(act.mDevice == Input.InputAction.DeviceType.KEYS)
+					{
+						act.mMultiplier	*=KeyTurnMultiplier;
+					}
+				}
+			}
+			return	actions;
+		}
+
 		static Input SetUpInput()
 		{
-			Input	inp	=new InputLib.Input();
+			Input	inp	=new InputLib.Input(1000f / Stopwatch.Frequency);
 			
 			inp.MapAction(MyActions.MoveForward, ActionTypes.ContinuousHold,
 				Modifiers.None, System.Windows.Forms.Keys.W);
@@ -179,8 +235,23 @@ namespace TestMeshes
 			inp.MapAction(MyActions.MoveRightFast, ActionTypes.ContinuousHold,
 				Modifiers.ShiftHeld, System.Windows.Forms.Keys.D);
 
-			inp.MapAction(MyActions.PitchUp, ActionTypes.ContinuousHold, Modifiers.None, 16);
-			inp.MapAction(MyActions.PitchDown, ActionTypes.ContinuousHold, Modifiers.None, 18);
+			//arrow keys
+			inp.MapAction(MyActions.MoveForward, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.Up);
+			inp.MapAction(MyActions.MoveBack, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.Down);
+			inp.MapAction(MyActions.MoveForwardFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.Up);
+			inp.MapAction(MyActions.MoveBackFast, ActionTypes.ContinuousHold,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.Down);
+			inp.MapAction(MyActions.TurnLeft, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.Left);
+			inp.MapAction(MyActions.TurnRight, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.Right);
+			inp.MapAction(MyActions.PitchUp, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.Q);
+			inp.MapAction(MyActions.PitchDown, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.E);
 
 			inp.MapToggleAction(MyActions.ToggleMouseLookOn,
 				MyActions.ToggleMouseLookOff, Modifiers.None,
@@ -215,7 +286,6 @@ namespace TestMeshes
 		{
 			PlayerSteering	pSteering	=new PlayerSteering();
 			pSteering.Method			=PlayerSteering.SteeringMethod.Fly;
-			pSteering.Speed				=0.25f;
 
 			pSteering.SetMoveEnums(MyActions.MoveForwardBack, MyActions.MoveLeftRight,
 				MyActions.MoveForward, MyActions.MoveBack,
