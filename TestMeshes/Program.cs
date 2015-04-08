@@ -37,7 +37,7 @@ namespace TestMeshes
 			IncreaseInvertInterval,
 			DecreaseInvertInterval,
 			NextStatic, RandRotateStatic,
-			RandScaleStatic
+			RandScaleStatic, Exit
 		};
 
 		const float	MouseTurnMultiplier		=0.13f;
@@ -159,6 +159,16 @@ namespace TestMeshes
 		{
 			List<Input.InputAction>	actions	=inp.GetAction();
 
+			//check for exit
+			foreach(Input.InputAction act in actions)
+			{
+				if(act.mAction.Equals(MyActions.Exit))
+				{
+					gd.RendForm.Close();
+					return	actions;
+				}
+			}
+
 			foreach(Input.InputAction act in actions)
 			{
 				if(act.mAction.Equals(MyActions.ToggleMouseLookOn))
@@ -278,6 +288,12 @@ namespace TestMeshes
 				Modifiers.None, System.Windows.Forms.Keys.Y);
 			inp.MapAction(MyActions.RandScaleStatic, ActionTypes.PressAndRelease,
 				Modifiers.None, System.Windows.Forms.Keys.U);
+
+			//exit
+			inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.Escape);
+			inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,
+				Modifiers.None, Input.VariousButtons.GamePadBack);
 
 			return	inp;
 		}

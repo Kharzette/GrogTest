@@ -36,7 +36,7 @@ namespace TestAudio
 			BoostSpeedOn, BoostSpeedOff,
 			PlayAtLocation, Play2D,
 			NextSound, PrevSound,
-			SetEmitterPos
+			SetEmitterPos, Exit
 		};
 
 		const float	MouseTurnMultiplier		=0.13f;
@@ -272,6 +272,12 @@ namespace TestAudio
 			inp.MapAction(MyActions.SetEmitterPos, ActionTypes.PressAndRelease,
 				Modifiers.None, Keys.E);
 
+			//exit
+			inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.Escape);
+			inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,
+				Modifiers.None, Input.VariousButtons.GamePadBack);
+
 			return	inp;
 		}
 
@@ -296,6 +302,16 @@ namespace TestAudio
 			GraphicsDevice gd, float delta, ref bool bMouseLookOn)
 		{
 			List<Input.InputAction>	actions	=inp.GetAction();
+
+			//check for exit
+			foreach(Input.InputAction act in actions)
+			{
+				if(act.mAction.Equals(MyActions.Exit))
+				{
+					gd.RendForm.Close();
+					return	actions;
+				}
+			}
 
 			foreach(Input.InputAction act in actions)
 			{

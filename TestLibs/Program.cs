@@ -36,7 +36,7 @@ namespace LibTest
 			ToggleMouseLookOn, ToggleMouseLookOff,
 			NextAnim, NextLevel, ToggleFly,
 			PlaceDynamicLight, ClearDynamicLights,
-			AccelTest, AccelTest2
+			AccelTest, AccelTest2, Exit
 		};
 
 		const float	MouseTurnMultiplier		=0.13f;
@@ -213,6 +213,16 @@ namespace LibTest
 		{
 			List<Input.InputAction>	actions	=inp.GetAction();
 
+			//check for exit
+			foreach(Input.InputAction act in actions)
+			{
+				if(act.mAction.Equals(MyActions.Exit))
+				{
+					gd.RendForm.Close();
+					return	actions;
+				}
+			}
+
 			if(bClamp)
 			{
 				inp.ClampInputTimes(MaxTimeDelta);
@@ -358,6 +368,12 @@ namespace LibTest
 				Modifiers.None, System.Windows.Forms.Keys.T);
 			inp.MapAction(MyActions.AccelTest2, ActionTypes.ContinuousHold,
 				Modifiers.ShiftHeld, System.Windows.Forms.Keys.T);
+
+			//exit
+			inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.Escape);
+			inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,
+				Modifiers.None, Input.VariousButtons.GamePadBack);
 
 			return	inp;
 		}
