@@ -8,8 +8,8 @@
     <ProjectGuid>{D3CF5FEB-353C-4B13-9AE4-2B236F8CD599}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>LibTest</RootNamespace>
-    <AssemblyName>LibTest</AssemblyName>
+    <RootNamespace>TestZone</RootNamespace>
+    <AssemblyName>TestZone</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
@@ -65,7 +65,7 @@
     <CodeAnalysisRuleDirectories>;C:\Program Files (x86)\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\FxCop\\Rules</CodeAnalysisRuleDirectories>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>LibTest.Program</StartupObject>
+    <StartupObject>TestZone.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="MapLoop.cs" />

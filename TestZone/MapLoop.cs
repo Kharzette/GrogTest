@@ -21,7 +21,7 @@ using SharpDX.Direct3D11;
 using MatLib	=MaterialLib.MaterialLib;
 
 
-namespace LibTest
+namespace TestZone
 {
 	internal class MapLoop
 	{

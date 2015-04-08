@@ -21,7 +21,7 @@ using MapFlags	=SharpDX.Direct3D11.MapFlags;
 using MatLib	=MaterialLib.MaterialLib;
 
 
-namespace LibTest
+namespace TestZone
 {
 	internal static class Program
 	{
