@@ -24,9 +24,11 @@ namespace TestPathing
 		Buffer	mVBCons, mIBCons;
 		Buffer	mVBPath, mIBPath;
 
-		int	mNodeIndexCount;
+		VertexBufferBinding	mVBBNodes, mVBBCons;
 
-		VertexBufferBinding	mVBBinding;
+		int	mNodeIndexCount;
+		int	mConIndexCount;
+
 		int					mNumIndexes;
 		Vector3				mLightDir;
 		Random				mRand	=new Random();
@@ -73,7 +75,7 @@ namespace TestPathing
 			VPosNormCol0	[]nodeVerts	=new VPosNormCol0[verts.Count];
 			for(int i=0;i < nodeVerts.Length;i++)
 			{
-				nodeVerts[i].Position	=verts[i];
+				nodeVerts[i].Position	=verts[i] + Vector3.UnitY;	//boost up 1
 				nodeVerts[i].Normal.X	=norms[i].X;
 				nodeVerts[i].Normal.Y	=norms[i].Y;
 				nodeVerts[i].Normal.Z	=norms[i].Z;
@@ -94,9 +96,71 @@ namespace TestPathing
 
 			mVBNodes	=VertexTypes.BuildABuffer(mGD.GD, nodeVerts, VertexTypes.GetIndex(nodeVerts[0].GetType()));
 			mIBNodes	=VertexTypes.BuildAnIndexBuffer(mGD.GD, indexes.ToArray());
-			mVBBinding	=VertexTypes.BuildAVBB(VertexTypes.GetIndex(nodeVerts[0].GetType()), mVBNodes);
+			mVBBNodes	=VertexTypes.BuildAVBB(VertexTypes.GetIndex(nodeVerts[0].GetType()), mVBNodes);
 
 			mNodeIndexCount	=indexes.Count;
+
+			//connexions
+			List<PathGraph.LineSeg>	segz	=graph.GetNodeConnections();
+
+			VPosNormCol0	[]segVerts	=new VPosNormCol0[segz.Count * 3];
+
+			UInt32	index	=0;
+			indexes.Clear();
+			foreach(PathGraph.LineSeg seg in segz)
+			{
+				Color	col	=Mathery.RandomColor(mRand);
+
+				//endpoint
+				segVerts[index].Position	=seg.mB;
+
+				Vector3	lineVec	=seg.mB - seg.mA;
+
+				//get a perpindicular axis to the a to b axis
+				//so the back side of the connection can flare out a bit
+				Vector3	crossVec	=Vector3.Cross(lineVec, Vector3.UnitY);
+
+				crossVec.Normalize();
+
+				Vector3	normVec	=Vector3.Cross(crossVec, lineVec);
+
+				normVec.Normalize();
+
+				crossVec	*=2f;
+
+				segVerts[index + 1].Position	=seg.mA - crossVec + Mathery.RandomDirectionXZ(mRand);
+				segVerts[index + 2].Position	=seg.mA + crossVec + Mathery.RandomDirectionXZ(mRand);
+
+				segVerts[index].Color0		=col;
+				segVerts[index + 1].Color0	=col;
+				segVerts[index + 2].Color0	=col;
+
+				//adjust up
+				segVerts[index].Position		+=Vector3.UnitY * 2f;
+				segVerts[index + 1].Position	+=Vector3.UnitY * 1.7f;
+				segVerts[index + 2].Position	+=Vector3.UnitY * 1.7f;
+
+				Half4	norm;
+				norm.X	=normVec.X;
+				norm.Y	=normVec.Y;
+				norm.Z	=normVec.Z;
+				norm.W	=1f;
+				segVerts[index].Normal		=norm;
+				segVerts[index + 1].Normal	=norm;
+				segVerts[index + 2].Normal	=norm;
+
+				indexes.Add(index);
+				indexes.Add(index + 1);
+				indexes.Add(index + 2);
+
+				index	+=3;
+			}
+
+			mVBCons		=VertexTypes.BuildABuffer(mGD.GD, segVerts, VertexTypes.GetIndex(segVerts[0].GetType()));
+			mIBCons		=VertexTypes.BuildAnIndexBuffer(mGD.GD, indexes.ToArray());
+			mVBBCons	=VertexTypes.BuildAVBB(VertexTypes.GetIndex(segVerts[0].GetType()), mVBCons);
+
+			mConIndexCount	=indexes.Count;
 		}
 
 
@@ -142,10 +206,15 @@ namespace TestPathing
 
 			mMatLib.ApplyMaterialPass("LevelGeometry", mGD.DC, 0);
 
-			mGD.DC.InputAssembler.SetVertexBuffers(0, mVBBinding);
+			//node faces
+			mGD.DC.InputAssembler.SetVertexBuffers(0, mVBBNodes);
 			mGD.DC.InputAssembler.SetIndexBuffer(mIBNodes, Format.R32_UInt, 0);
-
 			mGD.DC.DrawIndexed(mNodeIndexCount, 0, 0);
+
+			//node connections
+			mGD.DC.InputAssembler.SetVertexBuffers(0, mVBBCons);
+			mGD.DC.InputAssembler.SetIndexBuffer(mIBCons, Format.R32_UInt, 0);
+			mGD.DC.DrawIndexed(mConIndexCount, 0, 0);
 		}
 	}
 }
