@@ -37,9 +37,9 @@
 			this.MobWidth = new System.Windows.Forms.NumericUpDown();
 			this.groupBox1 = new System.Windows.Forms.GroupBox();
 			this.groupBox2 = new System.Windows.Forms.GroupBox();
-			this.MobHeight = new System.Windows.Forms.NumericUpDown();
-			this.label2 = new System.Windows.Forms.Label();
 			this.label3 = new System.Windows.Forms.Label();
+			this.label2 = new System.Windows.Forms.Label();
+			this.MobHeight = new System.Windows.Forms.NumericUpDown();
 			this.Tips = new System.Windows.Forms.ToolTip(this.components);
 			this.groupBox3 = new System.Windows.Forms.GroupBox();
 			((System.ComponentModel.ISupportInitialize)(this.GridSize)).BeginInit();
@@ -104,6 +104,7 @@
 			this.SaveData.TabIndex = 3;
 			this.SaveData.Text = "Save PathData";
 			this.SaveData.UseVisualStyleBackColor = true;
+			this.SaveData.Click += new System.EventHandler(this.OnSavePathData);
 			// 
 			// LoadData
 			// 
@@ -113,6 +114,7 @@
 			this.LoadData.TabIndex = 4;
 			this.LoadData.Text = "Load PathData";
 			this.LoadData.UseVisualStyleBackColor = true;
+			this.LoadData.Click += new System.EventHandler(this.OnLoadPathData);
 			// 
 			// MobWidth
 			// 
@@ -161,6 +163,24 @@
 			this.groupBox2.TabStop = false;
 			this.groupBox2.Text = "Mobile";
 			// 
+			// label3
+			// 
+			this.label3.AutoSize = true;
+			this.label3.Location = new System.Drawing.Point(68, 47);
+			this.label3.Name = "label3";
+			this.label3.Size = new System.Drawing.Size(90, 13);
+			this.label3.TabIndex = 8;
+			this.label3.Text = "BoundBox Height";
+			// 
+			// label2
+			// 
+			this.label2.AutoSize = true;
+			this.label2.Location = new System.Drawing.Point(68, 21);
+			this.label2.Name = "label2";
+			this.label2.Size = new System.Drawing.Size(87, 13);
+			this.label2.TabIndex = 7;
+			this.label2.Text = "BoundBox Width";
+			// 
 			// MobHeight
 			// 
 			this.MobHeight.Location = new System.Drawing.Point(6, 45);
@@ -173,24 +193,6 @@
             0,
             0,
             0});
-			// 
-			// label2
-			// 
-			this.label2.AutoSize = true;
-			this.label2.Location = new System.Drawing.Point(68, 21);
-			this.label2.Name = "label2";
-			this.label2.Size = new System.Drawing.Size(87, 13);
-			this.label2.TabIndex = 7;
-			this.label2.Text = "BoundBox Width";
-			// 
-			// label3
-			// 
-			this.label3.AutoSize = true;
-			this.label3.Location = new System.Drawing.Point(68, 47);
-			this.label3.Name = "label3";
-			this.label3.Size = new System.Drawing.Size(90, 13);
-			this.label3.TabIndex = 8;
-			this.label3.Text = "BoundBox Height";
 			// 
 			// groupBox3
 			// 

@@ -97,8 +97,16 @@ namespace TestPathing
 			EventHandler	genHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)
 				{	mapStuff.GeneratePathing(pathForm.GetGridSize());	});
+			EventHandler	loadHandler	=new EventHandler(
+				delegate(object s, EventArgs ea)
+				{	mapStuff.LoadPathing(s as string);	});
+			EventHandler	saveHandler	=new EventHandler(
+				delegate(object s, EventArgs ea)
+				{	mapStuff.SavePathing(s as string);	});
 
 			pathForm.eGenerate	+=genHandler;
+			pathForm.eLoadData	+=loadHandler;
+			pathForm.eSaveData	+=saveHandler;
 
 			pathForm.Show();
 

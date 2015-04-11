@@ -338,6 +338,25 @@ namespace TestPathing
 		}
 
 
+		internal void LoadPathing(string path)
+		{
+			mbBusy	=true;
+			mGraph	=PathGraph.CreatePathGrid();
+
+			mGraph.Load(path);
+
+			mPathDraw.BuildDrawInfo(mGraph);
+
+			mbBusy	=false;
+		}
+
+
+		internal void SavePathing(string path)
+		{
+			mGraph.Save(path);
+		}
+
+
 		void RenderExternal(AlphaPool ap, GameCamera gcam)
 		{
 			mSHelper.Draw(DrawStatic);
