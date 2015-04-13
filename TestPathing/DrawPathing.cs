@@ -24,14 +24,17 @@ namespace TestPathing
 		Buffer	mVBCons, mIBCons;
 		Buffer	mVBPath, mIBPath;
 
-		VertexBufferBinding	mVBBNodes, mVBBCons;
+		VertexBufferBinding	mVBBNodes, mVBBCons, mVBBPath;
 
 		int	mNodeIndexCount;
 		int	mConIndexCount;
+		int	mPathIndexCount;
 
-		int					mNumIndexes;
-		Vector3				mLightDir;
-		Random				mRand	=new Random();
+		bool	mbDrawNodeFaces		=true;
+		bool	mbDrawConnections	=true;
+
+		Vector3	mLightDir;
+		Random	mRand	=new Random();
 
 		GraphicsDevice	mGD;
 
@@ -65,12 +68,19 @@ namespace TestPathing
 
 		internal void BuildDrawInfo(PathGraph graph)
 		{
+			FreeVBs();
+
 			List<Vector3>	verts		=new List<Vector3>();
 			List<Vector3>	norms		=new List<Vector3>();
 			List<UInt32>	indexes		=new List<UInt32>();
 			List<int>		vertCounts	=new List<int>();
 			
 			graph.GetNodePolys(verts, indexes, norms, vertCounts);
+
+			if(verts.Count == 0)
+			{
+				return;
+			}
 
 			VPosNormCol0	[]nodeVerts	=new VPosNormCol0[verts.Count];
 			for(int i=0;i < nodeVerts.Length;i++)
@@ -103,6 +113,10 @@ namespace TestPathing
 			//connexions
 			List<PathGraph.LineSeg>	segz	=graph.GetNodeConnections();
 
+			if(segz.Count <= 0)
+			{
+				return;
+			}
 			VPosNormCol0	[]segVerts	=new VPosNormCol0[segz.Count * 3];
 
 			UInt32	index	=0;
@@ -164,10 +178,95 @@ namespace TestPathing
 		}
 
 
+		internal void BuildPathDrawInfo(List<Vector3> path, Vector3 boxMiddleOffset)
+		{
+			if(mVBPath != null)
+			{
+				mVBPath.Dispose();
+			}
+			if(mIBPath != null)
+			{
+				mIBPath.Dispose();
+			}
+
+			if(path.Count < 2)
+			{
+				return;
+			}
+
+			VPosNormCol0	[]segVerts	=new VPosNormCol0[(path.Count - 1) * 3];
+
+			UInt32			index		=0;
+			List<UInt32>	indexes		=new List<UInt32>();
+			for(int i=0;i < (path.Count - 1);i++)
+			{
+				Color	col	=Mathery.RandomColor(mRand);
+
+				col	=Color.Red;
+
+				//endpoint
+				segVerts[index].Position	=path[i + 1];
+
+				Vector3	lineVec	=path[i + 1] - path[i];
+
+				//get a perpindicular axis to the a to b axis
+				//so the back side of the connection can flare out a bit
+				Vector3	crossVec	=Vector3.Cross(lineVec, Vector3.UnitY);
+
+				crossVec.Normalize();
+
+				Vector3	normVec	=Vector3.Cross(crossVec, lineVec);
+
+				normVec.Normalize();
+
+				crossVec	*=2f;
+
+				segVerts[index + 1].Position	=path[i] - crossVec + Mathery.RandomDirectionXZ(mRand);
+				segVerts[index + 2].Position	=path[i] + crossVec + Mathery.RandomDirectionXZ(mRand);
+
+				segVerts[index].Color0		=col;
+				segVerts[index + 1].Color0	=col;
+				segVerts[index + 2].Color0	=col;
+
+				//adjust up
+				segVerts[index].Position		+=boxMiddleOffset;
+				segVerts[index + 1].Position	+=boxMiddleOffset;
+				segVerts[index + 2].Position	+=boxMiddleOffset;
+
+				Half4	norm;
+				norm.X	=normVec.X;
+				norm.Y	=normVec.Y;
+				norm.Z	=normVec.Z;
+				norm.W	=1f;
+				segVerts[index].Normal		=norm;
+				segVerts[index + 1].Normal	=norm;
+				segVerts[index + 2].Normal	=norm;
+
+				indexes.Add(index);
+				indexes.Add(index + 1);
+				indexes.Add(index + 2);
+
+				index	+=3;
+			}
+
+			mVBPath		=VertexTypes.BuildABuffer(mGD.GD, segVerts, VertexTypes.GetIndex(segVerts[0].GetType()));
+			mIBPath		=VertexTypes.BuildAnIndexBuffer(mGD.GD, indexes.ToArray());
+			mVBBPath	=VertexTypes.BuildAVBB(VertexTypes.GetIndex(segVerts[0].GetType()), mVBPath);
+
+			mPathIndexCount	=indexes.Count;
+		}
+
+
 		internal void FreeAll()
 		{
 			mMatLib.FreeAll();
 
+			FreeVBs();
+		}
+
+
+		internal void FreeVBs()
+		{
 			if(mVBNodes != null)
 			{
 				mVBNodes.Dispose();
@@ -202,19 +301,44 @@ namespace TestPathing
 				return;
 			}
 
+			if(!mbDrawNodeFaces && !mbDrawConnections && mVBPath == null)
+			{
+				return;
+			}
+
 			mMatLib.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
 
 			mMatLib.ApplyMaterialPass("LevelGeometry", mGD.DC, 0);
 
 			//node faces
-			mGD.DC.InputAssembler.SetVertexBuffers(0, mVBBNodes);
-			mGD.DC.InputAssembler.SetIndexBuffer(mIBNodes, Format.R32_UInt, 0);
-			mGD.DC.DrawIndexed(mNodeIndexCount, 0, 0);
+			if(mbDrawNodeFaces)
+			{
+				mGD.DC.InputAssembler.SetVertexBuffers(0, mVBBNodes);
+				mGD.DC.InputAssembler.SetIndexBuffer(mIBNodes, Format.R32_UInt, 0);
+				mGD.DC.DrawIndexed(mNodeIndexCount, 0, 0);
+			}
 
 			//node connections
-			mGD.DC.InputAssembler.SetVertexBuffers(0, mVBBCons);
-			mGD.DC.InputAssembler.SetIndexBuffer(mIBCons, Format.R32_UInt, 0);
-			mGD.DC.DrawIndexed(mConIndexCount, 0, 0);
+			if(mbDrawConnections)
+			{
+				mGD.DC.InputAssembler.SetVertexBuffers(0, mVBBCons);
+				mGD.DC.InputAssembler.SetIndexBuffer(mIBCons, Format.R32_UInt, 0);
+				mGD.DC.DrawIndexed(mConIndexCount, 0, 0);
+			}
+
+			if(mVBPath != null)
+			{
+				mGD.DC.InputAssembler.SetVertexBuffers(0, mVBBPath);
+				mGD.DC.InputAssembler.SetIndexBuffer(mIBPath, Format.R32_UInt, 0);
+				mGD.DC.DrawIndexed(mPathIndexCount, 0, 0);
+			}
+		}
+
+
+		internal void DrawSettings(int stuff)
+		{
+			mbDrawNodeFaces		=((stuff & 1) != 0)? true : false;
+			mbDrawConnections	=((stuff & 2) != 0)? true : false;
 		}
 	}
 }
