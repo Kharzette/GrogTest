@@ -34,17 +34,16 @@ namespace TestPathing
 		//pathing
 		PathGraph	mGraph;
 		DrawPathing	mPathDraw;
+		float		mErrorAmount;
 
 		//list of levels
 		List<string>	mLevels		=new List<string>();
 		int				mCurLevel	=0;
 
-		//dyn lights
-		DynamicLights	mDynLights;
-		List<int>		mActiveLights	=new List<int>();
-
 		Random	mRand	=new Random();
 		bool	mbBusy	=false;
+		bool	mbPickingA, mbPickingB;
+		bool	mbAwaitingPath;
 
 		//shader compile progress indicator
 		SharedForms.ThreadedProgress	mSProg;
@@ -76,8 +75,14 @@ namespace TestPathing
 		int				mResX, mResY;
 		List<string>	mFonts	=new List<string>();
 
+		//events
+		internal event EventHandler	ePickedA;
+		internal event EventHandler	ePickedB;
+
 		//constants
-		const float	ShadowSlop			=12f;
+		const float	ShadowSlop				=12f;
+		const float	MaxGroundAdjust			=16f;
+		const int	MaxPathMoveIterations	=3;
 
 
 		internal MapStuff(GraphicsDevice gd, string gameRootDir)
@@ -125,11 +130,6 @@ namespace TestPathing
 			mZoneMats.SetCelTexture(0);
 
 			mZoneDraw	=new IndoorMesh(gd, mZoneMats);
-
-			if(gd.GD.FeatureLevel != FeatureLevel.Level_9_3)
-			{
-				mDynLights	=new DynamicLights(mGD, mZoneMats, "BSP.fx");
-			}
 
 			//see if any static stuff
 			if(Directory.Exists(mGameRootDir + "/Statics"))
@@ -196,6 +196,43 @@ namespace TestPathing
 
 			mZone.UpdateModels((int)msDelta);
 
+			Vector3	impactPos	=Vector3.Zero;
+
+			if(mbPickingA || mbPickingB)
+			{
+				System.Drawing.Point	cPos	=System.Windows.Forms.Cursor.Position;
+
+				cPos	=mGD.RendForm.PointToClient(cPos);
+
+				Vector2	cursVec	=Vector2.UnitX * cPos.X;
+				cursVec	+=Vector2.UnitY * cPos.Y;
+				
+				int	modelOn;
+				impactPos	=mZone.TraceScreenPointRay(mGD.GCam, mGD.GetScreenViewPort(),
+					cursVec, 1000f, out modelOn);
+
+				var clicked =(from act in actions where act.mAction.Equals(Program.MyActions.MouseSelect)
+							   select act).FirstOrDefault();
+				if(clicked != null)
+				{
+					int	node, numCons;
+					List<int>	conTo	=new List<int>();
+					bool	bInfo	=mGraph.GetInfoAboutLocation(impactPos,
+						mZone.FindWorldNodeLandedIn, out numCons, out node, conTo);
+
+					if(bInfo && mbPickingA)
+					{
+						Misc.SafeInvoke(ePickedA, node, new Vector3EventArgs(impactPos));
+					}
+					else if(bInfo && mbPickingB)
+					{
+						Misc.SafeInvoke(ePickedB, node, new Vector3EventArgs(impactPos));
+					}
+					mbPickingA	=false;
+					mbPickingB	=false;
+				}
+			}
+
 			float	yawAmount	=0f;
 			float	pitchAmount	=0f;
 
@@ -226,15 +263,13 @@ namespace TestPathing
 				}
 			}
 
-			UpdateDynamicLights((int)msDelta, actions);
-
 			Vector3	startPos	=mCamMob.GetGroundPos();
 			Vector3	moveVec		=ps.Update(startPos, mGD.GCam.Forward, mGD.GCam.Left, mGD.GCam.Up, actions);
 
 			Vector3	camPos	=Vector3.Zero;
 			Vector3	endPos	=mCamMob.GetGroundPos() + moveVec * 100f;
 
-			mCamMob.Move(endPos, (int)msDelta, false, mbFly, true, true, out endPos, out camPos);
+			mCamMob.Move(endPos, (int)msDelta, false, mbFly, true, true, true, out endPos, out camPos);
 
 			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
 
@@ -242,10 +277,18 @@ namespace TestPathing
 				+ (int)mGD.GCam.Position.X + ", "
 				+ (int)mGD.GCam.Position.Y + ", "
 				+ (int)mGD.GCam.Position.Z + " (F)lyMode: " + mbFly
-				+ " X: " + yawAmount + " Y: " + pitchAmount
+				+ " ImpactPos: "
+				+ (int)impactPos.X + ", "
+				+ (int)impactPos.Y + ", "
+				+ (int)impactPos.Z
 				+ (mCamMob.IsBadFooting()? " BadFooting!" : ""), "PosStatus");
 
 			mST.Update(mGD.DC);
+
+			if(mGraph != null)
+			{
+				mGraph.Update();
+			}
 		}
 
 
@@ -270,18 +313,13 @@ namespace TestPathing
 
 				shelp.Key.GetOrigin(out pos);
 
-				shelp.Value.Update((int)msDelta, pos, mDynLights);
+				shelp.Value.Update((int)msDelta, pos, null);
 			}
 		}
 
 
 		internal void Render()
 		{
-			if(mDynLights != null)
-			{
-				mDynLights.SetParameter();
-			}
-
 			mZoneDraw.Draw(mGD, 0,
 				mZone.IsMaterialVisibleFromPos,
 				mZone.GetModelTransform,
@@ -304,11 +342,6 @@ namespace TestPathing
 				mStaticMats.FreeAll();
 			}
 
-			if(mDynLights != null)
-			{
-				mDynLights.FreeAll();
-			}
-
 			foreach(KeyValuePair<ZoneEntity, StaticMesh> stat in mStaticInsts)
 			{
 				stat.Value.FreeAll();
@@ -325,12 +358,14 @@ namespace TestPathing
 		}
 
 
-		internal void GeneratePathing(int gridSize)
+		internal void GeneratePathing(int gridSize, float error)
 		{
-			mbBusy	=true;
-			mGraph	=PathGraph.CreatePathGrid();
+			mbBusy			=true;
+			mGraph			=PathGraph.CreatePathGrid();
+			mErrorAmount	=error;
 
-			mGraph.GenerateGraph(mZone.GetWalkableFaces, gridSize, Zone.StepHeight, MobileCanReach);
+			mGraph.GenerateGraph(mZone.GetWalkableFaces, gridSize,
+				Zone.StepHeight, MobileCanReach, MobileIsValid);
 
 			mPathDraw.BuildDrawInfo(mGraph);
 
@@ -354,6 +389,33 @@ namespace TestPathing
 		internal void SavePathing(string path)
 		{
 			mGraph.Save(path);
+		}
+
+
+		internal void DrawSettings(int stuff)
+		{
+			mPathDraw.DrawSettings(stuff);
+		}
+
+
+		internal void FindPath(Vector3 start, Vector3 end)
+		{
+			if(mGraph != null && !mbAwaitingPath)
+			{
+				mbAwaitingPath	=mGraph.FindPath(start, end, OnPathNotify, mZone.FindWorldNodeLandedIn);
+			}
+		}
+
+
+		internal void PickA()
+		{
+			mbPickingA	=true;
+		}
+
+
+		internal void PickB()
+		{
+			mbPickingB	=true;
 		}
 
 
@@ -464,20 +526,49 @@ namespace TestPathing
 		}
 
 
-		void UpdateDynamicLights(int msDelta, List<Input.InputAction> actions)
+		bool MobileIsValid(ref Vector3 pos)
 		{
-			if(mDynLights == null)
+			float	increment	=MaxGroundAdjust / 10f;
+
+			//adjust upwards until good
+			for(int i=0;i < 10;i++)
 			{
-				return;
+				mPathMob.SetGroundPos(pos + (i * increment * Vector3.Up));
+
+				if(mPathMob.CheckPosition())
+				{
+					continue;
+				}
+
+				mPathMob.DropToGround(false);
+
+				pos	=mPathMob.GetGroundPos();
+
+				return	true;
 			}
-			mDynLights.Update((int)msDelta, mGD);
+			return	false;
 		}
 
 
 		bool MobileCanReach(Vector3 start, Vector3 end)
 		{
 			mPathMob.SetGroundPos(start);
-			return	mPathMob.TryMoveTo(end, 0.1f);
+			mPathMob.SetFooting();
+
+			for(int i=0;i < MaxPathMoveIterations;i++)
+			{
+				Vector3	madeItTo, donutCare;
+				mPathMob.Move(end, 1, true, false, true, false, false, out madeItTo, out donutCare);
+
+				float	dist	=madeItTo.Distance(end);
+
+				if(dist < mErrorAmount)
+				{
+					return	true;
+				}
+			}
+			return	false;
+//			return	mPathMob.TryMoveTo(end, mErrorAmount);
 		}
 
 
@@ -520,6 +611,14 @@ namespace TestPathing
 			{
 				mSProg.Nuke();
 			}
+		}
+
+
+		void OnPathNotify(List<Vector3> resultPath)
+		{
+			mPathDraw.BuildPathDrawInfo(resultPath, mPathMob.GetMiddlePos() - mPathMob.GetGroundPos());
+
+			mbAwaitingPath	=false;
 		}
 	}
 }

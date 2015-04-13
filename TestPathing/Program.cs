@@ -31,7 +31,8 @@ namespace TestPathing
 			Turn, TurnLeft, TurnRight,
 			Pitch, PitchUp, PitchDown,
 			ToggleMouseLookOn, ToggleMouseLookOff,
-			ToggleFly, NextLevel, Exit
+			ToggleFly, NextLevel, Exit,
+			MouseSelect
 		};
 
 		const float	MouseTurnMultiplier		=0.13f;
@@ -94,19 +95,50 @@ namespace TestPathing
 
 			MapStuff	mapStuff	=new MapStuff(gd, "C:\\Games\\CurrentGame");
 
+			EventHandler	pickedAHandler	=new EventHandler(
+				delegate(object s, EventArgs ea)
+				{	Vector3EventArgs	v3ea	=ea as Vector3EventArgs;
+					pathForm.SetCoordA(v3ea.mVector);
+					pathForm.SetNodeA((int)s);	});
+			EventHandler	pickedBHandler	=new EventHandler(
+				delegate(object s, EventArgs ea)
+				{	Vector3EventArgs	v3ea	=ea as Vector3EventArgs;
+					pathForm.SetCoordB(v3ea.mVector);
+					pathForm.SetNodeB((int)s);	});
+
+			mapStuff.ePickedA	+=pickedAHandler;
+			mapStuff.ePickedB	+=pickedBHandler;
+
 			EventHandler	genHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)
-				{	mapStuff.GeneratePathing(pathForm.GetGridSize());	});
+				{	mapStuff.GeneratePathing(pathForm.GetGridSize(), (float)s);	});
 			EventHandler	loadHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)
 				{	mapStuff.LoadPathing(s as string);	});
 			EventHandler	saveHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)
 				{	mapStuff.SavePathing(s as string);	});
+			EventHandler	pickAHandler	=new EventHandler(
+				delegate(object s, EventArgs ea)
+				{	mapStuff.PickA();	});
+			EventHandler	pickBHandler	=new EventHandler(
+				delegate(object s, EventArgs ea)
+				{	mapStuff.PickB();	});
+			EventHandler	drawChangedHandler	=new EventHandler(
+				delegate(object s, EventArgs ea)
+				{	mapStuff.DrawSettings((int)s);	});
+			EventHandler	findPathHandler	=new EventHandler(
+				delegate(object s, EventArgs ea)
+				{	Vector3PairEventArgs	v3pea	=ea as Vector3PairEventArgs;
+					mapStuff.FindPath(v3pea.mVecA, v3pea.mVecB);	});
 
-			pathForm.eGenerate	+=genHandler;
-			pathForm.eLoadData	+=loadHandler;
-			pathForm.eSaveData	+=saveHandler;
+			pathForm.eGenerate		+=genHandler;
+			pathForm.eLoadData		+=loadHandler;
+			pathForm.eSaveData		+=saveHandler;
+			pathForm.ePickA			+=pickAHandler;
+			pathForm.ePickB			+=pickBHandler;
+			pathForm.eDrawChanged	+=drawChangedHandler;
+			pathForm.eFindPath		+=findPathHandler;
 
 			pathForm.Show();
 
@@ -159,7 +191,13 @@ namespace TestPathing
 			gd.RendForm.Activated		-=actHandler;
 			gd.RendForm.AppDeactivated	-=deActHandler;
 
-			pathForm.eGenerate	-=genHandler;
+			pathForm.eGenerate		-=genHandler;
+			pathForm.eLoadData		-=loadHandler;
+			pathForm.eSaveData		-=saveHandler;
+			pathForm.ePickA			-=pickAHandler;
+			pathForm.ePickB			-=pickBHandler;
+			pathForm.eDrawChanged	-=drawChangedHandler;
+			pathForm.eFindPath		-=findPathHandler;
 
 			mapStuff.FreeAll();
 			inp.FreeAll();
@@ -291,6 +329,10 @@ namespace TestPathing
 			inp.MapAxisAction(MyActions.Turn, Input.MoveAxis.GamePadRightXAxis);
 			inp.MapAxisAction(MyActions.MoveLeftRight, Input.MoveAxis.GamePadLeftXAxis);
 			inp.MapAxisAction(MyActions.MoveForwardBack, Input.MoveAxis.GamePadLeftYAxis);
+
+			//mouseselect for picking paths
+			inp.MapAction(MyActions.MouseSelect, ActionTypes.PressAndRelease,
+				Modifiers.None, Input.VariousButtons.LeftMouseButton);
 
 			//exit
 			inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,
