@@ -391,6 +391,9 @@ namespace TestZone
 				}
 			}
 
+			bool	bCamJumped	=false;
+			bool	bPJumped	=false;
+
 			foreach(Input.InputAction act in actions)
 			{
 				if(act.mAction.Equals(Program.MyActions.Jump))
@@ -399,11 +402,13 @@ namespace TestZone
 					{
 						mPhys.ApplyForce(Vector3.Up * JumpForce);
 						mPhys.SetFriction(AirFriction);
+						bPJumped	=true;
 					}
 					if(mPCamMob.IsOnGround() && !mbFly)
 					{
 						mCamPhys.ApplyForce(Vector3.Up * JumpForce);
 						mPhys.SetFriction(AirFriction);
+						bCamJumped	=true;
 					}
 				}
 				else if(act.mAction.Equals(Program.MyActions.NextAnim)
@@ -477,7 +482,7 @@ namespace TestZone
 			Vector3	camPos	=Vector3.Zero;
 			Vector3	endPos	=mCamPhys.GetPosition();
 
-			mPCamMob.Move(endPos, (int)msDelta, false, mbFly, true, true, out endPos, out camPos);
+			mPCamMob.Move(endPos, (int)msDelta, false, mbFly, !bCamJumped, true, true, out endPos, out camPos);
 
 			mCamPhys.SetPosition(endPos);
 
@@ -491,7 +496,7 @@ namespace TestZone
 			if(mPChar != null)
 			{
 				Vector3	ppos;
-				mPMob.Move(mPhys.GetPosition(), (int)msDelta, false, false, true, true, out ppos, out camPos);
+				mPMob.Move(mPhys.GetPosition(), (int)msDelta, false, false, !bPJumped, true, true, out ppos, out camPos);
 
 				mPhys.SetPosition(ppos);
 
