@@ -104,7 +104,7 @@ namespace TestZone
 		const float	PlayerMass			=1f;		//Gronks
 		const float	JogMoveForce		=20000f;	//Fig Newtons
 		const float	MidAirMoveForce		=1000f;		//Slight wiggle midair
-		const float	StumbleForce		=10000f;	//Fig Newtons
+		const float	StumbleForce		=5000f;	//Fig Newtons
 		const float	GravityForce		=400f;		//Gravitons
 		const float	PlayerInertiaTensor	=80f;		//Wild guess
 		const float	GroundFriction		=2f;		//Frictols
@@ -355,18 +355,26 @@ namespace TestZone
 		{
 			//Thread.Sleep(30);
 
-			float	msDelta	=secDelta * 1000f;
+			int	msDelta	=Math.Max((int)(secDelta * 1000f), 1);
 
-			mZone.UpdateModels((int)msDelta);
+			mZone.UpdateModels(msDelta);
 
 			float	yawAmount	=0f;
 			float	pitchAmount	=0f;
 
-			if(!mPMob.IsOnGround() && !mPMob.IsBadFooting())
+			if(!mPMob.IsOnGround())
 			{
 				//gravity
 				mPhys.ApplyForce(Vector3.Down * GravityForce);
-				mPhys.SetFriction(AirFriction);
+
+				if(mPMob.IsBadFooting())
+				{
+					mPhys.SetFriction(GroundFriction);
+				}
+				else
+				{
+					mPhys.SetFriction(AirFriction);
+				}
 			}
 			else
 			{
@@ -374,20 +382,32 @@ namespace TestZone
 				mPhys.SetFriction(GroundFriction);
 			}
 
-			if(!mPCamMob.IsOnGround() && !mPCamMob.IsBadFooting())
+			if(!mPCamMob.IsOnGround())
 			{
 				//gravity
 				if(!mbFly)
 				{
 					mCamPhys.ApplyForce(Vector3.Down * GravityForce);
 				}
-				mCamPhys.SetFriction(AirFriction);
+
+				if(mPCamMob.IsBadFooting())
+				{
+					mCamPhys.SetFriction(GroundFriction);
+				}
+				else
+				{
+					mCamPhys.SetFriction(AirFriction);
+				}
 			}
 			else
 			{
 				if(!mbFly)
 				{
 					mCamPhys.SetFriction(GroundFriction);
+				}
+				else
+				{
+					mCamPhys.SetFriction(AirFriction);
 				}
 			}
 
@@ -455,7 +475,7 @@ namespace TestZone
 			}
 			mPhys.Update(secDelta);
 
-			UpdateDynamicLights((int)msDelta, actions);
+			UpdateDynamicLights(msDelta, actions);
 
 			Vector3	startPos	=mPCamMob.GetGroundPos();
 			Vector3	moveVec		=ps.Update(startPos, mGD.GCam.Forward, mGD.GCam.Left, mGD.GCam.Up, actions);
@@ -482,13 +502,25 @@ namespace TestZone
 			Vector3	camPos	=Vector3.Zero;
 			Vector3	endPos	=mCamPhys.GetPosition();
 
-			mPCamMob.Move(endPos, (int)msDelta, false, mbFly, !bCamJumped, true, true, out endPos, out camPos);
+			mPCamMob.Move(endPos, msDelta, false, mbFly, !bCamJumped, true, true, out endPos, out camPos);
 
 			mCamPhys.SetPosition(endPos);
 
+			//clear vertical momentum if on the ground
 			if(mPCamMob.IsOnGround() && !mbFly)
 			{
 				mCamPhys.ClearVerticalMomentum();
+			}
+
+			//also clear if footing is bad, and there was
+			//no vertical movement, this prevents getting
+			//jammed into a V shaped wedge
+			if(mPCamMob.IsBadFooting() && !mbFly)
+			{
+				if((startPos.Y - endPos.Y) == 0f)
+				{
+					mCamPhys.ClearVerticalMomentum();
+				}
 			}
 
 			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
@@ -496,7 +528,7 @@ namespace TestZone
 			if(mPChar != null)
 			{
 				Vector3	ppos;
-				mPMob.Move(mPhys.GetPosition(), (int)msDelta, false, false, !bPJumped, true, true, out ppos, out camPos);
+				mPMob.Move(mPhys.GetPosition(), msDelta, false, false, !bPJumped, true, true, out ppos, out camPos);
 
 				mPhys.SetPosition(ppos);
 
@@ -522,7 +554,7 @@ namespace TestZone
 
 				mPChar.Animate(mAnims[mCurAnim], mCurAnimTime);
 
-				mPLHelper.Update((int)msDelta, ppos + Vector3.Up * 32f, mDynLights);
+				mPLHelper.Update(msDelta, ppos + Vector3.Up * 32f, mDynLights);
 			}
 
 			mPB.Update(mGD.DC, msDelta);
@@ -545,7 +577,7 @@ namespace TestZone
 
 		//called once before render with accumulated delta
 		//do all once per render style updates in here
-		internal void RenderUpdate(float msDelta)
+		internal void RenderUpdate(int msDelta)
 		{
 			mZoneDraw.Update(msDelta);
 
@@ -560,7 +592,7 @@ namespace TestZone
 				mPMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
 			}
 
-			mSHelper.Update((int)msDelta);
+			mSHelper.Update(msDelta);
 
 			foreach(KeyValuePair<ZoneEntity, LightHelper> shelp in mSLHelpers)
 			{
@@ -568,7 +600,7 @@ namespace TestZone
 
 				shelp.Key.GetOrigin(out pos);
 
-				shelp.Value.Update((int)msDelta, pos, mDynLights);
+				shelp.Value.Update(msDelta, pos, mDynLights);
 			}
 		}
 
@@ -852,7 +884,7 @@ namespace TestZone
 		}
 
 
-		void UpdateDynamicLights(int msDelta, List<Input.InputAction> actions)
+		void UpdateDynamicLights(float msDelta, List<Input.InputAction> actions)
 		{
 			if(mDynLights == null)
 			{

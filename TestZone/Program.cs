@@ -137,6 +137,7 @@ namespace TestZone
 				long	timeNow		=Stopwatch.GetTimestamp();
 				long	delta		=timeNow - lastTime;
 				float	secDelta	=(float)delta / freq;
+				int		msDelta		=Math.Max((int)(secDelta * 1000f), 1);			
 
 				accumTest	+=secDelta;
 
@@ -184,7 +185,7 @@ namespace TestZone
 					mapLoop.Update(secDelta, acts, pSteering);
 				}
 
-				mapLoop.RenderUpdate(secDelta * 1000f);
+				mapLoop.RenderUpdate(msDelta);
 
 				mapLoop.Render();
 
