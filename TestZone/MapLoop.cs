@@ -913,7 +913,7 @@ namespace TestZone
 				}
 			}
 
-			mDynLights.Update((int)msDelta, mGD);
+			mDynLights.Update(mGD);
 		}
 
 
