@@ -294,7 +294,7 @@ namespace TestPathing
 
 		//called once before render with accumulated delta
 		//do all once per render style updates in here
-		internal void RenderUpdate(float msDelta)
+		internal void RenderUpdate(int msDelta)
 		{
 			mZoneDraw.Update(msDelta);
 
@@ -305,7 +305,7 @@ namespace TestPathing
 				mStaticMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
 			}
 
-			mSHelper.Update((int)msDelta);
+			mSHelper.Update(msDelta);
 
 			foreach(KeyValuePair<ZoneEntity, LightHelper> shelp in mSLHelpers)
 			{
@@ -313,7 +313,7 @@ namespace TestPathing
 
 				shelp.Key.GetOrigin(out pos);
 
-				shelp.Value.Update((int)msDelta, pos, null);
+				shelp.Value.Update(msDelta, pos, null);
 			}
 		}
 
@@ -398,6 +398,12 @@ namespace TestPathing
 		}
 
 
+		internal void AlterPathMobile(int boxWidth, int boxHeight)
+		{
+			mPathMob.SetBoxShape(boxWidth, boxHeight, boxHeight * 0.8f);
+		}
+
+
 		internal void FindPath(Vector3 start, Vector3 end)
 		{
 			if(mGraph != null && !mbAwaitingPath)
@@ -458,6 +464,15 @@ namespace TestPathing
 
 		void ChangeLevel(string level)
 		{
+			//reset path and drawing stuff
+			if(mGraph != null)
+			{
+				mGraph.Clear();
+				mPathDraw.BuildDrawInfo(mGraph);
+				mPathDraw.BuildPathDrawInfo(new List<Vector3>(),
+					mPathMob.GetMiddlePos() - mPathMob.GetGroundPos());
+			}
+
 			string	lev	=mGameRootDir + "/Levels/" + level;
 
 			mZone	=new Zone();

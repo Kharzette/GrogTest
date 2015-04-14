@@ -42,9 +42,11 @@
 			this.MobHeight = new System.Windows.Forms.NumericUpDown();
 			this.Tips = new System.Windows.Forms.ToolTip(this.components);
 			this.groupBox3 = new System.Windows.Forms.GroupBox();
-			this.groupBox4 = new System.Windows.Forms.GroupBox();
 			this.label6 = new System.Windows.Forms.Label();
 			this.ErrorAmount = new System.Windows.Forms.NumericUpDown();
+			this.groupBox4 = new System.Windows.Forms.GroupBox();
+			this.BNode = new System.Windows.Forms.TextBox();
+			this.ANode = new System.Windows.Forms.TextBox();
 			this.FindPath = new System.Windows.Forms.Button();
 			this.PickB = new System.Windows.Forms.Button();
 			this.PickA = new System.Windows.Forms.Button();
@@ -55,16 +57,14 @@
 			this.groupBox5 = new System.Windows.Forms.GroupBox();
 			this.DrawPathConnections = new System.Windows.Forms.CheckBox();
 			this.DrawNodeFaces = new System.Windows.Forms.CheckBox();
-			this.ANode = new System.Windows.Forms.TextBox();
-			this.BNode = new System.Windows.Forms.TextBox();
 			((System.ComponentModel.ISupportInitialize)(this.GridSize)).BeginInit();
 			((System.ComponentModel.ISupportInitialize)(this.MobWidth)).BeginInit();
 			this.groupBox1.SuspendLayout();
 			this.groupBox2.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)(this.MobHeight)).BeginInit();
 			this.groupBox3.SuspendLayout();
-			this.groupBox4.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)(this.ErrorAmount)).BeginInit();
+			this.groupBox4.SuspendLayout();
 			this.groupBox5.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -157,6 +157,7 @@
             0,
             0,
             0});
+			this.MobWidth.ValueChanged += new System.EventHandler(this.OnBoundsChanged);
 			// 
 			// groupBox1
 			// 
@@ -212,6 +213,7 @@
             0,
             0,
             0});
+			this.MobHeight.ValueChanged += new System.EventHandler(this.OnBoundsChanged);
 			// 
 			// groupBox3
 			// 
@@ -226,24 +228,6 @@
 			this.groupBox3.TabIndex = 8;
 			this.groupBox3.TabStop = false;
 			this.groupBox3.Text = "Grid";
-			// 
-			// groupBox4
-			// 
-			this.groupBox4.Controls.Add(this.BNode);
-			this.groupBox4.Controls.Add(this.ANode);
-			this.groupBox4.Controls.Add(this.FindPath);
-			this.groupBox4.Controls.Add(this.PickB);
-			this.groupBox4.Controls.Add(this.PickA);
-			this.groupBox4.Controls.Add(this.BCoords);
-			this.groupBox4.Controls.Add(this.label5);
-			this.groupBox4.Controls.Add(this.label4);
-			this.groupBox4.Controls.Add(this.ACoords);
-			this.groupBox4.Location = new System.Drawing.Point(12, 206);
-			this.groupBox4.Name = "groupBox4";
-			this.groupBox4.Size = new System.Drawing.Size(298, 122);
-			this.groupBox4.TabIndex = 9;
-			this.groupBox4.TabStop = false;
-			this.groupBox4.Text = "Find a Path";
 			// 
 			// label6
 			// 
@@ -281,6 +265,40 @@
             0,
             0,
             0});
+			// 
+			// groupBox4
+			// 
+			this.groupBox4.Controls.Add(this.BNode);
+			this.groupBox4.Controls.Add(this.ANode);
+			this.groupBox4.Controls.Add(this.FindPath);
+			this.groupBox4.Controls.Add(this.PickB);
+			this.groupBox4.Controls.Add(this.PickA);
+			this.groupBox4.Controls.Add(this.BCoords);
+			this.groupBox4.Controls.Add(this.label5);
+			this.groupBox4.Controls.Add(this.label4);
+			this.groupBox4.Controls.Add(this.ACoords);
+			this.groupBox4.Location = new System.Drawing.Point(12, 206);
+			this.groupBox4.Name = "groupBox4";
+			this.groupBox4.Size = new System.Drawing.Size(298, 122);
+			this.groupBox4.TabIndex = 9;
+			this.groupBox4.TabStop = false;
+			this.groupBox4.Text = "Find a Path";
+			// 
+			// BNode
+			// 
+			this.BNode.Location = new System.Drawing.Point(164, 48);
+			this.BNode.Name = "BNode";
+			this.BNode.ReadOnly = true;
+			this.BNode.Size = new System.Drawing.Size(58, 20);
+			this.BNode.TabIndex = 10;
+			// 
+			// ANode
+			// 
+			this.ANode.Location = new System.Drawing.Point(164, 19);
+			this.ANode.Name = "ANode";
+			this.ANode.ReadOnly = true;
+			this.ANode.Size = new System.Drawing.Size(58, 20);
+			this.ANode.TabIndex = 9;
 			// 
 			// FindPath
 			// 
@@ -383,22 +401,6 @@
 			this.DrawNodeFaces.UseVisualStyleBackColor = true;
 			this.DrawNodeFaces.CheckedChanged += new System.EventHandler(this.OnDrawChanged);
 			// 
-			// ANode
-			// 
-			this.ANode.Location = new System.Drawing.Point(164, 19);
-			this.ANode.Name = "ANode";
-			this.ANode.ReadOnly = true;
-			this.ANode.Size = new System.Drawing.Size(58, 20);
-			this.ANode.TabIndex = 9;
-			// 
-			// BNode
-			// 
-			this.BNode.Location = new System.Drawing.Point(164, 48);
-			this.BNode.Name = "BNode";
-			this.BNode.ReadOnly = true;
-			this.BNode.Size = new System.Drawing.Size(58, 20);
-			this.BNode.TabIndex = 10;
-			// 
 			// PathingForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -420,9 +422,9 @@
 			((System.ComponentModel.ISupportInitialize)(this.MobHeight)).EndInit();
 			this.groupBox3.ResumeLayout(false);
 			this.groupBox3.PerformLayout();
+			((System.ComponentModel.ISupportInitialize)(this.ErrorAmount)).EndInit();
 			this.groupBox4.ResumeLayout(false);
 			this.groupBox4.PerformLayout();
-			((System.ComponentModel.ISupportInitialize)(this.ErrorAmount)).EndInit();
 			this.groupBox5.ResumeLayout(false);
 			this.groupBox5.PerformLayout();
 			this.ResumeLayout(false);

@@ -29,6 +29,7 @@ namespace TestPathing
 		internal event EventHandler	ePickA;
 		internal event EventHandler	ePickB;
 		internal event EventHandler	eDrawChanged;
+		internal event EventHandler	eMobChanged;
 		internal event EventHandler	eFindPath;
 
 
@@ -146,6 +147,16 @@ namespace TestPathing
 			gack	|=(DrawPathConnections.Checked)? 2 : 0;
 
 			Misc.SafeInvoke(eDrawChanged, gack);
+		}
+		
+		void OnBoundsChanged(object sender, EventArgs e)
+		{
+			UInt16	boxWidth	=(UInt16)MobWidth.Value;
+			UInt16	boxHeight	=(UInt16)MobHeight.Value;
+
+			UInt32	box	=(UInt32)(boxWidth | (boxHeight << 16));
+
+			Misc.SafeInvoke(eMobChanged, box);
 		}
 	}
 }

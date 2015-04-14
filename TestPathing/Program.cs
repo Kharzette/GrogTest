@@ -127,6 +127,10 @@ namespace TestPathing
 			EventHandler	drawChangedHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)
 				{	mapStuff.DrawSettings((int)s);	});
+			EventHandler	mobChangedHandler	=new EventHandler(
+				delegate(object s, EventArgs ea)
+				{	UInt32	box	=(UInt32)s;
+					mapStuff.AlterPathMobile((int)box & 0xFF, (int)box >> 16);	});
 			EventHandler	findPathHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)
 				{	Vector3PairEventArgs	v3pea	=ea as Vector3PairEventArgs;
@@ -138,6 +142,7 @@ namespace TestPathing
 			pathForm.ePickA			+=pickAHandler;
 			pathForm.ePickB			+=pickBHandler;
 			pathForm.eDrawChanged	+=drawChangedHandler;
+			pathForm.eMobChanged	+=mobChangedHandler;
 			pathForm.eFindPath		+=findPathHandler;
 
 			pathForm.Show();
@@ -167,7 +172,7 @@ namespace TestPathing
 				long	timeNow		=Stopwatch.GetTimestamp();
 				long	delta		=timeNow - lastTime;
 				float	secDelta	=(float)delta / freq;
-				float	msDelta		=secDelta * 1000f;
+				int		msDelta		=Math.Max((int)(secDelta * 1000f), 1);			
 
 				List<Input.InputAction>	actions	=UpdateInput(inp, gd, msDelta, ref bMouseLookOn);
 				if(!gd.RendForm.Focused)
