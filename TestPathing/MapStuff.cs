@@ -153,7 +153,7 @@ namespace TestPathing
 			}
 
 			mCamMob		=new Mobile(this, 16f, 50f, 45f, true, mTHelper);
-			mPathMob	=new Mobile(this, 16f, 50f, 45f, true, mTHelper);
+			mPathMob	=new Mobile(this, 16f, 50f, 45f, false, mTHelper);
 
 			mKeeper.AddLib(mZoneMats);
 
@@ -568,7 +568,6 @@ namespace TestPathing
 				}
 			}
 			return	false;
-//			return	mPathMob.TryMoveTo(end, mErrorAmount);
 		}
 
 
