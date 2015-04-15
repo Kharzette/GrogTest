@@ -31,8 +31,7 @@ namespace TestPathing
 			Turn, TurnLeft, TurnRight,
 			Pitch, PitchUp, PitchDown,
 			ToggleMouseLookOn, ToggleMouseLookOff,
-			ToggleFly, NextLevel, Exit,
-			MouseSelect
+			NextLevel, Exit, MouseSelect
 		};
 
 		const float	MouseTurnMultiplier		=0.13f;
@@ -105,9 +104,13 @@ namespace TestPathing
 				{	Vector3EventArgs	v3ea	=ea as Vector3EventArgs;
 					pathForm.SetCoordB(v3ea.mVector);
 					pathForm.SetNodeB((int)s);	});
+			EventHandler	pickReadyHandler	=new EventHandler(
+				delegate(object s, EventArgs ea)
+				{	pathForm.SetPickReady((bool)s);	});
 
 			mapStuff.ePickedA	+=pickedAHandler;
 			mapStuff.ePickedB	+=pickedBHandler;
+			mapStuff.ePickReady	+=pickReadyHandler;
 
 			EventHandler	genHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)
@@ -120,10 +123,12 @@ namespace TestPathing
 				{	mapStuff.SavePathing(s as string);	});
 			EventHandler	pickAHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)
-				{	mapStuff.PickA();	});
+				{	mapStuff.PickA();
+					gd.RendForm.Focus();	});
 			EventHandler	pickBHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)
-				{	mapStuff.PickB();	});
+				{	mapStuff.PickB();
+					gd.RendForm.Focus();	});
 			EventHandler	drawChangedHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)
 				{	mapStuff.DrawSettings((int)s);	});
@@ -144,6 +149,8 @@ namespace TestPathing
 			pathForm.eDrawChanged	+=drawChangedHandler;
 			pathForm.eMobChanged	+=mobChangedHandler;
 			pathForm.eFindPath		+=findPathHandler;
+
+			pathForm.SetPickReady(false);
 
 			pathForm.Show();
 
@@ -196,12 +203,17 @@ namespace TestPathing
 			gd.RendForm.Activated		-=actHandler;
 			gd.RendForm.AppDeactivated	-=deActHandler;
 
+			mapStuff.ePickedA	-=pickedAHandler;
+			mapStuff.ePickedB	-=pickedBHandler;
+			mapStuff.ePickReady	-=pickReadyHandler;
+
 			pathForm.eGenerate		-=genHandler;
 			pathForm.eLoadData		-=loadHandler;
 			pathForm.eSaveData		-=saveHandler;
 			pathForm.ePickA			-=pickAHandler;
 			pathForm.ePickB			-=pickBHandler;
 			pathForm.eDrawChanged	-=drawChangedHandler;
+			pathForm.eMobChanged	-=mobChangedHandler;
 			pathForm.eFindPath		-=findPathHandler;
 
 			mapStuff.FreeAll();
@@ -323,8 +335,6 @@ namespace TestPathing
 
 			inp.MapAction(MyActions.NextLevel, ActionTypes.PressAndRelease,
 				Modifiers.None, System.Windows.Forms.Keys.L);
-			inp.MapAction(MyActions.ToggleFly, ActionTypes.PressAndRelease,
-				Modifiers.None, System.Windows.Forms.Keys.F);
 
 			inp.MapToggleAction(MyActions.ToggleMouseLookOn,
 				MyActions.ToggleMouseLookOff, Modifiers.None,

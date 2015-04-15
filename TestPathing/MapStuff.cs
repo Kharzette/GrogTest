@@ -78,6 +78,7 @@ namespace TestPathing
 		//events
 		internal event EventHandler	ePickedA;
 		internal event EventHandler	ePickedB;
+		internal event EventHandler	ePickReady;
 
 		//constants
 		const float	ShadowSlop				=12f;
@@ -118,11 +119,11 @@ namespace TestPathing
 
 			//string indicators for various statusy things
 			mST.AddString(mFonts[0], "Stuffs", "LevelStatus",
-				color, Vector2.UnitX * 20f + Vector2.UnitY * 620f, Vector2.One);
-			mST.AddString(mFonts[0], "Stuffs", "PosStatus",
 				color, Vector2.UnitX * 20f + Vector2.UnitY * 640f, Vector2.One);
-			mST.AddString(mFonts[0], "(G), (H) to clear:  Dynamic Lights: 0", "DynStatus",
+			mST.AddString(mFonts[0], "Stuffs", "PosStatus",
 				color, Vector2.UnitX * 20f + Vector2.UnitY * 660f, Vector2.One);
+			mST.AddString(mFonts[0], "", "PathStatus",
+				color, Vector2.UnitX * 20f + Vector2.UnitY * 680f, Vector2.One);
 
 			mZoneMats.InitCelShading(1);
 			mZoneMats.GenerateCelTexturePreset(gd.GD,
@@ -230,6 +231,21 @@ namespace TestPathing
 					}
 					mbPickingA	=false;
 					mbPickingB	=false;
+					mST.ModifyStringText(mFonts[0], "Picked point: "
+						+ impactPos.IntStr(), "PathStatus");
+				}
+				else
+				{
+					if(mbPickingA)
+					{
+						mST.ModifyStringText(mFonts[0], "Picking point A: "
+							+ impactPos.IntStr(), "PathStatus");
+					}
+					else if(mbPickingB)
+					{
+						mST.ModifyStringText(mFonts[0], "Picking point B: "
+							+ impactPos.IntStr(), "PathStatus");
+					}
 				}
 			}
 
@@ -247,11 +263,6 @@ namespace TestPathing
 					}
 					ChangeLevel(mLevels[mCurLevel]);
 					mST.ModifyStringText(mFonts[0], "(L) CurLevel: " + mLevels[mCurLevel], "LevelStatus");
-				}
-				else if(act.mAction.Equals(Program.MyActions.ToggleFly))
-				{
-					mbFly		=!mbFly;
-					ps.Method	=(mbFly)? PlayerSteering.SteeringMethod.Fly : PlayerSteering.SteeringMethod.FirstPerson;
 				}
 				else if(act.mAction.Equals(Program.MyActions.Turn))
 				{
@@ -273,22 +284,14 @@ namespace TestPathing
 
 			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
 
-			mST.ModifyStringText(mFonts[0], "ModelOn: " + mCamMob.GetModelOn() + " : "
-				+ (int)mGD.GCam.Position.X + ", "
-				+ (int)mGD.GCam.Position.Y + ", "
-				+ (int)mGD.GCam.Position.Z + " (F)lyMode: " + mbFly
-				+ " ImpactPos: "
-				+ (int)impactPos.X + ", "
-				+ (int)impactPos.Y + ", "
-				+ (int)impactPos.Z
-				+ (mCamMob.IsBadFooting()? " BadFooting!" : ""), "PosStatus");
-
-			mST.Update(mGD.DC);
+			mST.ModifyStringText(mFonts[0], "Position: " + " : "
+				+ mGD.GCam.Position.IntStr(), "PosStatus");
 
 			if(mGraph != null)
 			{
 				mGraph.Update();
 			}
+			mST.Update(mGD.DC);
 		}
 
 
@@ -370,6 +373,16 @@ namespace TestPathing
 			mPathDraw.BuildDrawInfo(mGraph);
 
 			mbBusy	=false;
+
+			int	numNodes, numCons, avgCon;
+
+			mGraph.GetStats(out numNodes, out numCons, out avgCon);
+
+			mST.ModifyStringText(mFonts[0], "PathGraph Nodes: " + numNodes
+				+ ", Connections: " + numCons
+				+ ", Average Connections per Node: " + avgCon, "PathStatus");
+
+			Misc.SafeInvoke(ePickReady, true);
 		}
 
 
@@ -383,6 +396,8 @@ namespace TestPathing
 			mPathDraw.BuildDrawInfo(mGraph);
 
 			mbBusy	=false;
+
+			Misc.SafeInvoke(ePickReady, true);
 		}
 
 
@@ -409,6 +424,8 @@ namespace TestPathing
 			if(mGraph != null && !mbAwaitingPath)
 			{
 				mbAwaitingPath	=mGraph.FindPath(start, end, OnPathNotify, mZone.FindWorldNodeLandedIn);
+
+				mST.ModifyStringText(mFonts[0], "Path Find returned failure immediately!", "PathStatus");
 			}
 		}
 
@@ -471,6 +488,7 @@ namespace TestPathing
 				mPathDraw.BuildDrawInfo(mGraph);
 				mPathDraw.BuildPathDrawInfo(new List<Vector3>(),
 					mPathMob.GetMiddlePos() - mPathMob.GetGroundPos());
+				Misc.SafeInvoke(ePickReady, false);
 			}
 
 			string	lev	=mGameRootDir + "/Levels/" + level;
@@ -515,13 +533,6 @@ namespace TestPathing
 
 				sm.SetMatLib(mStaticMats);
 			}
-
-//			mGraph.Load(lev + ".Pathing");
-//			mGraph.GenerateGraph(mZone.GetWalkableFaces, 32, 18f, CanPathReach);
-//			mGraph.Save(mLevels[index] + ".Pathing");
-//			mGraph.BuildDrawInfo(gd);
-
-//			mPathMobile.SetZone(mZone);
 
 			mPathMob.SetZone(mZone);
 			mCamMob.SetZone(mZone);
@@ -630,6 +641,16 @@ namespace TestPathing
 
 		void OnPathNotify(List<Vector3> resultPath)
 		{
+			if(resultPath.Count == 0)
+			{
+				mST.ModifyStringText(mFonts[0], "Path not found!  Probably no valid route.", "PathStatus");
+			}
+			else
+			{
+				mST.ModifyStringText(mFonts[0], "Path Found, with "
+					+ resultPath.Count + " positions.", "PathStatus");
+			}
+
 			mPathDraw.BuildPathDrawInfo(resultPath, mPathMob.GetMiddlePos() - mPathMob.GetGroundPos());
 
 			mbAwaitingPath	=false;

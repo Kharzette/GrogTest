@@ -19,7 +19,7 @@ namespace TestPathing
 		OpenFileDialog	mOFD	=new OpenFileDialog();
 		SaveFileDialog	mSFD	=new SaveFileDialog();
 
-		bool	mbPickMode;
+		bool	mbPickMode, mbPickReady;
 
 		Vector3	mA, mB;
 
@@ -45,18 +45,20 @@ namespace TestPathing
 
 		internal void SetCoordA(Vector3 aPos)
 		{
-			ACoords.Text	=IntVector(aPos);
+			ACoords.Text	=aPos.IntStr();
 			mA				=aPos;
 
 			mbPickMode	=false;
+			Enabled		=true;
 		}
 
 		internal void SetCoordB(Vector3 bPos)
 		{
-			BCoords.Text	=IntVector(bPos);
+			BCoords.Text	=bPos.IntStr();
 			mB				=bPos;
 
 			mbPickMode	=false;
+			Enabled		=true;
 		}
 
 		internal void SetNodeA(int node)
@@ -69,10 +71,12 @@ namespace TestPathing
 			BNode.Text	="" + node;
 		}
 
-
-		string	IntVector(Vector3 vec)
+		internal void SetPickReady(bool bReady)
 		{
-			return	"" + (int)vec.X + ", " + (int)vec.Y + ", " + (int)vec.Z;
+			mbPickReady	=bReady;
+
+			PickA.Enabled	=bReady;
+			PickB.Enabled	=bReady;
 		}
 
 
@@ -118,6 +122,7 @@ namespace TestPathing
 			}
 
 			mbPickMode	=true;
+			Enabled		=false;
 
 			Misc.SafeInvoke(ePickA, null);
 		}
@@ -130,6 +135,7 @@ namespace TestPathing
 			}
 
 			mbPickMode	=true;
+			Enabled		=false;
 
 			Misc.SafeInvoke(ePickB, null);
 		}
