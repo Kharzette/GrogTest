@@ -39,10 +39,7 @@ namespace TestZone
 			AccelTest, AccelTest2, Exit
 		};
 
-		const float	MouseTurnMultiplier		=0.13f;
-		const float	AnalogTurnMultiplier	=500f;
-		const float	KeyTurnMultiplier		=500f;
-		const float	MaxTimeDelta			=0.1f;
+		const float	MaxTimeDelta	=0.1f;
 
 
 		[STAThread]
@@ -137,7 +134,6 @@ namespace TestZone
 				long	timeNow		=Stopwatch.GetTimestamp();
 				long	delta		=timeNow - lastTime;
 				float	secDelta	=(float)delta / freq;
-				int		msDelta		=Math.Max((int)(secDelta * 1000f), 1);			
 
 				accumTest	+=secDelta;
 
@@ -150,6 +146,8 @@ namespace TestZone
 					secDelta		=MaxTimeDelta;
 					bClampInputs	=true;
 				}
+
+				int	msDelta	=Math.Max((int)(secDelta * 1000f), 1);
 
 				if(bFixedStep)
 				{
@@ -167,7 +165,7 @@ namespace TestZone
 
 					if(fullTime > 0f)
 					{
-						acts	=UpdateInput(inp, gd, bRightClickToTurn, bClampInputs, step, ref bMouseLookOn);
+						acts	=UpdateInput(inp, gd, bRightClickToTurn, bClampInputs, fullTime, ref bMouseLookOn);
 						if(!gd.RendForm.Focused)
 						{
 							acts.Clear();
@@ -244,8 +242,8 @@ namespace TestZone
 					{
 						bMouseLookOn	=false;
 						gd.SetCapture(false);
-						inp.UnMapAxisAction(MyActions.Pitch, Input.MoveAxis.MouseYAxis);
-						inp.UnMapAxisAction(MyActions.Turn, Input.MoveAxis.MouseXAxis);
+						inp.UnMapAxisAction(Input.MoveAxis.MouseYAxis);
+						inp.UnMapAxisAction(Input.MoveAxis.MouseXAxis);
 					}
 				}
 			}
@@ -272,15 +270,15 @@ namespace TestZone
 				{
 					if(act.mDevice == Input.InputAction.DeviceType.MOUSE)
 					{
-						act.mMultiplier	*=MouseTurnMultiplier;
+						act.mMultiplier	*=UserSettings.MouseTurnMultiplier;
 					}
 					else if(act.mDevice == Input.InputAction.DeviceType.ANALOG)
 					{
-						act.mMultiplier	*=AnalogTurnMultiplier;
+						act.mMultiplier	*=UserSettings.AnalogTurnMultiplier;
 					}
 					else if(act.mDevice == Input.InputAction.DeviceType.KEYS)
 					{
-						act.mMultiplier	*=KeyTurnMultiplier;
+						act.mMultiplier	*=UserSettings.KeyTurnMultiplier;
 					}
 				}
 			}
