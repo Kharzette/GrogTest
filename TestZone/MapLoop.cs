@@ -47,9 +47,6 @@ namespace TestZone
 
 		Random	mRand	=new Random();
 
-		//shader compile progress indicator
-		SharedForms.ThreadedProgress	mSProg;
-
 		//helpers
 		TriggerHelper		mTHelper		=new TriggerHelper();
 		ParticleHelper		mPHelper		=new ParticleHelper();
@@ -124,8 +121,8 @@ namespace TestZone
 
 			mSKeeper	=new StuffKeeper();
 
-			mSKeeper.eCompileNeeded	+=OnCompilesNeeded;
-			mSKeeper.eCompileDone	+=OnCompileDone;
+			mSKeeper.eCompileNeeded	+=SharedForms.ShaderCompileHelper.CompileNeededHandler;
+			mSKeeper.eCompileDone	+=SharedForms.ShaderCompileHelper.CompileDoneHandler;
 
 			mSKeeper.Init(mGD, gameRootDir);
 
@@ -1016,37 +1013,6 @@ namespace TestZone
 			{
 			}
 			return	true;
-		}
-
-
-		void OnCompilesNeeded(object sender, EventArgs ea)
-		{
-			Thread	uiThread	=new Thread(() =>
-				{
-					mSProg	=new SharedForms.ThreadedProgress("Compiling Shaders...");
-					System.Windows.Forms.Application.Run(mSProg);
-				});
-
-			uiThread.SetApartmentState(ApartmentState.STA);
-			uiThread.Start();
-
-			while(mSProg == null)
-			{
-				Thread.Sleep(0);
-			}
-
-			mSProg.SetSizeInfo(0, (int)sender);
-		}
-
-
-		void OnCompileDone(object sender, EventArgs ea)
-		{
-			mSProg.SetCurrent((int)sender);
-
-			if((int)sender == mSProg.GetMax())
-			{
-				mSProg.Nuke();
-			}
 		}
 	}
 }

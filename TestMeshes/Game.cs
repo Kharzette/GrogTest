@@ -69,9 +69,6 @@ namespace TestMeshes
 		//2d stuff
 		ScreenUI	mSUI;
 
-		//shader compile progress indicator
-		SharedForms.ThreadedProgress	mSProg;
-
 		//gpu
 		GraphicsDevice	mGD;
 
@@ -99,8 +96,8 @@ namespace TestMeshes
 
 			mSKeeper	=new StuffKeeper();
 
-			mSKeeper.eCompileNeeded	+=OnCompilesNeeded;
-			mSKeeper.eCompileDone		+=OnCompileDone;
+			mSKeeper.eCompileNeeded	+=SharedForms.ShaderCompileHelper.CompileNeededHandler;
+			mSKeeper.eCompileDone	+=SharedForms.ShaderCompileHelper.CompileDoneHandler;
 
 			mSKeeper.Init(mGD, gameRootDir);
 
@@ -688,37 +685,6 @@ namespace TestMeshes
 		void UpdateInvertStatus()
 		{
 			mST.ModifyStringText(mFonts[0], "(PGUP/PGDN) Invert Interval: " + mInvertInterval, "InvertStatus");
-		}
-
-
-		void OnCompilesNeeded(object sender, EventArgs ea)
-		{
-			Thread	uiThread	=new Thread(() =>
-				{
-					mSProg	=new SharedForms.ThreadedProgress("Compiling Shaders...");
-					System.Windows.Forms.Application.Run(mSProg);
-				});
-
-			uiThread.SetApartmentState(ApartmentState.STA);
-			uiThread.Start();
-
-			while(mSProg == null)
-			{
-				Thread.Sleep(0);
-			}
-
-			mSProg.SetSizeInfo(0, (int)sender);
-		}
-
-
-		void OnCompileDone(object sender, EventArgs ea)
-		{
-			mSProg.SetCurrent((int)sender);
-
-			if((int)sender == mSProg.GetMax())
-			{
-				mSProg.Nuke();
-			}
 		}
 	}
 }
