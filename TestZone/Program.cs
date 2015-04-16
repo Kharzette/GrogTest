@@ -384,8 +384,6 @@ namespace TestZone
 			PlayerSteering	pSteering	=new PlayerSteering();
 			pSteering.Method			=PlayerSteering.SteeringMethod.Fly;
 
-			pSteering.InvertYAxis	=false;
-
 			pSteering.SetMoveEnums(MyActions.MoveForwardBack, MyActions.MoveLeftRight,
 				MyActions.MoveForward, MyActions.MoveBack,
 				MyActions.MoveLeft, MyActions.MoveRight,
