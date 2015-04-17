@@ -85,9 +85,6 @@ namespace TestZone
 		//audio
 		Audio	mAudio	=new Audio();
 
-		//2d stuff
-		ScreenUI	mSUI;
-
 		//Fonts / UI
 		ScreenText		mST;
 		MatLib			mFontMats;
@@ -100,9 +97,10 @@ namespace TestZone
 		const float	ShadowSlop			=12f;
 		const float	JogMoveForce		=2000f;	//Fig Newtons
 		const float	MidAirMoveForce		=100f;	//Slight wiggle midair
-		const float	StumbleForce		=50f;	//Fig Newtons
+		const float	StumbleForce		=700f;	//Fig Newtons
 		const float	GravityForce		=980f;	//Gravitons
 		const float	GroundFriction		=10f;	//Frictols
+		const float	StumbleFriction		=6f;	//Frictols
 		const float	AirFriction			=0.1f;	//Frictols
 		const float	JumpForce			=390;	//leapometers
 
@@ -134,8 +132,7 @@ namespace TestZone
 
 			mFonts	=mSKeeper.GetFontList();
 
-			mST		=new ScreenText(gd.GD, mFontMats, mFonts[0], 1000);
-			mSUI	=new ScreenUI(gd.GD, mFontMats, 100);
+			mST	=new ScreenText(gd.GD, mFontMats, mFonts[0], 1000);
 
 			mTextProj	=Matrix.OrthoOffCenterLH(0, mResX, mResY, 0, 0.1f, 5f);
 
@@ -148,14 +145,6 @@ namespace TestZone
 				{
 					uiTex.Add(tex);
 				}
-			}
-
-			//draw some ui bits
-			if(uiTex.Count > 1)
-			{
-				mSUI.AddGump(uiTex[0], "TestGump", Vector4.One, Vector2.One * 20f, Vector2.One);
-				mSUI.AddGump(uiTex[1], "TestGump2", Vector4.One, Vector2.One * 60f, Vector2.One);
-				//mSUI.ModifyGumpScale("TestGump", Vector2.One * 0.25f);
 			}
 
 			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
@@ -598,6 +587,29 @@ namespace TestZone
 
 			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
 
+			if(!mbFly)
+			{
+				if(mPCamMob.IsOnGround())
+				{
+					//kill downward velocity so previous
+					//falling momentum doesn't contribute to
+					//a new jump
+					if(mCamVelocity.Y < 0f)
+					{
+						mCamVelocity.Y	=0f;
+					}
+				}
+				if(mPCamMob.IsBadFooting())
+				{
+					//reduce downward velocity to avoid
+					//getting stuck in V shaped floors
+					if(mCamVelocity.Y < 0f)
+					{
+						mCamVelocity.Y	-=(StumbleFriction * mCamVelocity.Y * secDelta);
+					}
+				}
+			}
+
 			mPB.Update(mGD.DC, msDelta);
 
 			mSHelper.HitCheck(mPMob, mGD.GCam.Position);
@@ -613,7 +625,6 @@ namespace TestZone
 				+ (mPCamMob.IsBadFooting()? " BadFooting!" : ""), "PosStatus");
 
 			mST.Update(mGD.DC);
-			mSUI.Update(mGD.DC);
 		}
 
 
@@ -703,7 +714,6 @@ namespace TestZone
 			mPost.SetParameter("mColorTex", "SceneColor");
 			mPost.DrawStage(mGD, "Modulate");
 
-			mSUI.Draw(mGD.DC, Matrix.Identity, mTextProj);
 			mST.Draw(mGD.DC, Matrix.Identity, mTextProj);
 		}
 
