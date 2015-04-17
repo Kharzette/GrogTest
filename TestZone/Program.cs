@@ -36,7 +36,8 @@ namespace TestZone
 			ToggleMouseLookOn, ToggleMouseLookOff,
 			NextAnim, NextLevel, ToggleFly,
 			PlaceDynamicLight, ClearDynamicLights,
-			AccelTest, AccelTest2, Exit
+			AccelTest, AccelTest2, Exit,
+			Step, StepJump
 		};
 
 		const float	MaxTimeDelta	=0.1f;
@@ -86,6 +87,7 @@ namespace TestZone
 			bool	bMouseLookOn	=false;
 			long	lastTime		=Stopwatch.GetTimestamp();
 			bool	bFixedStep		=true;
+			bool	bSpendRemainder	=false;
 			float	step			=1f / 60f;
 			float	fullTime		=0f;
 			long	freq			=Stopwatch.Frequency;
@@ -163,7 +165,7 @@ namespace TestZone
 						fullTime	-=step;
 					}
 
-					if(fullTime > 0f)
+					if(fullTime > 0f && bSpendRemainder)
 					{
 						acts	=UpdateInput(inp, gd, bRightClickToTurn, bClampInputs, fullTime, ref bMouseLookOn);
 						if(!gd.RendForm.Focused)
@@ -171,6 +173,14 @@ namespace TestZone
 							acts.Clear();
 						}
 						mapLoop.Update(fullTime, acts, pSteering);
+						fullTime	=0;
+					}
+					else
+					{
+						if(secDelta == fullTime)
+						{
+							//no update at all this frame?
+						}
 					}
 				}
 				else
@@ -367,6 +377,11 @@ namespace TestZone
 				Modifiers.None, System.Windows.Forms.Keys.T);
 			inp.MapAction(MyActions.AccelTest2, ActionTypes.ContinuousHold,
 				Modifiers.ShiftHeld, System.Windows.Forms.Keys.T);
+
+			inp.MapAction(MyActions.Step, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.Y);
+			inp.MapAction(MyActions.StepJump, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.U);
 
 			//exit
 			inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,

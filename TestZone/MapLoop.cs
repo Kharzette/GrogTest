@@ -72,9 +72,9 @@ namespace TestZone
 		LightHelper				mPLHelper;
 		bool					mbFly	=true;
 
-		//physics testing stuffs
-		Physics	mPhys		=new Physics();
-		Physics	mCamPhys	=new Physics();
+		//physics stuffs
+		Vector3	mVelocity		=Vector3.Zero;
+		Vector3	mCamVelocity	=Vector3.Zero;
 
 		//gpu
 		GraphicsDevice	mGD;
@@ -98,22 +98,17 @@ namespace TestZone
 
 		//constants
 		const float	ShadowSlop			=12f;
-		const float	PlayerMass			=1f;		//Gronks
-		const float	JogMoveForce		=20000f;	//Fig Newtons
-		const float	MidAirMoveForce		=1000f;		//Slight wiggle midair
-		const float	StumbleForce		=5000f;	//Fig Newtons
-		const float	GravityForce		=400f;		//Gravitons
-		const float	PlayerInertiaTensor	=80f;		//Wild guess
-		const float	GroundFriction		=2f;		//Frictols
-		const float	AirFriction			=0.1f;		//Frictols
-		const float	JumpForce			=12000f;	//leapometers
+		const float	JogMoveForce		=2000f;	//Fig Newtons
+		const float	MidAirMoveForce		=100f;	//Slight wiggle midair
+		const float	StumbleForce		=50f;	//Fig Newtons
+		const float	GravityForce		=980f;	//Gravitons
+		const float	GroundFriction		=10f;	//Frictols
+		const float	AirFriction			=0.1f;	//Frictols
+		const float	JumpForce			=350f;	//leapometers
 
 
 		internal MapLoop(GraphicsDevice gd, string gameRootDir)
 		{
-			mPhys.SetProps(PlayerMass, PlayerInertiaTensor, GroundFriction);
-			mCamPhys.SetProps(PlayerMass, PlayerInertiaTensor, GroundFriction);
-
 			mGD				=gd;
 			mGameRootDir	=gameRootDir;
 			mResX			=gd.RendForm.ClientRectangle.Width;
@@ -345,6 +340,101 @@ namespace TestZone
 			mST.ModifyStringText(mFonts[0], "(L) CurLevel: " + mLevels[mCurLevel], "LevelStatus");
 		}
 
+		float	maxTestHeight	=-9000;
+		float	maxAirTime		=0;
+		float	curAirTime		=0;
+		internal void UpdateTest(float secDelta, bool bJump)
+		{
+			int	msDelta	=Math.Max((int)(secDelta * 1000f), 1);
+
+			bool	bGravity	=false;
+			float	friction	=GroundFriction;
+			if(!mPMob.IsOnGround())
+			{
+				//gravity
+				bGravity	=true;
+				curAirTime	+=secDelta;
+				if(curAirTime > maxAirTime)
+				{
+					maxAirTime	=curAirTime;
+				}
+
+				if(mPMob.IsBadFooting())
+				{
+					friction	=GroundFriction;
+				}
+				else
+				{
+					friction	=AirFriction;
+				}
+			}
+			else
+			{
+				//friction
+				friction	=GroundFriction;
+				mVelocity	=Vector3.Zero;	//zero out for experiment
+			}
+
+			bool	bPJumped	=false;
+
+			if(bJump)
+			{
+				if(mPMob.IsOnGround())
+				{
+					mVelocity	+=Vector3.Up * JumpForce;
+					friction	=AirFriction;
+					bPJumped	=true;
+					curAirTime	=0;
+				}
+			}
+
+			Vector3	pos	=mPMob.GetGroundPos();
+
+			if(bGravity)
+			{
+				mVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
+			}
+
+			pos	+=mVelocity * secDelta;
+
+			if(bGravity)
+			{
+				mVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
+			}
+
+			if(mPChar != null)
+			{
+				Vector3	ppos, donutCare;
+				mPMob.Move(pos, msDelta, false, false, !bPJumped, true, true, out ppos, out donutCare);
+
+				if(ppos.Y > maxTestHeight)
+				{
+					maxTestHeight	=ppos.Y;
+				}
+
+				Matrix	pmat	=Matrix.Translation(ppos);
+				Matrix	pOrient	=Matrix.Identity;
+
+				mPChar.SetTransform(pOrient * pmat);
+
+				float	totTime	=mPAnims.GetAnimTime(mAnims[mCurAnim]);
+				float	strTime	=mPAnims.GetAnimStartTime(mAnims[mCurAnim]);
+				float	endTime	=totTime + strTime;
+
+				mCurAnimTime	+=secDelta;
+				if(mCurAnimTime > endTime)
+				{
+					mCurAnimTime	=strTime + (mCurAnimTime - endTime);
+				}
+
+				mPChar.Animate(mAnims[mCurAnim], mCurAnimTime);
+
+				mPLHelper.Update(msDelta, ppos + Vector3.Up * 32f, mDynLights);
+			}
+
+			mSHelper.HitCheck(mPMob, mGD.GCam.Position);
+		}
+
 
 		//if running on a fixed timestep, this might be called
 		//more often with a smaller delta time than RenderUpdate()
@@ -358,75 +448,57 @@ namespace TestZone
 
 			float	yawAmount	=0f;
 			float	pitchAmount	=0f;
-
-			if(!mPMob.IsOnGround())
-			{
-				//gravity
-				mPhys.ApplyForce(Vector3.Down * GravityForce);
-
-				if(mPMob.IsBadFooting())
-				{
-					mPhys.SetFriction(GroundFriction);
-				}
-				else
-				{
-					mPhys.SetFriction(AirFriction);
-				}
-			}
-			else
-			{
-				//friction
-				mPhys.SetFriction(GroundFriction);
-			}
-
+			bool	bGravity	=false;
+			float	friction	=GroundFriction;
 			if(!mPCamMob.IsOnGround())
 			{
 				//gravity
 				if(!mbFly)
 				{
-					mCamPhys.ApplyForce(Vector3.Down * GravityForce);
+					bGravity	=true;
 				}
 
 				if(mPCamMob.IsBadFooting())
 				{
-					mCamPhys.SetFriction(GroundFriction);
+					friction	=GroundFriction;
 				}
 				else
 				{
-					mCamPhys.SetFriction(AirFriction);
+					friction	=AirFriction;
 				}
 			}
 			else
 			{
 				if(!mbFly)
 				{
-					mCamPhys.SetFriction(GroundFriction);
+					friction	=GroundFriction;
 				}
 				else
 				{
-					mCamPhys.SetFriction(AirFriction);
+					friction	=AirFriction;
 				}
 			}
 
 			bool	bCamJumped	=false;
-			bool	bPJumped	=false;
 
 			foreach(Input.InputAction act in actions)
 			{
 				if(act.mAction.Equals(Program.MyActions.Jump))
 				{
-					if(mPMob.IsOnGround())
-					{
-						mPhys.ApplyForce(Vector3.Up * JumpForce);
-						mPhys.SetFriction(AirFriction);
-						bPJumped	=true;
-					}
 					if(mPCamMob.IsOnGround() && !mbFly)
 					{
-						mCamPhys.ApplyForce(Vector3.Up * JumpForce);
-						mPhys.SetFriction(AirFriction);
-						bCamJumped	=true;
+						mCamVelocity	+=Vector3.Up * JumpForce;
+						friction		=AirFriction;
+						bCamJumped		=true;
 					}
+				}
+				else if(act.mAction.Equals(Program.MyActions.Step))
+				{
+					UpdateTest(1f/60f, false);
+				}
+				else if(act.mAction.Equals(Program.MyActions.StepJump))
+				{
+					UpdateTest(1f/60f, true);
 				}
 				else if(act.mAction.Equals(Program.MyActions.NextAnim)
 					&& mAnims.Count > 0)
@@ -463,14 +535,13 @@ namespace TestZone
 				}
 				else if(act.mAction.Equals(Program.MyActions.AccelTest))
 				{
-					mPhys.ApplyForce(Vector3.UnitX * act.mMultiplier * JogMoveForce);
+					mVelocity	+=Vector3.UnitX * act.mMultiplier * JogMoveForce;
 				}
 				else if(act.mAction.Equals(Program.MyActions.AccelTest2))
 				{
-					mPhys.ApplyForce(-Vector3.UnitX * act.mMultiplier * JogMoveForce);
+					mVelocity	+=-Vector3.UnitX * act.mMultiplier * JogMoveForce;
 				}
 			}
-			mPhys.Update(secDelta);
 
 			UpdateDynamicLights(msDelta, actions);
 
@@ -490,69 +561,30 @@ namespace TestZone
 				moveVec	*=MidAirMoveForce;
 			}
 
-			//update phys position in case of model push
-			mCamPhys.SetPosition(startPos);
-			mCamPhys.ApplyForce(moveVec);
+			mCamVelocity	+=moveVec * 0.5f;
+			mCamVelocity	-=(friction * mCamVelocity * secDelta * 0.5f);
 
-			mCamPhys.Update(secDelta);
+			if(bGravity)
+			{
+				mCamVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
+			}
+
+			Vector3	pos	=startPos + mCamVelocity * secDelta;
+
+			mCamVelocity	+=moveVec * 0.5f;
+			mCamVelocity	-=(friction * mCamVelocity * secDelta * 0.5f);
+			if(bGravity)
+			{
+				mCamVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
+			}
+
 
 			Vector3	camPos	=Vector3.Zero;
-			Vector3	endPos	=mCamPhys.GetPosition();
+			Vector3	endPos	=pos;
 
 			mPCamMob.Move(endPos, msDelta, false, mbFly, !bCamJumped, true, true, out endPos, out camPos);
 
-			mCamPhys.SetPosition(endPos);
-
-			//clear vertical momentum if on the ground
-			if(mPCamMob.IsOnGround() && !mbFly)
-			{
-				mCamPhys.ClearVerticalMomentum();
-			}
-
-			//also clear if footing is bad, and there was
-			//no vertical movement, this prevents getting
-			//jammed into a V shaped wedge
-			if(mPCamMob.IsBadFooting() && !mbFly)
-			{
-				if((startPos.Y - endPos.Y) == 0f)
-				{
-					mCamPhys.ClearVerticalMomentum();
-				}
-			}
-
 			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
-
-			if(mPChar != null)
-			{
-				Vector3	ppos;
-				mPMob.Move(mPhys.GetPosition(), msDelta, false, false, !bPJumped, true, true, out ppos, out camPos);
-
-				mPhys.SetPosition(ppos);
-
-				if(mPMob.IsOnGround())
-				{
-					mPhys.ClearVerticalMomentum();
-				}
-
-				Matrix	pmat	=Matrix.Translation(ppos);
-				Matrix	pOrient	=Matrix.RotationQuaternion(mPhys.GetOrient());
-
-				mPChar.SetTransform(pOrient * pmat);
-
-				float	totTime	=mPAnims.GetAnimTime(mAnims[mCurAnim]);
-				float	strTime	=mPAnims.GetAnimStartTime(mAnims[mCurAnim]);
-				float	endTime	=totTime + strTime;
-
-				mCurAnimTime	+=secDelta;
-				if(mCurAnimTime > endTime)
-				{
-					mCurAnimTime	=strTime + (mCurAnimTime - endTime);
-				}
-
-				mPChar.Animate(mAnims[mCurAnim], mCurAnimTime);
-
-				mPLHelper.Update(msDelta, ppos + Vector3.Up * 32f, mDynLights);
-			}
 
 			mPB.Update(mGD.DC, msDelta);
 
@@ -564,7 +596,8 @@ namespace TestZone
 				+ (int)mGD.GCam.Position.X + ", "
 				+ (int)mGD.GCam.Position.Y + ", "
 				+ (int)mGD.GCam.Position.Z + " (F)lyMode: " + mbFly
-				+ " X: " + yawAmount + " Y: " + pitchAmount
+				+ " CurAirTime: " + curAirTime + " MaxAirTime: " + maxAirTime
+				+ " MaxHeight: " + maxTestHeight
 				+ (mPCamMob.IsBadFooting()? " BadFooting!" : ""), "PosStatus");
 
 			mST.Update(mGD.DC);
@@ -862,8 +895,6 @@ namespace TestZone
 			Vector3	gpos	=mZone.GetPlayerStartPos(out ang);
 			mPMob.SetGroundPos(gpos);
 			mPCamMob.SetGroundPos(gpos);
-			mPhys.SetPosition(gpos);
-			mCamPhys.SetPosition(gpos);
 
 			mKeeper.Scan();
 			mKeeper.AssignIDsToEffectMaterials("BSP.fx");
