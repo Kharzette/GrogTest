@@ -104,7 +104,7 @@ namespace TestZone
 		const float	GravityForce		=980f;	//Gravitons
 		const float	GroundFriction		=10f;	//Frictols
 		const float	AirFriction			=0.1f;	//Frictols
-		const float	JumpForce			=350f;	//leapometers
+		const float	JumpForce			=390;	//leapometers
 
 
 		internal MapLoop(GraphicsDevice gd, string gameRootDir)
@@ -348,7 +348,6 @@ namespace TestZone
 			int	msDelta	=Math.Max((int)(secDelta * 1000f), 1);
 
 			bool	bGravity	=false;
-			float	friction	=GroundFriction;
 			if(!mPMob.IsOnGround())
 			{
 				//gravity
@@ -358,20 +357,9 @@ namespace TestZone
 				{
 					maxAirTime	=curAirTime;
 				}
-
-				if(mPMob.IsBadFooting())
-				{
-					friction	=GroundFriction;
-				}
-				else
-				{
-					friction	=AirFriction;
-				}
 			}
 			else
 			{
-				//friction
-				friction	=GroundFriction;
 				mVelocity	=Vector3.Zero;	//zero out for experiment
 			}
 
@@ -381,8 +369,6 @@ namespace TestZone
 			{
 				if(mPMob.IsOnGround())
 				{
-					mVelocity	+=Vector3.Up * JumpForce;
-					friction	=AirFriction;
 					bPJumped	=true;
 					curAirTime	=0;
 				}
@@ -394,12 +380,25 @@ namespace TestZone
 			{
 				mVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
 			}
+			if(bPJumped)
+			{
+				mVelocity	+=Vector3.Up * JumpForce * 0.5f;
 
-			pos	+=mVelocity * secDelta;
+				//do a 60hz move if jumped to get a good impulse
+				pos	+=mVelocity * (1f/60f);
+			}
+			else
+			{
+				pos	+=mVelocity * secDelta;
+			}
 
 			if(bGravity)
 			{
 				mVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
+			}
+			if(bPJumped)
+			{
+				mVelocity	+=Vector3.Up * JumpForce * 0.5f;
 			}
 
 			if(mPChar != null)
@@ -487,7 +486,6 @@ namespace TestZone
 				{
 					if(mPCamMob.IsOnGround() && !mbFly)
 					{
-						mCamVelocity	+=Vector3.Up * JumpForce;
 						friction		=AirFriction;
 						bCamJumped		=true;
 					}
@@ -564,18 +562,32 @@ namespace TestZone
 			mCamVelocity	+=moveVec * 0.5f;
 			mCamVelocity	-=(friction * mCamVelocity * secDelta * 0.5f);
 
+			Vector3	pos	=startPos;
+
 			if(bGravity)
 			{
 				mCamVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
 			}
+			if(bCamJumped)
+			{
+				mCamVelocity	+=Vector3.Up * JumpForce * 0.5f;
 
-			Vector3	pos	=startPos + mCamVelocity * secDelta;
+				pos	+=mCamVelocity * (1f/60f);
+			}
+			else
+			{
+				pos	+=mCamVelocity * secDelta;
+			}
 
 			mCamVelocity	+=moveVec * 0.5f;
 			mCamVelocity	-=(friction * mCamVelocity * secDelta * 0.5f);
 			if(bGravity)
 			{
 				mCamVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
+			}
+			if(bCamJumped)
+			{
+				mCamVelocity	+=Vector3.Up * JumpForce * 0.5f;
 			}
 
 

@@ -87,7 +87,7 @@ namespace TestZone
 			bool	bMouseLookOn	=false;
 			long	lastTime		=Stopwatch.GetTimestamp();
 			bool	bFixedStep		=true;
-			bool	bSpendRemainder	=false;
+			bool	bSpendRemainder	=true;
 			float	step			=1f / 60f;
 			float	fullTime		=0f;
 			long	freq			=Stopwatch.Frequency;
