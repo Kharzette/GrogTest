@@ -186,13 +186,12 @@ namespace TestPathing
 
 		//if running on a fixed timestep, this might be called
 		//more often with a smaller delta time than RenderUpdate()
-		internal void Update(float secDelta, List<Input.InputAction> actions, PlayerSteering ps)
+		internal void Update(UpdateTimer time,
+			List<Input.InputAction> actions, PlayerSteering ps)
 		{
 			//Thread.Sleep(30);
 
-			float	msDelta	=secDelta * 1000f;
-
-			mZone.UpdateModels((int)msDelta);
+			mZone.UpdateModels(time.GetUpdateDeltaSeconds());
 
 			Vector3	impactPos	=Vector3.Zero;
 
@@ -277,7 +276,8 @@ namespace TestPathing
 			Vector3	camPos	=Vector3.Zero;
 			Vector3	endPos	=mCamMob.GetGroundPos() + moveVec * 100f;
 
-			mCamMob.Move(endPos, (int)msDelta, false, mbFly, true, true, true, out endPos, out camPos);
+			mCamMob.Move(endPos, time.GetUpdateDeltaMilliSeconds(),
+				false, mbFly, true, true, true, out endPos, out camPos);
 
 			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
 
@@ -294,8 +294,13 @@ namespace TestPathing
 
 		//called once before render with accumulated delta
 		//do all once per render style updates in here
-		internal void RenderUpdate(int msDelta)
+		internal void RenderUpdate(float msDelta)
 		{
+			if(msDelta <= 0f)
+			{
+				return;
+			}
+
 			mZoneDraw.Update(msDelta);
 
 			mZoneMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);

@@ -128,10 +128,14 @@ namespace TestAudio
 			st.AddString(fonts[0], "Stuffs", "PosStatus",
 				color, Vector2.UnitX * 20f + Vector2.UnitY * 580f, Vector2.One);
 
-			Vector3	pos			=Vector3.One * 5f;
-			Vector3	lightDir	=-Vector3.UnitY;
-			long	lastTime	=Stopwatch.GetTimestamp();
-			long	freq		=Stopwatch.Frequency;
+			Vector3		pos			=Vector3.One * 5f;
+			Vector3		lightDir	=-Vector3.UnitY;
+			UpdateTimer	time		=new UpdateTimer(false, false);
+
+			time.SetFixedTimeStepSeconds(1f / 60f);	//60fps update rate
+			time.SetMaxDeltaSeconds(MaxTimeDelta);
+
+			List<Input.InputAction>	acts	=new List<Input.InputAction>();
 
 			RenderLoop.Run(gd.RendForm, () =>
 			{
@@ -147,32 +151,34 @@ namespace TestAudio
 					gd.ResetCursorPos();
 				}
 
-				long	timeNow		=Stopwatch.GetTimestamp();
-				long	delta		=timeNow - lastTime;
-				float	secDelta	=Math.Min((float)delta / freq, 0.1f);
-				int		msDelta		=Math.Max((int)(secDelta * 1000f), 1);
-
-				List<Input.InputAction>	actions	=UpdateInput(inp, gd, secDelta, ref bMouseLookOn);
-				if(!gd.RendForm.Focused)
+				time.Stamp();
+				while(time.GetUpdateDeltaSeconds() > 0f)
 				{
-					actions.Clear();
+					acts	=UpdateInput(inp, gd,
+						time.GetUpdateDeltaSeconds(), ref bMouseLookOn);
+					if(!gd.RendForm.Focused)
+					{
+						acts.Clear();
+					}
+					Vector3	moveDelta	=pSteering.Update(pos, gd.GCam.Forward,
+						gd.GCam.Left, gd.GCam.Up, acts);
+
+					moveDelta	*=200f;
+
+					pos	-=moveDelta;
+				
+					gd.GCam.Update(pos, pSteering.Pitch, pSteering.Yaw, pSteering.Roll);
+
+					CheckInputKeys(acts, aud, ref curSound, sounds, emitter, gd.GCam.Position);
+
+					//update status text
+					st.ModifyStringText(fonts[0], "Current Sound: " + sounds[curSound], "CurrentSound");
+					st.ModifyStringText(fonts[0], "Emitter Pos: " + emitter.Position, "EmitterPosition");
+					st.ModifyStringText(fonts[0], "Cam Pos: " + gd.GCam.Position +
+						", Sounds Playing: " + aud.GetNumInstances(), "PosStatus");
+					time.UpdateDone();
 				}
 
-				Vector3	moveDelta	=pSteering.Update(pos, gd.GCam.Forward, gd.GCam.Left, gd.GCam.Up, actions);
-
-				moveDelta	*=200f;
-
-				pos	-=moveDelta;
-				
-				gd.GCam.Update(pos, pSteering.Pitch, pSteering.Yaw, pSteering.Roll);
-
-				CheckInputKeys(actions, aud, ref curSound, sounds, emitter, gd.GCam.Position);
-
-				//update status text
-				st.ModifyStringText(fonts[0], "Current Sound: " + sounds[curSound], "CurrentSound");
-				st.ModifyStringText(fonts[0], "Emitter Pos: " + emitter.Position, "EmitterPosition");
-				st.ModifyStringText(fonts[0], "Cam Pos: " + gd.GCam.Position +
-					", Sounds Playing: " + aud.GetNumInstances(), "PosStatus");
 
 				st.Update(gd.DC);
 
@@ -189,7 +195,7 @@ namespace TestAudio
 
 				gd.Present();
 
-				lastTime	=timeNow;
+				acts.Clear();
 			}, true);	//true here is slow but needed for winforms events
 
 			Settings.Default.Save();

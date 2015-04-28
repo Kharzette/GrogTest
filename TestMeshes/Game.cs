@@ -319,15 +319,15 @@ namespace TestMeshes
 		}
 
 
-		internal void Update(TimeSpan frameTime, List<Input.InputAction> actions)
+		internal void Update(UpdateTimer time, List<Input.InputAction> actions)
 		{
 			mFrameCheck++;
 
 			Vector3	startPos	=mGD.GCam.Position;
 			Vector3	endPos		=startPos + mGD.GCam.Forward * -2000f;
 
-			float	deltaMS		=(float)frameTime.TotalMilliseconds;
-			float	deltaSec	=(float)frameTime.TotalSeconds;
+			float	deltaMS		=time.GetUpdateDeltaMilliSeconds();
+			float	deltaSec	=time.GetUpdateDeltaSeconds();
 
 			//animate characters
 			for(int i=0;i < mCharacters.Count;i++)

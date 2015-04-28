@@ -158,8 +158,23 @@ namespace TestZone
 				color, Vector2.UnitX * 20f + Vector2.UnitY * 660f, Vector2.One);
 
 			mZoneMats.InitCelShading(1);
-			mZoneMats.GenerateCelTexturePreset(gd.GD,
-				gd.GD.FeatureLevel == FeatureLevel.Level_9_3, false, 0);
+//			mZoneMats.GenerateCelTexturePreset(gd.GD,
+//				gd.GD.FeatureLevel == FeatureLevel.Level_9_3, false, 0);
+//			mZoneMats.SetCelTexture(0);
+
+			float	[]thresholds	=new float[3 - 1];
+			float	[]levels		=new float[3];
+			
+			thresholds[0]	=0.7f;
+			thresholds[1]	=0.3f;
+
+			levels[0]	=1;
+			levels[1]	=0.8f;
+			levels[2]	=0.5f;
+
+			mZoneMats.GenerateCelTexture(gd.GD,
+				gd.GD.FeatureLevel == SharpDX.Direct3D.FeatureLevel.Level_9_3,
+				0, 256, thresholds, levels);
 			mZoneMats.SetCelTexture(0);
 
 			mZoneDraw	=new IndoorMesh(gd, mZoneMats);
@@ -426,13 +441,13 @@ namespace TestZone
 
 		//if running on a fixed timestep, this might be called
 		//more often with a smaller delta time than RenderUpdate()
-		internal void Update(float secDelta, List<Input.InputAction> actions, PlayerSteering ps)
+		internal void Update(UpdateTimer time, List<Input.InputAction> actions, PlayerSteering ps)
 		{
 			//Thread.Sleep(30);
 
-			int	msDelta	=Math.Max((int)(secDelta * 1000f), 1);
+			float	secDelta	=time.GetUpdateDeltaSeconds();
 
-			mZone.UpdateModels(msDelta);
+			mZone.UpdateModels(secDelta);
 
 			float	yawAmount	=0f;
 			float	pitchAmount	=0f;
@@ -530,7 +545,7 @@ namespace TestZone
 				}
 			}
 
-			UpdateDynamicLights(msDelta, actions);
+			UpdateDynamicLights(actions);
 
 			Vector3	startPos	=mPCamMob.GetGroundPos();
 			Vector3	moveVec		=ps.Update(startPos, mGD.GCam.Forward, mGD.GCam.Left, mGD.GCam.Up, actions);
@@ -583,7 +598,7 @@ namespace TestZone
 			Vector3	camPos	=Vector3.Zero;
 			Vector3	endPos	=pos;
 
-			mPCamMob.Move(endPos, msDelta, false, mbFly, !bCamJumped, true, true, out endPos, out camPos);
+			mPCamMob.Move(endPos, time.GetUpdateDeltaMilliSeconds(), false, mbFly, !bCamJumped, true, true, out endPos, out camPos);
 
 			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
 
@@ -610,7 +625,7 @@ namespace TestZone
 				}
 			}
 
-			mPB.Update(mGD.DC, msDelta);
+			mPB.Update(mGD.DC, time.GetUpdateDeltaMilliSeconds());
 
 			mSHelper.HitCheck(mPMob, mGD.GCam.Position);
 
@@ -630,8 +645,13 @@ namespace TestZone
 
 		//called once before render with accumulated delta
 		//do all once per render style updates in here
-		internal void RenderUpdate(int msDelta)
+		internal void RenderUpdate(float msDelta)
 		{
+			if(msDelta <= 0f)
+			{
+				return;	//can happen if fixed time and no remainder
+			}
+
 			mZoneDraw.Update(msDelta);
 
 			mZoneMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
@@ -934,7 +954,7 @@ namespace TestZone
 		}
 
 
-		void UpdateDynamicLights(float msDelta, List<Input.InputAction> actions)
+		void UpdateDynamicLights(List<Input.InputAction> actions)
 		{
 			if(mDynLights == null)
 			{

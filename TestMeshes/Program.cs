@@ -85,12 +85,14 @@ namespace TestMeshes
 			gd.RendForm.Activated		+=actHandler;
 			gd.RendForm.AppDeactivated	+=deActHandler;
 
-			Vector3		pos				=Vector3.One * 5f;
-			Vector3		lightDir		=-Vector3.UnitY;
-			long		lastTime		=Stopwatch.GetTimestamp();
-			TimeSpan	frameTime		=new TimeSpan();
-			long		freq			=Stopwatch.Frequency;
-			long		freqMS			=freq / 1000;
+			Vector3		pos			=Vector3.One * 5f;
+			Vector3		lightDir	=-Vector3.UnitY;
+			UpdateTimer	time		=new UpdateTimer(true, false);
+
+			time.SetFixedTimeStepSeconds(1f / 60f);	//60fps update rate
+			time.SetMaxDeltaSeconds(MaxTimeDelta);
+
+			List<Input.InputAction>	acts	=new List<Input.InputAction>();
 
 			RenderLoop.Run(gd.RendForm, () =>
 			{
@@ -109,34 +111,33 @@ namespace TestMeshes
 				//Clear views
 				gd.ClearViews();
 
-				long	timeNow		=Stopwatch.GetTimestamp();
-				long	delta		=timeNow - lastTime;
-				float	secDelta	=Math.Min((float)delta / freq, MaxTimeDelta);
-				int		msDelta		=Math.Max((int)(secDelta * 1000f), 1);
-
-				List<Input.InputAction>	actions	=UpdateInput(inp, gd, secDelta, ref bMouseLookOn);
-				if(!gd.RendForm.Focused)
+				time.Stamp();
+				while(time.GetUpdateDeltaSeconds() > 0f)
 				{
-					actions.Clear();
-				}
+					acts	=UpdateInput(inp, gd,
+						time.GetUpdateDeltaSeconds(), ref bMouseLookOn);
+					if(!gd.RendForm.Focused)
+					{
+						acts.Clear();
+					}
 
-				Vector3	moveDelta	=pSteering.Update(pos, gd.GCam.Forward, gd.GCam.Left, gd.GCam.Up, actions);
+					Vector3	moveDelta	=pSteering.Update(pos, gd.GCam.Forward, gd.GCam.Left, gd.GCam.Up, acts);
 
-				moveDelta	*=200f;
+					moveDelta	*=200f;
 
-				pos	-=moveDelta;
+					pos	-=moveDelta;
 				
-				gd.GCam.Update(pos, pSteering.Pitch, pSteering.Yaw, pSteering.Roll);
+					gd.GCam.Update(pos, pSteering.Pitch, pSteering.Yaw, pSteering.Roll);
 
-				frameTime	=TimeSpan.FromMilliseconds(msDelta);
+					theGame.Update(time, acts);
 
-				theGame.Update(frameTime, actions);
-
+					time.UpdateDone();
+				}
 				theGame.Render(gd.DC);
 
 				gd.Present();
 
-				lastTime	=timeNow;
+				acts.Clear();
 			}, true);
 
 			Settings.Default.Save();

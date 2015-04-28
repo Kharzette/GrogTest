@@ -82,16 +82,14 @@ namespace TestZone
 			Input			inp			=SetUpInput(bRightClickToTurn);
 			Random			rand		=new Random();
 
+			UpdateTimer	time	=new UpdateTimer(true, false);
+
+			time.SetFixedTimeStepSeconds(1f / 60f);	//60fps update rate
+			time.SetMaxDeltaSeconds(MaxTimeDelta);
+
 			Vector3	pos				=Vector3.One * 5f;
 			Vector3	lightDir		=-Vector3.UnitY;
 			bool	bMouseLookOn	=false;
-			long	lastTime		=Stopwatch.GetTimestamp();
-			bool	bFixedStep		=true;
-			bool	bSpendRemainder	=true;
-			float	step			=1f / 60f;
-			float	fullTime		=0f;
-			long	freq			=Stopwatch.Frequency;
-			float	accumTest		=0f;
 
 			EventHandler	actHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)
@@ -133,73 +131,24 @@ namespace TestZone
 				//Clear views
 				gd.ClearViews();
 
-				long	timeNow		=Stopwatch.GetTimestamp();
-				long	delta		=timeNow - lastTime;
-				float	secDelta	=(float)delta / freq;
-
-				accumTest	+=secDelta;
-
-				//set an upper limit on deltas
-				//these can get huge if time is spent
-				//at a breakpoint etc
-				bool	bClampInputs	=false;
-				if(secDelta > MaxTimeDelta)
+				time.Stamp();
+				while(time.GetUpdateDeltaSeconds() > 0f)
 				{
-					secDelta		=MaxTimeDelta;
-					bClampInputs	=true;
-				}
-
-				int	msDelta	=Math.Max((int)(secDelta * 1000f), 1);
-
-				if(bFixedStep)
-				{
-					fullTime	+=secDelta;
-					while(fullTime >= step)
-					{
-						acts	=UpdateInput(inp, gd, bRightClickToTurn, bClampInputs, step, ref bMouseLookOn);
-						if(!gd.RendForm.Focused)
-						{
-							acts.Clear();
-						}
-						mapLoop.Update(step, acts, pSteering);
-						fullTime	-=step;
-					}
-
-					if(fullTime > 0f && bSpendRemainder)
-					{
-						acts	=UpdateInput(inp, gd, bRightClickToTurn, bClampInputs, fullTime, ref bMouseLookOn);
-						if(!gd.RendForm.Focused)
-						{
-							acts.Clear();
-						}
-						mapLoop.Update(fullTime, acts, pSteering);
-						fullTime	=0;
-					}
-					else
-					{
-						if(secDelta == fullTime)
-						{
-							//no update at all this frame?
-						}
-					}
-				}
-				else
-				{
-					acts	=UpdateInput(inp, gd, bRightClickToTurn, bClampInputs, secDelta, ref bMouseLookOn);
+					acts	=UpdateInput(inp, gd, bRightClickToTurn,
+						time.GetUpdateDeltaSeconds(), ref bMouseLookOn);
 					if(!gd.RendForm.Focused)
 					{
 						acts.Clear();
 					}
-					mapLoop.Update(secDelta, acts, pSteering);
+					mapLoop.Update(time, acts, pSteering);
+					time.UpdateDone();
 				}
 
-				mapLoop.RenderUpdate(msDelta);
+				mapLoop.RenderUpdate(time.GetRenderUpdateDeltaMilliSeconds());
 
 				mapLoop.Render();
 
 				gd.Present();
-
-				lastTime	=timeNow;
 
 				acts.Clear();
 			});
@@ -217,7 +166,7 @@ namespace TestZone
 		}
 
 		static List<Input.InputAction> UpdateInput(Input inp,
-			GraphicsDevice gd, bool bHoldClickTurn, bool bClamp,
+			GraphicsDevice gd, bool bHoldClickTurn,
 			float delta, ref bool bMouseLookOn)
 		{
 			List<Input.InputAction>	actions	=inp.GetAction();
@@ -232,10 +181,7 @@ namespace TestZone
 				}
 			}
 
-			if(bClamp)
-			{
-				inp.ClampInputTimes(MaxTimeDelta);
-			}
+			inp.ClampInputTimes(MaxTimeDelta);
 
 			if(bHoldClickTurn)
 			{

@@ -151,6 +151,13 @@ namespace TestPathing
 
 			pathForm.Show();
 
+			UpdateTimer	time	=new UpdateTimer(true, false);
+
+			time.SetFixedTimeStepSeconds(1f / 60f);	//60fps update rate
+			time.SetMaxDeltaSeconds(MaxTimeDelta);
+
+			List<Input.InputAction>	acts	=new List<Input.InputAction>();
+
 			RenderLoop.Run(gd.RendForm, () =>
 			{
 				if(!gd.RendForm.Focused)
@@ -173,26 +180,26 @@ namespace TestPathing
 				//Clear views
 				gd.ClearViews();
 
-				long	timeNow		=Stopwatch.GetTimestamp();
-				long	delta		=timeNow - lastTime;
-				float	secDelta	=Math.Min((float)delta / freq, MaxTimeDelta);
-				int		msDelta		=Math.Max((int)(secDelta * 1000f), 1);
-
-				List<Input.InputAction>	actions	=UpdateInput(inp, gd, secDelta, ref bMouseLookOn);
-				if(!gd.RendForm.Focused)
+				time.Stamp();
+				while(time.GetUpdateDeltaSeconds() > 0f)
 				{
-					actions.Clear();
+					acts	=UpdateInput(inp, gd,
+						time.GetUpdateDeltaSeconds(), ref bMouseLookOn);
+					if(!gd.RendForm.Focused)
+					{
+						acts.Clear();
+					}
+					mapStuff.Update(time, acts, pSteering);
+					time.UpdateDone();
 				}
 
-				mapStuff.Update(secDelta, actions, pSteering);
-
-				mapStuff.RenderUpdate(msDelta);
+				mapStuff.RenderUpdate(time.GetRenderUpdateDeltaMilliSeconds());
 
 				mapStuff.Render();
 				
 				gd.Present();
 
-				lastTime	=timeNow;
+				acts.Clear();
 			}, true);	//true here is slow but needed for winforms events
 
 			Properties.Settings.Default.Save();
