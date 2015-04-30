@@ -126,6 +126,14 @@ namespace TestPathing
 				delegate(object s, EventArgs ea)
 				{	mapStuff.PickB();
 					gd.RendForm.Focus();	});
+			EventHandler	pickBlockedHandler	=new EventHandler(
+				delegate(object s, EventArgs ea)
+				{	mapStuff.PickBlocked();
+					gd.RendForm.Focus();	});
+			EventHandler	pickUnBlockedHandler	=new EventHandler(
+				delegate(object s, EventArgs ea)
+				{	mapStuff.PickUnBlocked();
+					gd.RendForm.Focus();	});
 			EventHandler	drawChangedHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)
 				{	mapStuff.DrawSettings((int)s);	});
@@ -143,6 +151,8 @@ namespace TestPathing
 			pathForm.eSaveData		+=saveHandler;
 			pathForm.ePickA			+=pickAHandler;
 			pathForm.ePickB			+=pickBHandler;
+			pathForm.ePickBlock		+=pickBlockedHandler;
+			pathForm.ePickUnBlock	+=pickUnBlockedHandler;
 			pathForm.eDrawChanged	+=drawChangedHandler;
 			pathForm.eMobChanged	+=mobChangedHandler;
 			pathForm.eFindPath		+=findPathHandler;
@@ -216,6 +226,8 @@ namespace TestPathing
 			pathForm.eSaveData		-=saveHandler;
 			pathForm.ePickA			-=pickAHandler;
 			pathForm.ePickB			-=pickBHandler;
+			pathForm.ePickBlock		-=pickBlockedHandler;
+			pathForm.ePickUnBlock	-=pickUnBlockedHandler;
 			pathForm.eDrawChanged	-=drawChangedHandler;
 			pathForm.eMobChanged	-=mobChangedHandler;
 			pathForm.eFindPath		-=findPathHandler;

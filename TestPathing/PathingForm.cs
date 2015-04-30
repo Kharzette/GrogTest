@@ -28,6 +28,8 @@ namespace TestPathing
 		internal event EventHandler	eSaveData;
 		internal event EventHandler	ePickA;
 		internal event EventHandler	ePickB;
+		internal event EventHandler	ePickBlock;
+		internal event EventHandler	ePickUnBlock;
 		internal event EventHandler	eDrawChanged;
 		internal event EventHandler	eMobChanged;
 		internal event EventHandler	eFindPath;
@@ -163,6 +165,18 @@ namespace TestPathing
 			UInt32	box	=(UInt32)(boxWidth | (boxHeight << 16));
 
 			Misc.SafeInvoke(eMobChanged, box);
+		}
+
+		
+		void OnPickUnBlock(object sender, EventArgs e)
+		{
+			Misc.SafeInvoke(ePickUnBlock, null);
+		}
+
+
+		void OnPickBlock(object sender, EventArgs e)
+		{
+			Misc.SafeInvoke(ePickBlock, null);
 		}
 	}
 }

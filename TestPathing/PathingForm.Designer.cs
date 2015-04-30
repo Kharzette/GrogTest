@@ -57,6 +57,9 @@
 			this.groupBox5 = new System.Windows.Forms.GroupBox();
 			this.DrawPathConnections = new System.Windows.Forms.CheckBox();
 			this.DrawNodeFaces = new System.Windows.Forms.CheckBox();
+			this.groupBox6 = new System.Windows.Forms.GroupBox();
+			this.PickBlock = new System.Windows.Forms.Button();
+			this.PickUnBlock = new System.Windows.Forms.Button();
 			((System.ComponentModel.ISupportInitialize)(this.GridSize)).BeginInit();
 			((System.ComponentModel.ISupportInitialize)(this.MobWidth)).BeginInit();
 			this.groupBox1.SuspendLayout();
@@ -66,6 +69,7 @@
 			((System.ComponentModel.ISupportInitialize)(this.ErrorAmount)).BeginInit();
 			this.groupBox4.SuspendLayout();
 			this.groupBox5.SuspendLayout();
+			this.groupBox6.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// GridSize
@@ -119,9 +123,9 @@
 			// 
 			this.SaveData.Location = new System.Drawing.Point(6, 48);
 			this.SaveData.Name = "SaveData";
-			this.SaveData.Size = new System.Drawing.Size(92, 23);
+			this.SaveData.Size = new System.Drawing.Size(71, 23);
 			this.SaveData.TabIndex = 3;
-			this.SaveData.Text = "Save PathData";
+			this.SaveData.Text = "SaveData";
 			this.SaveData.UseVisualStyleBackColor = true;
 			this.SaveData.Click += new System.EventHandler(this.OnSavePathData);
 			// 
@@ -129,9 +133,9 @@
 			// 
 			this.LoadData.Location = new System.Drawing.Point(6, 19);
 			this.LoadData.Name = "LoadData";
-			this.LoadData.Size = new System.Drawing.Size(92, 23);
+			this.LoadData.Size = new System.Drawing.Size(71, 23);
 			this.LoadData.TabIndex = 4;
-			this.LoadData.Text = "Load PathData";
+			this.LoadData.Text = "LoadData";
 			this.LoadData.UseVisualStyleBackColor = true;
 			this.LoadData.Click += new System.EventHandler(this.OnLoadPathData);
 			// 
@@ -163,9 +167,9 @@
 			// 
 			this.groupBox1.Controls.Add(this.SaveData);
 			this.groupBox1.Controls.Add(this.LoadData);
-			this.groupBox1.Location = new System.Drawing.Point(157, 12);
+			this.groupBox1.Location = new System.Drawing.Point(12, 12);
 			this.groupBox1.Name = "groupBox1";
-			this.groupBox1.Size = new System.Drawing.Size(116, 82);
+			this.groupBox1.Size = new System.Drawing.Size(84, 82);
 			this.groupBox1.TabIndex = 6;
 			this.groupBox1.TabStop = false;
 			this.groupBox1.Text = "File IO";
@@ -222,9 +226,9 @@
 			this.groupBox3.Controls.Add(this.label6);
 			this.groupBox3.Controls.Add(this.GenerateGrid);
 			this.groupBox3.Controls.Add(this.ErrorAmount);
-			this.groupBox3.Location = new System.Drawing.Point(12, 12);
+			this.groupBox3.Location = new System.Drawing.Point(102, 12);
 			this.groupBox3.Name = "groupBox3";
-			this.groupBox3.Size = new System.Drawing.Size(139, 103);
+			this.groupBox3.Size = new System.Drawing.Size(135, 103);
 			this.groupBox3.TabIndex = 8;
 			this.groupBox3.TabStop = false;
 			this.groupBox3.Text = "Grid";
@@ -279,7 +283,7 @@
 			this.groupBox4.Controls.Add(this.ACoords);
 			this.groupBox4.Location = new System.Drawing.Point(12, 206);
 			this.groupBox4.Name = "groupBox4";
-			this.groupBox4.Size = new System.Drawing.Size(298, 122);
+			this.groupBox4.Size = new System.Drawing.Size(298, 116);
 			this.groupBox4.TabIndex = 9;
 			this.groupBox4.TabStop = false;
 			this.groupBox4.Text = "Find a Path";
@@ -401,12 +405,44 @@
 			this.DrawNodeFaces.UseVisualStyleBackColor = true;
 			this.DrawNodeFaces.CheckedChanged += new System.EventHandler(this.OnDrawChanged);
 			// 
+			// groupBox6
+			// 
+			this.groupBox6.Controls.Add(this.PickUnBlock);
+			this.groupBox6.Controls.Add(this.PickBlock);
+			this.groupBox6.Location = new System.Drawing.Point(243, 12);
+			this.groupBox6.Name = "groupBox6";
+			this.groupBox6.Size = new System.Drawing.Size(91, 80);
+			this.groupBox6.TabIndex = 11;
+			this.groupBox6.TabStop = false;
+			this.groupBox6.Text = "Occupation";
+			// 
+			// PickBlock
+			// 
+			this.PickBlock.Location = new System.Drawing.Point(6, 19);
+			this.PickBlock.Name = "PickBlock";
+			this.PickBlock.Size = new System.Drawing.Size(81, 23);
+			this.PickBlock.TabIndex = 0;
+			this.PickBlock.Text = "Pick Block";
+			this.PickBlock.UseVisualStyleBackColor = true;
+			this.PickBlock.Click += new System.EventHandler(this.OnPickBlock);
+			// 
+			// PickUnBlock
+			// 
+			this.PickUnBlock.Location = new System.Drawing.Point(6, 48);
+			this.PickUnBlock.Name = "PickUnBlock";
+			this.PickUnBlock.Size = new System.Drawing.Size(81, 23);
+			this.PickUnBlock.TabIndex = 1;
+			this.PickUnBlock.Text = "Pick Unblock";
+			this.PickUnBlock.UseVisualStyleBackColor = true;
+			this.PickUnBlock.Click += new System.EventHandler(this.OnPickUnBlock);
+			// 
 			// PathingForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(321, 338);
+			this.ClientSize = new System.Drawing.Size(346, 334);
 			this.ControlBox = false;
+			this.Controls.Add(this.groupBox6);
 			this.Controls.Add(this.groupBox5);
 			this.Controls.Add(this.groupBox4);
 			this.Controls.Add(this.groupBox3);
@@ -427,6 +463,7 @@
 			this.groupBox4.PerformLayout();
 			this.groupBox5.ResumeLayout(false);
 			this.groupBox5.PerformLayout();
+			this.groupBox6.ResumeLayout(false);
 			this.ResumeLayout(false);
 
 		}
@@ -461,6 +498,9 @@
 		private System.Windows.Forms.NumericUpDown ErrorAmount;
 		private System.Windows.Forms.TextBox BNode;
 		private System.Windows.Forms.TextBox ANode;
+		private System.Windows.Forms.GroupBox groupBox6;
+		private System.Windows.Forms.Button PickUnBlock;
+		private System.Windows.Forms.Button PickBlock;
 	}
 }
 

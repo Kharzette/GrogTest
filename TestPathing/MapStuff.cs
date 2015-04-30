@@ -24,6 +24,11 @@ namespace TestPathing
 {
 	internal class MapStuff
 	{
+		enum PickTarget
+		{
+			A, B, Blocked, UnBlocked
+		}
+
 		//data
 		Zone		mZone;
 		IndoorMesh	mZoneDraw;
@@ -40,10 +45,11 @@ namespace TestPathing
 		List<string>	mLevels		=new List<string>();
 		int				mCurLevel	=0;
 
-		Random	mRand	=new Random();
-		bool	mbBusy	=false;
-		bool	mbPickingA, mbPickingB;
-		bool	mbAwaitingPath;
+		Random		mRand	=new Random();
+		bool		mbBusy	=false;
+		bool		mbPicking;
+		PickTarget	mPickTarget;
+		bool		mbAwaitingPath;
 
 		//helpers
 		TriggerHelper		mTHelper		=new TriggerHelper();
@@ -195,7 +201,7 @@ namespace TestPathing
 
 			Vector3	impactPos	=Vector3.Zero;
 
-			if(mbPickingA || mbPickingB)
+			if(mbPicking)
 			{
 				System.Drawing.Point	cPos	=System.Windows.Forms.Cursor.Position;
 
@@ -217,29 +223,35 @@ namespace TestPathing
 					bool	bInfo	=mGraph.GetInfoAboutLocation(impactPos,
 						mZone.FindWorldNodeLandedIn, out numCons, out node, conTo);
 
-					if(bInfo && mbPickingA)
+					if(bInfo)
 					{
-						Misc.SafeInvoke(ePickedA, node, new Vector3EventArgs(impactPos));
+						switch(mPickTarget)
+						{
+							case	PickTarget.A:
+								Misc.SafeInvoke(ePickedA, node, new Vector3EventArgs(impactPos));
+								break;
+							case	PickTarget.B:
+								Misc.SafeInvoke(ePickedB, node, new Vector3EventArgs(impactPos));
+								break;
+							case	PickTarget.Blocked:
+								mGraph.SetPathConnectionPassable(impactPos, mZone.FindWorldNodeLandedIn, false);
+								mPathDraw.BuildDrawInfo(mGraph);
+								break;
+							case	PickTarget.UnBlocked:
+								mGraph.SetPathConnectionPassable(impactPos, mZone.FindWorldNodeLandedIn, true);
+								mPathDraw.BuildDrawInfo(mGraph);
+								break;
+						}
+						mbPicking	=false;
+						mST.ModifyStringText(mFonts[0], "Picked point: "
+							+ impactPos.IntStr(), "PathStatus");
 					}
-					else if(bInfo && mbPickingB)
-					{
-						Misc.SafeInvoke(ePickedB, node, new Vector3EventArgs(impactPos));
-					}
-					mbPickingA	=false;
-					mbPickingB	=false;
-					mST.ModifyStringText(mFonts[0], "Picked point: "
-						+ impactPos.IntStr(), "PathStatus");
 				}
 				else
 				{
-					if(mbPickingA)
+					if(mbPicking)
 					{
-						mST.ModifyStringText(mFonts[0], "Picking point A: "
-							+ impactPos.IntStr(), "PathStatus");
-					}
-					else if(mbPickingB)
-					{
-						mST.ModifyStringText(mFonts[0], "Picking point B: "
+						mST.ModifyStringText(mFonts[0], "Picking point: "
 							+ impactPos.IntStr(), "PathStatus");
 					}
 				}
@@ -434,13 +446,29 @@ namespace TestPathing
 
 		internal void PickA()
 		{
-			mbPickingA	=true;
+			mbPicking	=true;
+			mPickTarget	=PickTarget.A;
 		}
 
 
 		internal void PickB()
 		{
-			mbPickingB	=true;
+			mbPicking	=true;
+			mPickTarget	=PickTarget.B;
+		}
+
+
+		internal void PickBlocked()
+		{
+			mbPicking	=true;
+			mPickTarget	=PickTarget.Blocked;
+		}
+
+
+		internal void PickUnBlocked()
+		{
+			mbPicking	=true;
+			mPickTarget	=PickTarget.UnBlocked;
 		}
 
 
@@ -582,6 +610,11 @@ namespace TestPathing
 		{
 			mPathMob.SetGroundPos(start);
 			mPathMob.SetFooting();
+
+			if(!mPathMob.IsOnGround())
+			{
+				return	false;
+			}
 
 			for(int i=0;i < MaxPathMoveIterations;i++)
 			{
