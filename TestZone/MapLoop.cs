@@ -598,7 +598,8 @@ namespace TestZone
 			Vector3	camPos	=Vector3.Zero;
 			Vector3	endPos	=pos;
 
-			mPCamMob.Move(endPos, time.GetUpdateDeltaMilliSeconds(), false, mbFly, !bCamJumped, true, true, out endPos, out camPos);
+			mPCamMob.Move(endPos, time.GetUpdateDeltaMilliSeconds(), false,
+				mbFly, !bCamJumped, true, true, out endPos, out camPos);
 
 			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
 
@@ -708,30 +709,26 @@ namespace TestZone
 			mPost.SetParameter("mNormalTex", "SceneDepthMatNorm");
 			mPost.DrawStage(mGD, "Outline");
 
-				mPost.SetTargets(mGD, "Bleach", "null");
-				mPost.SetParameter("mColorTex", "SceneColor");
-				mPost.DrawStage(mGD, "BleachBypass");
+			mPost.SetTargets(mGD, "Bloom1", "null");
+			mPost.SetParameter("mBlurTargetTex", "SceneColor");
+			mPost.DrawStage(mGD, "BloomExtract");
 
-				mPost.SetTargets(mGD, "Bloom1", "null");
-				mPost.SetParameter("mBlurTargetTex", "Bleach");
-				mPost.DrawStage(mGD, "BloomExtract");
+			mPost.SetTargets(mGD, "Bloom2", "null");
+			mPost.SetParameter("mBlurTargetTex", "Bloom1");
+			mPost.DrawStage(mGD, "GaussianBlurX");
 
-				mPost.SetTargets(mGD, "Bloom2", "null");
-				mPost.SetParameter("mBlurTargetTex", "Bloom1");
-				mPost.DrawStage(mGD, "GaussianBlurX");
+			mPost.SetTargets(mGD, "Bloom1", "null");
+			mPost.SetParameter("mBlurTargetTex", "Bloom2");
+			mPost.DrawStage(mGD, "GaussianBlurY");
 
-				mPost.SetTargets(mGD, "Bloom1", "null");
-				mPost.SetParameter("mBlurTargetTex", "Bloom2");
-				mPost.DrawStage(mGD, "GaussianBlurY");
-
-				mPost.SetTargets(mGD, "SceneColor", "null");
-				mPost.SetParameter("mBlurTargetTex", "Bloom1");
-				mPost.SetParameter("mColorTex", "Bleach");
-				mPost.DrawStage(mGD, "BloomCombine");
+			mPost.SetTargets(mGD, "Bleach", "null");
+			mPost.SetParameter("mBlurTargetTex", "Bloom1");
+			mPost.SetParameter("mColorTex", "SceneColor");
+			mPost.DrawStage(mGD, "BloomCombine");
 
 			mPost.SetTargets(mGD, "BackColor", "BackDepth");
 			mPost.SetParameter("mBlurTargetTex", "Outline");
-			mPost.SetParameter("mColorTex", "SceneColor");
+			mPost.SetParameter("mColorTex", "Bleach");
 			mPost.DrawStage(mGD, "Modulate");
 
 			mST.Draw(mGD.DC, Matrix.Identity, mTextProj);
@@ -870,8 +867,9 @@ namespace TestZone
 			mZone.Read(lev + ".Zone", false);
 			mZoneDraw.Read(mGD, mSKeeper, lev + ".ZoneDraw", false);
 
-			//set new material's cel lookup
-			mZoneMats.SetCelTexture(0);
+			//for less state changes
+			mZoneMats.FinalizeMaterials();
+
 			mZoneMats.SetLightMapsToAtlas();
 
 			mTHelper.Initialize(mZone, mAudio, mZoneDraw.SwitchLight, OkToFire);
