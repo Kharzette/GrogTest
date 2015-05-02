@@ -72,8 +72,6 @@ namespace TestPathing
 			Input			inp				=SetUpInput();
 			Random			rand			=new Random();
 			bool			bMouseLookOn	=false;
-			long			lastTime		=Stopwatch.GetTimestamp();
-			long			freq			=Stopwatch.Frequency;
 
 			EventHandler	actHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)

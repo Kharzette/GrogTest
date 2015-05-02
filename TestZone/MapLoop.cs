@@ -739,6 +739,7 @@ namespace TestZone
 		{
 			mShadowHelper.FreeAll();
 			mPost.FreeAll();
+			mFontMats.FreeAll();
 			mZoneMats.FreeAll();
 			mZoneDraw.FreeAll();
 			mPB.FreeAll();
