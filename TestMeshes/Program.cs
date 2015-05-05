@@ -57,6 +57,8 @@ namespace TestMeshes
 
 			gd.RendForm.Location	=Settings.Default.MainWindowPos;
 
+			//set title of progress window
+			SharedForms.ShaderCompileHelper.mTitle	="Compiling Shaders...";
 
 #if DEBUG
 			string	rootDir	="C:\\Games\\CurrentGame";
@@ -103,7 +105,7 @@ namespace TestMeshes
 
 				gd.CheckResize();
 
-				if(bMouseLookOn)
+				if(bMouseLookOn && gd.RendForm.Focused)
 				{
 					gd.ResetCursorPos();
 				}
@@ -119,6 +121,10 @@ namespace TestMeshes
 					if(!gd.RendForm.Focused)
 					{
 						acts.Clear();
+						bMouseLookOn	=false;
+						gd.SetCapture(false);
+						inp.UnMapAxisAction(Input.MoveAxis.MouseYAxis);
+						inp.UnMapAxisAction(Input.MoveAxis.MouseXAxis);
 					}
 
 					Vector3	moveDelta	=pSteering.Update(pos, gd.GCam.Forward, gd.GCam.Left, gd.GCam.Up, acts);

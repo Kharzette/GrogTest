@@ -146,7 +146,7 @@ namespace TestAudio
 
 				gd.CheckResize();
 
-				if(bMouseLookOn)
+				if(bMouseLookOn && gd.RendForm.Focused)
 				{
 					gd.ResetCursorPos();
 				}
@@ -159,6 +159,10 @@ namespace TestAudio
 					if(!gd.RendForm.Focused)
 					{
 						acts.Clear();
+						bMouseLookOn	=false;
+						gd.SetCapture(false);
+						inp.UnMapAxisAction(Input.MoveAxis.MouseYAxis);
+						inp.UnMapAxisAction(Input.MoveAxis.MouseXAxis);
 					}
 					Vector3	moveDelta	=pSteering.Update(pos, gd.GCam.Forward,
 						gd.GCam.Left, gd.GCam.Up, acts);

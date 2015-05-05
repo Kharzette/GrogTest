@@ -47,6 +47,9 @@ namespace TestPathing
 
 			PathingForm	pathForm	=new PathingForm();
 
+			//set title of progress window
+			SharedForms.ShaderCompileHelper.mTitle	="Compiling Shaders...";
+
 			//save renderform position
 			gd.RendForm.DataBindings.Add(new Binding("Location",
 				Properties.Settings.Default, "MainWindowPos", true,
@@ -180,7 +183,7 @@ namespace TestPathing
 
 				gd.CheckResize();
 
-				if(bMouseLookOn)
+				if(bMouseLookOn && gd.RendForm.Focused)
 				{
 					gd.ResetCursorPos();
 				}
@@ -196,6 +199,10 @@ namespace TestPathing
 					if(!gd.RendForm.Focused)
 					{
 						acts.Clear();
+						bMouseLookOn	=false;
+						gd.SetCapture(false);
+						inp.UnMapAxisAction(Input.MoveAxis.MouseYAxis);
+						inp.UnMapAxisAction(Input.MoveAxis.MouseXAxis);
 					}
 					mapStuff.Update(time, acts, pSteering);
 					time.UpdateDone();

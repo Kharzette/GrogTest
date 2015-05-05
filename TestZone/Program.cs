@@ -73,8 +73,11 @@ namespace TestZone
 			string	rootDir	=".";
 #endif
 
+			//set title of progress window
+			SharedForms.ShaderCompileHelper.mTitle	="Compiling Shaders...";
+
 			//hold right click to turn, or turn anytime mouse moves?
-			bool	bRightClickToTurn	=true;
+			bool	bRightClickToTurn	=false;
 
 			MapLoop	mapLoop	=new MapLoop(gd, rootDir);
 			
@@ -123,7 +126,7 @@ namespace TestZone
 
 				gd.CheckResize();
 
-				if(bMouseLookOn)
+				if(bMouseLookOn && gd.RendForm.Focused)
 				{
 					gd.ResetCursorPos();
 				}
@@ -139,6 +142,8 @@ namespace TestZone
 					if(!gd.RendForm.Focused)
 					{
 						acts.Clear();
+						bMouseLookOn	=false;
+						gd.SetCapture(false);
 					}
 					mapLoop.Update(time, acts, pSteering);
 					time.UpdateDone();
