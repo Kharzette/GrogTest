@@ -171,7 +171,9 @@ namespace TestTerrain
 
 			mGD.GCam.Projection	=Matrix.PerspectiveFovLH(
 				MathUtil.DegreesToRadians(45f),
-				vp.Width / vp.Height, 0.1f, FogEnd);
+				vp.Width / (float)vp.Height, 0.1f, FogEnd);
+
+			mGD.SetClip(0.1f, FogEnd);
 		}
 
 
