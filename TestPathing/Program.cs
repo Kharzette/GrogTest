@@ -43,7 +43,7 @@ namespace TestPathing
 			Application.EnableVisualStyles();
 			Application.SetCompatibleTextRenderingDefault(false);
 			GraphicsDevice	gd	=new GraphicsDevice("Pathfinding Test Program",
-				FeatureLevel.Level_11_0);
+				FeatureLevel.Level_11_0, 0.1f, 3000f);
 
 			PathingForm	pathForm	=new PathingForm();
 

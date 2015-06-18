@@ -49,7 +49,7 @@ namespace TestAudio
 			Application.SetCompatibleTextRenderingDefault(false);
 
 			GraphicsDevice	gd	=new GraphicsDevice("Audio Test Program",
-				FeatureLevel.Level_9_3);
+				FeatureLevel.Level_9_3, 0.1f, 3000f);
 
 			//save renderform position
 			gd.RendForm.DataBindings.Add(new System.Windows.Forms.Binding("Location",
