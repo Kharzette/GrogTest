@@ -94,7 +94,9 @@ namespace TestTerrain
 
 			mTextProj	=Matrix.OrthoOffCenterLH(0, mResX, mResY, 0, 0.1f, 5f);
 
-			mTerrain	=new Terrain(gameRootDir + "\\Levels\\Test.Terrain");
+			string	path	=gameRootDir + "\\Levels\\Test.Terrain";
+
+			mTerrain	=new Terrain(path);
 
 			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
 
@@ -129,18 +131,15 @@ namespace TestTerrain
 			mTerMats.SetMaterialEffect("Sky", "Terrain.fx");
 			mTerMats.SetMaterialTechnique("Sky", "SkyGradient");
 
-			mTerMats.SetMaterialParameter("Terrain", "mFogStart", FogStart);
-			mTerMats.SetMaterialParameter("Terrain", "mFogEnd", FogEnd);
-			mTerMats.SetMaterialParameter("Terrain", "mFogEnabled", 1f);
-
-			mTerMats.SetMaterialParameter("Sky", "mSkyGradient0", Color.AliceBlue.ToVector3());
-			mTerMats.SetMaterialParameter("Sky", "mSkyGradient1", Color.Purple.ToVector3());
+			LoadShading(path);
 
 			mTerMats.InitCelShading(1);
 			mTerMats.GenerateCelTexturePreset(mGD.GD, mGD.GD.FeatureLevel == FeatureLevel.Level_9_3, false, 0);
 			mTerMats.SetCelTexture(0);
 
 			mSkyCube	=PrimFactory.CreateCube(gd.GD, -5f);
+
+			LoadTerrainTextureStuff(path);
 
 			//debug draw
 			mDebugMats	=new MatLib(gd, sk);
@@ -161,7 +160,6 @@ namespace TestTerrain
 			mDebugMats.SetMaterialParameter("DebugBoxes", "mSpecPower", 1);
 			mDebugMats.SetMaterialParameter("DebugBoxes", "mSpecColor", Vector4.One);
 
-			mChunkRange			=14;
 			mNumStreamThreads	=2;
 			mGroundPos.Y		=3000f;	//start above
 			mCellGridMax		=mTerrain.GetCellGridMax();
@@ -463,6 +461,171 @@ namespace TestTerrain
 			}
 
 			return	bWrapped;
+		}
+
+
+		internal void Texture(TexAtlas texAtlas, List<HeightMap.TexData> texInfo, float transHeight)
+		{
+			mSK.AddMap("TerrainAtlas", texAtlas.GetAtlasSRV());
+			mTerMats.SetMaterialTexture("Terrain", "mTexture0", "TerrainAtlas");
+
+			Vector4	[]scaleofs	=new Vector4[16];
+			float	[]scale		=new float[16];
+
+			for(int i=0;i < texInfo.Count;i++)
+			{
+				if(i > 15)
+				{
+					break;
+				}
+
+				scaleofs[i]	=new Vector4(
+					(float)texInfo[i].mScaleU,
+					(float)texInfo[i].mScaleV,
+					(float)texInfo[i].mUOffs,
+					(float)texInfo[i].mVOffs);
+
+				//basically a divisor
+				scale[i]	=1.0f / texInfo[i].ScaleFactor;
+			}
+			mTerMats.SetMaterialParameter("Terrain", "mAtlasUVData", scaleofs);
+			mTerMats.SetMaterialParameter("Terrain", "mAtlasTexScale", scale);
+
+			if(mTerrain != null)
+			{
+				mTerrain.SetTextureData(texInfo, transHeight);
+			}
+
+			Vector3	lightDir	=Mathery.RandomDirection(mRand);
+			mTerMats.SetMaterialParameter("Terrain", "mLightDirection", lightDir);
+		}
+
+
+		void LoadShading(string path)
+		{
+			string	noExt	=FileUtil.StripExtension(path);
+
+			string	fname	=noExt + ".TerShading";
+
+			FileStream	fs	=new FileStream(fname, FileMode.Open, FileAccess.Read);
+			if(fs == null)
+			{
+				return;
+			}
+
+			BinaryReader	br	=new BinaryReader(fs);
+			if(br == null)
+			{
+				return;
+			}
+
+			UInt32	magic	=br.ReadUInt32();
+			if(magic != 0x5ADE1BF0)
+			{
+				br.Close();
+				fs.Close();
+				return;
+			}
+
+			bool	bFogEnabled	=br.ReadBoolean();
+			float	fogStart	=br.ReadSingle();
+			float	fogEnd		=br.ReadSingle();
+
+			mChunkRange	=br.ReadInt32();
+
+			mTerMats.SetMaterialParameter("Terrain", "mFogStart", fogStart);
+			mTerMats.SetMaterialParameter("Terrain", "mFogEnd", fogEnd);
+			mTerMats.SetMaterialParameter("Terrain", "mFogEnabled", bFogEnabled? 1f : 0f);
+
+			UInt32	fogColor0	=br.ReadUInt32();
+			UInt32	fogColor1	=br.ReadUInt32();
+
+			Color	col0	=new Color(fogColor0);
+			Color	col1	=new Color(fogColor1);
+
+			mTerMats.SetMaterialParameter("Sky", "mSkyGradient0", col0.ToVector3());
+			mTerMats.SetMaterialParameter("Sky", "mSkyGradient1", col1.ToVector3());
+		}
+
+
+		void LoadTerrainTextureStuff(string path)
+		{
+			string	noExt	=FileUtil.StripExtension(path);
+
+			string	fname	=noExt + ".TerTexData";
+
+			FileStream	fs	=new FileStream(fname, FileMode.Open, FileAccess.Read);
+			if(fs == null)
+			{
+				return;
+			}
+
+			BinaryReader	br	=new BinaryReader(fs);
+			if(br == null)
+			{
+				return;
+			}
+
+
+			UInt32	magic	=br.ReadUInt32();
+			if(magic != 0x7EC5DA7A)
+			{
+				br.Close();
+				fs.Close();
+				return;
+			}
+
+			//atlas size
+			int	atlasX	=br.ReadInt32();
+			int	atlasY	=br.ReadInt32();
+
+			//transition height
+			int	transitionHeight	=br.ReadInt32();
+
+			TexAtlas	ta	=new TexAtlas(mGD, atlasX, atlasY);
+
+			//load into a temp list first
+			List<HeightMap.TexData>	gridStuffs	=new List<HeightMap.TexData>();
+
+			int	count	=br.ReadInt32();
+
+			for(int i=0;i < count;i++)
+			{
+				HeightMap.TexData	td	=new HeightMap.TexData();
+
+				td.BottomElevation	=br.ReadSingle();
+				td.TopElevation		=br.ReadSingle();
+				td.Steep			=br.ReadBoolean();
+				td.ScaleFactor		=br.ReadSingle();
+				td.TextureName		=br.ReadString();
+				td.mScaleU			=br.ReadDouble();
+				td.mScaleV			=br.ReadDouble();
+				td.mUOffs			=br.ReadDouble();
+				td.mVOffs			=br.ReadDouble();
+
+				gridStuffs.Add(td);
+			}
+
+			br.Close();
+			fs.Close();
+
+			List<string>	textures	=mSK.GetTexture2DList();
+			for(int i=0;i < gridStuffs.Count;i++)
+			{
+				HeightMap.TexData	gd	=gridStuffs[i];
+				if(textures.Contains(gd.TextureName))
+				{
+					if(!mSK.AddTexToAtlas(ta, gd.TextureName, mGD,
+						out gd.mScaleU, out gd.mScaleV, out gd.mUOffs, out gd.mVOffs))
+					{
+						//todo something here
+					}
+				}
+			}
+
+			ta.Finish(mGD);
+
+			Texture(ta, gridStuffs, transitionHeight);
 		}
 	}
 }
