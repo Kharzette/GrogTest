@@ -98,6 +98,10 @@ namespace TestTerrain
 
 			mTerrain	=new Terrain(path);
 
+			//build model for raycasts/collisions
+			mTModel	=mTerrain.ConstructModel();
+			mTModel.FixBoxHeights();
+
 			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
 
 			//string indicators for various statusy things
@@ -246,6 +250,9 @@ namespace TestTerrain
 			}
 
 //			UpdateDynamicLights(actions);
+			Vector3 hit;
+			bool	bHit	=mTModel.Trace(Vector3.One * 55f + Vector3.UnitY * 2000,
+				Vector3.One * 233f - Vector3.UnitY * 800f, out hit);
 
 			Vector3	startPos	=mGroundPos;
 			Vector3	moveVec		=ps.Update(startPos, mGD.GCam.Forward, mGD.GCam.Left, mGD.GCam.Up, actions);
