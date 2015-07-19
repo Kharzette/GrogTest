@@ -27,6 +27,7 @@ namespace TestTerrain
 		//gpu
 		GraphicsDevice	mGD;
 		StuffKeeper		mSK;
+		GameCamera		mOtherCam;	//for regular meshes in viewspace
 
 		//terrain stuff
 		FractalFactory	mFracFact;
@@ -59,9 +60,13 @@ namespace TestTerrain
 		Random	mRand	=new Random();
 
 		//debug
-		MatLib	mDebugMats;
-		Vector3	mRayStart, mRayEnd, mRayHit;
-		bool	mbRayHit;
+		MatLib		mDebugMats;
+		Vector3		mRayStart, mRayEnd, mRayHit;
+		bool		mbRayHit;
+		DrawRays	mDrawRays;
+
+		//drawn raycasts
+		List<Vector3>	mColRays	=new List<Vector3>();
 
 		//constants
 		const float	ShadowSlop			=12f;
@@ -105,7 +110,8 @@ namespace TestTerrain
 			mTModel.FixBoxHeights();
 
 //			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
-			Vector4	color	=Vector4.UnitZ * 0.25f + (Vector4.UnitW * 0.55f);
+			Vector4	color	=Vector4.UnitX * 0.25f +
+				Vector4.UnitZ * 0.25f + (Vector4.UnitW * 0.55f);
 
 			//string indicators for various statusy things
 			mST.AddString(mFonts[0], "Stuffs", "PosStatus",
@@ -181,6 +187,9 @@ namespace TestTerrain
 				vp.Width / (float)vp.Height, 0.1f, FogEnd);
 
 			mGD.SetClip(0.1f, FogEnd);
+
+			mDrawRays	=new DrawRays(mGD, mSK);
+			mOtherCam	=new GameCamera(vp.Width, vp.Height, vp.Width / (float)vp.Height, 0.1f, FogEnd);
 		}
 
 
@@ -260,6 +269,11 @@ namespace TestTerrain
 				{
 					mRayEnd		=GetModelPos();
 					mbRayHit	=mTModel.Trace(mRayStart, mRayEnd, out mRayHit);
+
+					mColRays.Add(mRayStart);
+					mColRays.Add(mRayEnd);
+
+					mDrawRays.BuildRayDrawInfo(mColRays, 16f);
 				}
 			}
 
@@ -337,6 +351,7 @@ namespace TestTerrain
 			}
 
 			mGD.GCam.Update(-mGroundPos, ps.Pitch, ps.Yaw, ps.Roll);
+			mOtherCam.Update(-GetViewPos(), ps.Pitch, ps.Yaw, ps.Roll);
 
 			if(!mbFly)
 			{
@@ -413,6 +428,8 @@ namespace TestTerrain
 				mTerrain.Draw(mGD, mTerMats, mFrust);
 			}
 
+			mDrawRays.Draw(mOtherCam);
+
 			mST.Draw(mGD.DC, Matrix.Identity, mTextProj);
 		}
 
@@ -421,6 +438,24 @@ namespace TestTerrain
 		{
 			mFontMats.FreeAll();
 			mAudio.FreeAll();
+		}
+
+
+		Vector3 GetViewPos()
+		{
+			Vector3	ret	=Vector3.Zero;
+
+			int	chunkDim, polySize;
+
+			chunkDim	=mTerrain.GetChunkDim();
+			polySize	=mTerrain.GetPolySize();
+
+			ret.X	=mGridCoordinate.X * chunkDim * polySize;
+			ret.Z	=mGridCoordinate.Y * chunkDim * polySize;
+
+			Vector3	groundOfs	=mGroundPos;
+
+			return	ret + groundOfs;
 		}
 
 
