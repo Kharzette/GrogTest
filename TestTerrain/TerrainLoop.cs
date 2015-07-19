@@ -58,8 +58,10 @@ namespace TestTerrain
 		Vector3	mGroundPos, mVelocity;
 		Random	mRand	=new Random();
 
-		//debug draw
-		MatLib		mDebugMats;
+		//debug
+		MatLib	mDebugMats;
+		Vector3	mRayStart, mRayEnd, mRayHit;
+		bool	mbRayHit;
 
 		//constants
 		const float	ShadowSlop			=12f;
@@ -94,7 +96,7 @@ namespace TestTerrain
 
 			mTextProj	=Matrix.OrthoOffCenterLH(0, mResX, mResY, 0, 0.1f, 5f);
 
-			string	path	=gameRootDir + "\\Levels\\Test.Terrain";
+			string	path	=gameRootDir + "\\Levels\\Testa.Terrain";
 
 			mTerrain	=new Terrain(path);
 
@@ -102,13 +104,16 @@ namespace TestTerrain
 			mTModel	=mTerrain.ConstructModel();
 			mTModel.FixBoxHeights();
 
-			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
+//			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
+			Vector4	color	=Vector4.UnitZ * 0.25f + (Vector4.UnitW * 0.55f);
 
 			//string indicators for various statusy things
 			mST.AddString(mFonts[0], "Stuffs", "PosStatus",
-				color, Vector2.UnitX * 20f + Vector2.UnitY * 580f, Vector2.One);
+				color, Vector2.UnitX * 20f + Vector2.UnitY * 610f, Vector2.One);
+			mST.AddString(mFonts[0], "Stuffs", "ColStatus",
+				color, Vector2.UnitX * 20f + Vector2.UnitY * 630f, Vector2.One);
 			mST.AddString(mFonts[0], "Thread Status...", "ThreadStatus",
-				color, Vector2.UnitX * 20f + Vector2.UnitY * 560f, Vector2.One);
+				color, Vector2.UnitX * 20f + Vector2.UnitY * 650f, Vector2.One);
 
 			mTerMats	=new MatLib(mGD, sk);
 
@@ -247,12 +252,18 @@ namespace TestTerrain
 				{
 					pitchAmount	=act.mMultiplier;
 				}
+				else if(act.mAction.Equals(Program.MyActions.RayStart))
+				{
+					mRayStart	=GetModelPos();
+				}
+				else if(act.mAction.Equals(Program.MyActions.RayEnd))
+				{
+					mRayEnd		=GetModelPos();
+					mbRayHit	=mTModel.Trace(mRayStart, mRayEnd, out mRayHit);
+				}
 			}
 
 //			UpdateDynamicLights(actions);
-			Vector3 hit;
-			bool	bHit	=mTModel.Trace(Vector3.One * 55f + Vector3.UnitY * 2000,
-				Vector3.One * 233f - Vector3.UnitY * 800f, out hit);
 
 			Vector3	startPos	=mGroundPos;
 			Vector3	moveVec		=ps.Update(startPos, mGD.GCam.Forward, mGD.GCam.Left, mGD.GCam.Up, actions);
@@ -350,11 +361,17 @@ namespace TestTerrain
 				}
 			}
 
+			//get ground pos at current location
+			float	groundHeight	=mTModel.GetHeight(GetModelPos());
+
 			mAudio.Update(mGD.GCam);
 
-			mST.ModifyStringText(mFonts[0], "Grid: " + mGridCoordinate.ToString() +
-				", Position: " + " : "
-				+ mGD.GCam.Position.IntStr(), "PosStatus");
+			mST.ModifyStringText(mFonts[0], "Grid: " + mGridCoordinate.ToString()
+				+ ", LocalPos: " + mGroundPos.IntStr()
+				+ ", ModelPos: " + GetModelPos(), "PosStatus");
+
+			mST.ModifyStringText(mFonts[0], "Height: " + groundHeight
+				+ ", Hit: " + mbRayHit + ", HitPos: " + mRayHit, "ColStatus");
 
 			if(mTerrain != null)
 			{
@@ -404,6 +421,22 @@ namespace TestTerrain
 		{
 			mFontMats.FreeAll();
 			mAudio.FreeAll();
+		}
+
+
+		Vector3 GetModelPos()
+		{
+			Vector3	ret	=Vector3.Zero;
+
+			ret.X	=mGridCoordinate.X * mTerrain.GetChunkDim();
+			ret.Z	=mGridCoordinate.Y * mTerrain.GetChunkDim();
+
+			Vector3	groundOfs	=mGroundPos;
+
+			groundOfs.X	/=mTerrain.GetPolySize();
+			groundOfs.Z	/=mTerrain.GetPolySize();
+
+			return	ret + groundOfs;
 		}
 
 

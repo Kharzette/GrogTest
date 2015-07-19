@@ -36,6 +36,7 @@ namespace TestTerrain
 			NextAnim, NextLevel, ToggleFly,
 			PlaceDynamicLight, ClearDynamicLights,
 			AccelTest, Jump, Exit,
+			RayStart, RayEnd,
 		};
 
 		const float	MaxTimeDelta	=0.1f;
@@ -308,6 +309,12 @@ namespace TestTerrain
 				Modifiers.None, System.Windows.Forms.Keys.K);
 			inp.MapAction(MyActions.NextLevel, ActionTypes.PressAndRelease,
 				Modifiers.None, System.Windows.Forms.Keys.L);
+
+			//ray
+			inp.MapAction(MyActions.RayStart, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.T);
+			inp.MapAction(MyActions.RayEnd, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.Y);
 
 			//exit
 			inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,
