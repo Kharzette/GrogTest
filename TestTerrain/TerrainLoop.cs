@@ -65,8 +65,9 @@ namespace TestTerrain
 		bool		mbRayHit;
 		DrawRays	mDrawRays;
 
-		//drawn raycasts
+		//drawn raycasts and htis
 		List<Vector3>	mColRays	=new List<Vector3>();
+		List<Vector3>	mColHits	=new List<Vector3>();
 
 		//constants
 		const float	ShadowSlop			=12f;
@@ -273,7 +274,72 @@ namespace TestTerrain
 					mColRays.Add(mRayStart);
 					mColRays.Add(mRayEnd);
 
-					mDrawRays.BuildRayDrawInfo(mColRays, 16f);
+					if(mbRayHit)
+					{
+						//scale up to view space
+						Vector3	viewHit	=mRayHit;
+
+						viewHit.X	*=16f;
+						viewHit.Z	*=16f;
+
+						mColHits.Add(viewHit);
+					}
+
+					mDrawRays.BuildRayDrawInfo(mColRays, mColHits, 16f);
+				}
+				else if(act.mAction.Equals(Program.MyActions.RayCrazy))
+				{
+					Stopwatch	sw	=new Stopwatch();
+					sw.Start();
+
+					mColRays.Clear();
+					mColHits.Clear();
+
+					Vector3	randSpace	=Vector3.One * 1000f;
+					randSpace.Y	*=5f;
+
+					for(int i=0;i < 1000;i++)
+					{
+						Vector3	start	=Mathery.RandomPosition(mRand, randSpace);
+						Vector3	end		=Mathery.RandomPosition(mRand, randSpace);
+
+						//wrap xz
+						if(start.X < 0)
+						{
+							start.X	+=1000f;
+						}
+						if(start.Z < 0)
+						{
+							start.Z	+=1000f;
+						}
+						if(end.X < 0)
+						{
+							end.X	+=1000f;
+						}
+						if(end.Z < 0)
+						{
+							end.Z	+=1000f;
+						}
+
+						Vector3	hit;
+						if(mTModel.Trace(start, end, out hit))
+						{
+							//scale up to view space
+							Vector3	viewHit	=hit;
+
+							viewHit.X	*=16f;
+							viewHit.Z	*=16f;
+
+							mColHits.Add(viewHit);
+						}
+
+						mColRays.Add(start);
+						mColRays.Add(end);
+					}
+
+					sw.Stop();
+
+					mDrawRays.BuildRayDrawInfo(mColRays, mColHits, 16f);
 				}
 			}
 

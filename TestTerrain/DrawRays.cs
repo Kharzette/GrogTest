@@ -19,7 +19,11 @@ namespace TestTerrain
 {
 	internal class DrawRays
 	{
+		//rays
 		Buffer	mVBRays, mIBRays;
+
+		//bunch of cubes where a collision occurs
+		PrimObject	mHits;
 
 		VertexBufferBinding	mVBBRays;
 
@@ -58,7 +62,7 @@ namespace TestTerrain
 		}
 
 
-		internal void BuildRayDrawInfo(List<Vector3> rays, float polySize)
+		internal void BuildRayDrawInfo(List<Vector3> rays, List<Vector3> hits, float polySize)
 		{
 			if(mVBRays != null)
 			{
@@ -69,12 +73,18 @@ namespace TestTerrain
 				mIBRays.Dispose();
 			}
 
+			if(mHits != null)
+			{
+				mHits.Free();
+			}
+
 			if(rays.Count < 2)
 			{
 				return;
 			}
 
-			VPosNormCol0	[]segVerts	=new VPosNormCol0[(rays.Count / 2) * 3];
+			VPosNormCol0	[]segVerts	=new VPosNormCol0[rays.Count * 3];
+			VPosNormCol0	[]hitVerts	=new VPosNormCol0[hits.Count * 8];
 
 			UInt32			index		=0;
 			List<UInt32>	indexes		=new List<UInt32>();
@@ -82,11 +92,8 @@ namespace TestTerrain
 			{
 				Color	col	=Mathery.RandomColor(mRand);
 
-				col	=Color.Red;
-
 				//endpoint
 				segVerts[index].Position	=rays[i + 1];
-
 
 				Vector3	lineVec	=rays[i + 1] - rays[i];
 
@@ -100,10 +107,11 @@ namespace TestTerrain
 
 				normVec.Normalize();
 
-				crossVec	*=2f;
+				//crossVec	*=.2f;
 
-				segVerts[index + 1].Position	=rays[i] - crossVec + Mathery.RandomDirectionXZ(mRand);
-				segVerts[index + 2].Position	=rays[i] + crossVec + Mathery.RandomDirectionXZ(mRand);
+				segVerts[index + 1].Position	=rays[i] - crossVec;
+				segVerts[index + 2].Position	=rays[i] + crossVec;
+
 
 				//scale up to visible
 				segVerts[index].Position.X		*=polySize;
@@ -113,9 +121,17 @@ namespace TestTerrain
 				segVerts[index + 2].Position.X	*=polySize;
 				segVerts[index + 2].Position.Z	*=polySize;
 
+				//upside down tri
+				segVerts[index + 3].Position	=segVerts[index + 2].Position;
+				segVerts[index + 4].Position	=segVerts[index + 1].Position;
+				segVerts[index + 5].Position	=segVerts[index].Position;
+
 				segVerts[index].Color0		=col;
 				segVerts[index + 1].Color0	=col;
 				segVerts[index + 2].Color0	=col;
+				segVerts[index + 3].Color0	=col;
+				segVerts[index + 4].Color0	=col;
+				segVerts[index + 5].Color0	=col;
 
 				Half4	norm;
 				norm.X	=normVec.X;
@@ -126,11 +142,21 @@ namespace TestTerrain
 				segVerts[index + 1].Normal	=norm;
 				segVerts[index + 2].Normal	=norm;
 
+				norm.X	=-normVec.X;
+				norm.Y	=-normVec.Y;
+				norm.Z	=-normVec.Z;
+				segVerts[index + 3].Normal	=norm;
+				segVerts[index + 4].Normal	=norm;
+				segVerts[index + 5].Normal	=norm;
+
 				indexes.Add(index);
 				indexes.Add(index + 1);
 				indexes.Add(index + 2);
+				indexes.Add(index + 3);
+				indexes.Add(index + 4);
+				indexes.Add(index + 5);
 
-				index	+=3;
+				index	+=6;
 			}
 
 			mVBRays		=VertexTypes.BuildABuffer(mGD.GD, segVerts, VertexTypes.GetIndex(segVerts[0].GetType()));
@@ -138,6 +164,10 @@ namespace TestTerrain
 			mVBBRays	=VertexTypes.BuildAVBB(VertexTypes.GetIndex(segVerts[0].GetType()), mVBRays);
 
 			mRaysIndexCount	=indexes.Count;
+
+			indexes.Clear();
+
+			mHits	=PrimFactory.CreateCubes(mGD.GD, hits, 5f);
 		}
 
 
@@ -146,6 +176,12 @@ namespace TestTerrain
 			mMatLib.FreeAll();
 
 			FreeVBs();
+
+			if(mHits != null)
+			{
+				mHits.Free();
+				mHits	=null;
+			}
 		}
 
 
@@ -178,6 +214,10 @@ namespace TestTerrain
 				mGD.DC.InputAssembler.SetVertexBuffers(0, mVBBRays);
 				mGD.DC.InputAssembler.SetIndexBuffer(mIBRays, Format.R32_UInt, 0);
 				mGD.DC.DrawIndexed(mRaysIndexCount, 0, 0);
+			}
+			if(mHits != null)
+			{
+				mHits.Draw(mGD.DC);
 			}
 		}
 	}
