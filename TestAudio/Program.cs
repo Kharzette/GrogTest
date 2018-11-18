@@ -59,7 +59,7 @@ namespace TestAudio
 
 			gd.RendForm.Location	=Settings.Default.MainWindowPos;
 
-			string	gameRootDir	="C:\\Games\\CurrentGame";
+			string	gameRootDir	="F:\\Games\\GrogLibsGame";
 
 			Audio	aud	=new Audio();
 
@@ -177,7 +177,7 @@ namespace TestAudio
 
 					//update status text
 					st.ModifyStringText(fonts[0], "Current Sound: " + sounds[curSound], "CurrentSound");
-					st.ModifyStringText(fonts[0], "Emitter Pos: " + emitter.Position, "EmitterPosition");
+					st.ModifyStringText(fonts[0], "Emitter Pos: " + emitter.Position.X + ", " + emitter.Position.Y + ", " + emitter.Position.Z, "EmitterPosition");
 					st.ModifyStringText(fonts[0], "Cam Pos: " + gd.GCam.Position +
 						", Sounds Playing: " + aud.GetNumInstances(), "PosStatus");
 					time.UpdateDone();
