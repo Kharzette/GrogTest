@@ -61,7 +61,7 @@ namespace TestMeshes
 			SharedForms.ShaderCompileHelper.mTitle	="Compiling Shaders...";
 
 #if DEBUG
-			string	rootDir	="C:\\Games\\CurrentGame";
+			string	rootDir	="F:\\Games\\GrogLibsGame";
 #else
 			string	rootDir	=".";
 #endif
