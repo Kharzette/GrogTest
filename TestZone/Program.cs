@@ -68,7 +68,7 @@ namespace TestZone
 			//set this to whereever the game data is stored during
 			//development.  Release ver will look in .
 #if DEBUG
-			string	rootDir	="C:\\Games\\CurrentGame";
+			string	rootDir	="F:\\Games\\GrogLibsGame";
 #else
 			string	rootDir	=".";
 #endif
