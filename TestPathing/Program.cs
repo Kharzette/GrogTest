@@ -90,7 +90,7 @@ namespace TestPathing
 			gd.RendForm.Activated		+=actHandler;
 			gd.RendForm.AppDeactivated	+=deActHandler;
 
-			MapStuff	mapStuff	=new MapStuff(gd, "F:\\Games\\GrogLibsGame");
+			MapStuff	mapStuff	=new MapStuff(gd, ".");
 
 			EventHandler	pickedAHandler	=new EventHandler(
 				delegate(object s, EventArgs ea)

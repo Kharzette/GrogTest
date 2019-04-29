@@ -69,11 +69,10 @@ namespace TestTerrain
 			//set title of progress window
 			SharedForms.ShaderCompileHelper.mTitle	="Compiling Shaders...";
 
-#if DEBUG
-			string	rootDir	="F:\\Games\\GrogLibsGame";
-#else
+			//used to have a hard coded path here for #debug
+			//but now can just use launch.json to provide it
 			string	rootDir	=".";
-#endif
+			
 			sk.eCompileNeeded	+=SharedForms.ShaderCompileHelper.CompileNeededHandler;
 			sk.eCompileDone		+=SharedForms.ShaderCompileHelper.CompileDoneHandler;
 

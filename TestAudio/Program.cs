@@ -59,7 +59,9 @@ namespace TestAudio
 
 			gd.RendForm.Location	=Settings.Default.MainWindowPos;
 
-			string	gameRootDir	="F:\\Games\\GrogLibsGame";
+			//used to have a hard coded path here for #debug
+			//but now can just use launch.json to provide it
+			string	gameRootDir	=".";
 
 			Audio	aud	=new Audio();
 
