@@ -1,20 +1,11 @@
 ﻿using System;
-using System.IO;
 using System.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
-using System.Linq;
 using System.Windows.Forms;
-
 using InputLib;
-using MaterialLib;
 using UtilityLib;
-using MeshLib;
-
-using SharpDX;
 using SharpDX.Direct3D;
-using SharpDX.Direct3D11;
-using SharpDX.DXGI;
 using SharpDX.Windows;
 
 

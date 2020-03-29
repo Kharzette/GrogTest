@@ -1,9 +1,7 @@
 ﻿using System;
-using System.IO;
 using System.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
-using System.Linq;
 using System.Windows.Forms;
 
 using InputLib;
@@ -17,7 +15,7 @@ using SharpDX.Direct3D;
 using SharpDX.Windows;
 using SharpDX.X3DAudio;
 
-using MatLib	=MaterialLib.MaterialLib;
+using MatLib = MaterialLib.MaterialLib;
 
 
 namespace TestAudio

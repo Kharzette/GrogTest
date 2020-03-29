@@ -1,23 +1,13 @@
 ﻿using System;
-using System.IO;
 using System.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
-using System.Linq;
 using InputLib;
-using MaterialLib;
 using UtilityLib;
-using MeshLib;
 
 using SharpDX;
 using SharpDX.Direct3D;
-using SharpDX.Direct3D11;
-using SharpDX.DXGI;
 using SharpDX.Windows;
-
-using Device	=SharpDX.Direct3D11.Device;
-using MapFlags	=SharpDX.Direct3D11.MapFlags;
-using MatLib	=MaterialLib.MaterialLib;
 
 
 namespace TestMeshes

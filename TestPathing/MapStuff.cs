@@ -1,24 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Diagnostics;
-using System.Text;
 using System.IO;
-
 using BSPZone;
 using MeshLib;
 using UtilityLib;
 using MaterialLib;
 using InputLib;
 using PathLib;
-
 using SharpDX;
-using SharpDX.DXGI;
 using SharpDX.Direct3D;
-using SharpDX.Direct3D11;
 
-using MatLib	=MaterialLib.MaterialLib;
+using MatLib = MaterialLib.MaterialLib;
 
 
 namespace TestPathing
