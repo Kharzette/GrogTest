@@ -699,7 +699,8 @@ namespace TestZone
 				mZone.IsMaterialVisibleFromPos,
 				mZone.GetModelTransform,
 				RenderExternal,
-				mShadowHelper.DrawShadows);
+				mShadowHelper.DrawShadows,
+				SetUpAlphaRenderTargets);
 
 			mPost.SetTargets(mGD, "Outline", "null");
 			mPost.SetParameter("mNormalTex", "SceneDepthMatNorm");
@@ -731,10 +732,32 @@ namespace TestZone
 		}
 
 
+		internal void RenderNoPost()
+		{
+			if(mDynLights != null)
+			{
+				mDynLights.SetParameter();
+			}
+
+			mPost.SetTargets(mGD, "BackColor", "BackDepth");
+			mPost.ClearTarget(mGD, "BackColor", Color.CornflowerBlue);
+			mPost.ClearDepth(mGD, "BackDepth");
+
+			mZoneDraw.Draw(mGD, mShadowHelper.GetShadowCount(),
+				mZone.IsMaterialVisibleFromPos,
+				mZone.GetModelTransform,
+				RenderExternal,
+				mShadowHelper.DrawShadows,
+				SetUpAlphaRenderTargetsNoPost);
+
+			mST.Draw(mGD.DC, Matrix.Identity, mTextProj);
+		}
+
+
 		internal void FreeAll()
 		{
 			mShadowHelper.FreeAll();
-			mPost.FreeAll();
+			mPost.FreeAll(mGD);
 			mFontMats.FreeAll();
 			mZoneMats.FreeAll();
 			mZoneDraw.FreeAll();
@@ -778,6 +801,20 @@ namespace TestZone
 			mAudio.FreeAll();
 
 			mSKeeper.FreeAll();
+		}
+
+
+		void SetUpAlphaRenderTargets()
+		{
+			//shadows will mess with targets
+			mPost.SetTargets(mGD, "SceneColor", "SceneDepth");
+		}
+
+
+		void SetUpAlphaRenderTargetsNoPost()
+		{
+			//shadows will mess with targets
+			mPost.SetTargets(mGD, "BackColor", "BackDepth");
 		}
 
 

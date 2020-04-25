@@ -136,7 +136,7 @@ namespace TestZone
 
 				mapLoop.RenderUpdate(time.GetRenderUpdateDeltaMilliSeconds());
 
-				mapLoop.Render();
+				mapLoop.RenderNoPost();
 
 				gd.Present();
 
