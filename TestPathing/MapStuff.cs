@@ -335,7 +335,7 @@ namespace TestPathing
 				mZone.IsMaterialVisibleFromPos,
 				mZone.GetModelTransform,
 				RenderExternal,
-				DrawShadows);
+				DrawShadows, SetUpAlphaTargets);
 
 			mPathDraw.Draw();
 
@@ -494,6 +494,12 @@ namespace TestPathing
 
 			sm.SetTransform(local);
 			sm.Draw(mGD.DC, mStaticMats);
+		}
+
+
+		void SetUpAlphaTargets()
+		{
+			//nada
 		}
 
 
