@@ -26,7 +26,7 @@ namespace TestZone
 			NextAnim, NextLevel, ToggleFly,
 			PlaceDynamicLight, ClearDynamicLights,
 			AccelTest, AccelTest2, Exit,
-			Step, StepJump
+			Step, StepJump, SpawnTestParticles
 		};
 
 		const float	MaxTimeDelta	=0.1f;
@@ -318,6 +318,9 @@ namespace TestZone
 				Modifiers.None, System.Windows.Forms.Keys.Y);
 			inp.MapAction(MyActions.StepJump, ActionTypes.PressAndRelease,
 				Modifiers.None, System.Windows.Forms.Keys.U);
+
+			inp.MapAction(MyActions.SpawnTestParticles, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.P);
 
 			//exit
 			inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,

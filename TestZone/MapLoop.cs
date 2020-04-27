@@ -89,6 +89,9 @@ namespace TestZone
 		int				mResX, mResY;
 		List<string>	mFonts	=new List<string>();
 
+		//test particle emitters
+		List<int>	mTestEmitters	=new List<int>();
+
 		//constants
 		const float	ShadowSlop			=12f;
 		const float	JogMoveForce		=2000f;	//Fig Newtons
@@ -489,6 +492,10 @@ namespace TestZone
 						friction		=AirFriction;
 						bCamJumped		=true;
 					}
+				}
+				else if(act.mAction.Equals(Program.MyActions.SpawnTestParticles))
+				{
+					SpawnTestParticles(mPMob.GetMiddlePos());
 				}
 				else if(act.mAction.Equals(Program.MyActions.Step))
 				{
@@ -897,6 +904,9 @@ namespace TestZone
 
 			mZone	=new Zone();
 
+			//clear particles
+			mPB.NukeAll();
+
 			mZoneMats.ReadFromFile(lev + ".MatLib");
 			mZone.Read(lev + ".Zone", false);
 			mZoneDraw.Read(mGD, mSKeeper, lev + ".ZoneDraw", false);
@@ -1094,6 +1104,21 @@ namespace TestZone
 
 				mShadowHelper.RegisterShadower(shad, mStaticMats);
 			}
+		}
+
+
+		void SpawnTestParticles(Vector3 pos)
+		{
+			mTestEmitters.Add(
+				mPB.CreateEmitter("Particles\\HeartPart",
+					new Vector4(0f, 1f, 0f, 0.25f),
+					Emitter.Shapes.Sphere, 8f, 100,
+					mGD.GCam.Position, Vector3.Up * 100f,
+					22f, 2.6f, 0.04f, -3f/1000f, 3f/1000f,
+					1.5f/1000f, 4f/1000f, 30f, 0.15f/1000f, 0.25f/1000f,
+					new Vector4(5f, -2f, 0f, 1f)/10000f,
+					new Vector4(7f, -3f, 0f, 1f)/10000f,
+					3000, 4000));
 		}
 
 
