@@ -69,6 +69,7 @@ namespace TestZone
 			PlayerSteering	pSteering	=SetUpSteering();
 			Input			inp			=SetUpInput(bRightClickToTurn);
 			Random			rand		=new Random();
+			UserSettings	sets		=new UserSettings();
 
 			UpdateTimer	time	=new UpdateTimer(true, false);
 
@@ -122,7 +123,7 @@ namespace TestZone
 				time.Stamp();
 				while(time.GetUpdateDeltaSeconds() > 0f)
 				{
-					acts	=UpdateInput(inp, gd, bRightClickToTurn,
+					acts	=UpdateInput(inp, sets, gd, bRightClickToTurn,
 						time.GetUpdateDeltaSeconds(), ref bMouseLookOn);
 					if(!gd.RendForm.Focused)
 					{
@@ -144,6 +145,7 @@ namespace TestZone
 			});
 
 			Settings.Default.Save();
+			sets.SaveSettings();
 
 			gd.RendForm.Activated		-=actHandler;
 			gd.RendForm.AppDeactivated	-=deActHandler;
@@ -155,7 +157,8 @@ namespace TestZone
 			gd.ReleaseAll();
 		}
 
-		static List<Input.InputAction> UpdateInput(Input inp,
+		static List<Input.InputAction> UpdateInput(
+			Input inp, UserSettings sets,
 			GraphicsDevice gd, bool bHoldClickTurn,
 			float delta, ref bool bMouseLookOn)
 		{
@@ -216,7 +219,8 @@ namespace TestZone
 				{
 					if(act.mDevice == Input.InputAction.DeviceType.MOUSE)
 					{
-						act.mMultiplier	*=UserSettings.MouseTurnMultiplier;
+						act.mMultiplier	*=UserSettings.MouseTurnMultiplier
+							* sets.mTurnSensitivity;
 					}
 					else if(act.mDevice == Input.InputAction.DeviceType.ANALOG)
 					{

@@ -101,6 +101,7 @@ namespace TestZone
 		const float	GroundFriction		=10f;	//Frictols
 		const float	StumbleFriction		=6f;	//Frictols
 		const float	AirFriction			=0.1f;	//Frictols
+		const float	FlyFriction			=2f;	//Frictols
 		const float	JumpForce			=390;	//leapometers
 
 
@@ -452,31 +453,27 @@ namespace TestZone
 			float	pitchAmount	=0f;
 			bool	bGravity	=false;
 			float	friction	=GroundFriction;
-			if(!mPCamMob.IsOnGround())
-			{
-				//gravity
-				if(!mbFly)
-				{
-					bGravity	=true;
-				}
 
-				if(mPCamMob.IsBadFooting())
-				{
-					friction	=GroundFriction;
-				}
-				else
-				{
-					friction	=AirFriction;
-				}
+			if(mbFly)
+			{
+				friction	=FlyFriction;
 			}
 			else
 			{
-				if(!mbFly)
+				if(mPCamMob.IsOnGround())
 				{
-					friction	=GroundFriction;
+					if(!mPCamMob.IsBadFooting())
+					{
+						friction	=GroundFriction;
+					}
+					else
+					{
+						friction	=AirFriction;
+					}
 				}
 				else
 				{
+					bGravity	=true;
 					friction	=AirFriction;
 				}
 			}
