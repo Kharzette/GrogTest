@@ -18,10 +18,10 @@ namespace TestZone
 		{
 			MoveForwardBack, MoveForward, MoveBack,
 			MoveLeftRight, MoveLeft, MoveRight,
-			MoveForwardFast, MoveBackFast,
-			MoveLeftFast, MoveRightFast,
+			MoveForwardFast, MoveBackFast, Dive,
+			MoveLeftFast, MoveRightFast, Crouch,
 			Turn, TurnLeft, TurnRight, Jump,
-			Pitch, PitchUp, PitchDown,
+			Pitch, PitchUp, PitchDown, Climb,
 			ToggleMouseLookOn, ToggleMouseLookOff,
 			NextAnim, NextLevel, ToggleFly,
 			PlaceDynamicLight, ClearDynamicLights,
@@ -277,6 +277,7 @@ namespace TestZone
 			inp.MapAction(MyActions.ToggleFly, ActionTypes.PressAndRelease,
 				Modifiers.None, System.Windows.Forms.Keys.F);
 
+			//press and hold style jump
 			inp.MapAction(MyActions.Jump, ActionTypes.ActivateOnce,
 				Modifiers.None, System.Windows.Forms.Keys.Space);
 			inp.MapAction(MyActions.Jump, ActionTypes.ActivateOnce,
@@ -285,6 +286,10 @@ namespace TestZone
 				Modifiers.ControlHeld, System.Windows.Forms.Keys.Space);
 			inp.MapAction(MyActions.Jump, ActionTypes.ActivateOnce,
 				Modifiers.None,	Input.VariousButtons.GamePadY);
+
+			//climb / swim up / fly up style jump
+			inp.MapAction(MyActions.Climb, ActionTypes.ContinuousHold,
+				Modifiers.None, System.Windows.Forms.Keys.Space);
 
 			inp.MapAction(MyActions.PlaceDynamicLight, ActionTypes.ActivateOnce,
 				Modifiers.None, System.Windows.Forms.Keys.G);

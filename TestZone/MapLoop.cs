@@ -21,6 +21,13 @@ namespace TestZone
 {
 	internal class MapLoop
 	{
+		enum GameContents
+		{
+			Water	=(1 << 18),
+			Lava	=(1 << 20),
+			Slime	=(1 << 19)
+		}
+
 		//data
 		Zone		mZone;
 		IndoorMesh	mZoneDraw;
@@ -95,14 +102,19 @@ namespace TestZone
 		//constants
 		const float	ShadowSlop			=12f;
 		const float	JogMoveForce		=2000f;	//Fig Newtons
+		const float	FlyMoveForce		=1000f;	//Fig Newtons
 		const float	MidAirMoveForce		=100f;	//Slight wiggle midair
-		const float	StumbleForce		=700f;	//Fig Newtons
+		const float	SwimMoveForce		=900f;	//Swimmery
+		const float	SwimUpMoveForce		=60f;	//Swimmery
+		const float	StumbleMoveForce	=700f;	//Fig Newtons
+		const float	JumpForce			=390;	//leapometers
 		const float	GravityForce		=980f;	//Gravitons
+		const float	BouyancyForce		=700f;	//Gravitons
 		const float	GroundFriction		=10f;	//Frictols
 		const float	StumbleFriction		=6f;	//Frictols
 		const float	AirFriction			=0.1f;	//Frictols
 		const float	FlyFriction			=2f;	//Frictols
-		const float	JumpForce			=390;	//leapometers
+		const float	SwimFriction		=10f;	//Frictols
 
 
 		internal MapLoop(GraphicsDevice gd, string gameRootDir)
@@ -439,58 +451,225 @@ namespace TestZone
 		}
 
 
-		//if running on a fixed timestep, this might be called
-		//more often with a smaller delta time than RenderUpdate()
-		internal void Update(UpdateTimer time, List<Input.InputAction> actions, PlayerSteering ps)
+		Vector3 UpdateSwimming(float secDelta, List<Input.InputAction> actions, PlayerSteering ps)
 		{
-			//Thread.Sleep(30);
-
-			float	secDelta	=time.GetUpdateDeltaSeconds();
-
-			mZone.UpdateModels(secDelta);
-
 			float	yawAmount	=0f;
 			float	pitchAmount	=0f;
-			bool	bGravity	=false;
-			float	friction	=GroundFriction;
+			bool	bSwimUp		=false;
 
-			if(mbFly)
+			ps.Method	=PlayerSteering.SteeringMethod.Swim;
+
+			foreach(Input.InputAction act in actions)
 			{
-				friction	=FlyFriction;
-			}
-			else
-			{
-				if(mPCamMob.IsOnGround())
+				if(act.mAction.Equals(Program.MyActions.Climb))
 				{
-					if(!mPCamMob.IsBadFooting())
-					{
-						friction	=GroundFriction;
-					}
-					else
-					{
-						friction	=AirFriction;
-					}
+					//swim up
+					bSwimUp	=true;
 				}
-				else
+				else if(act.mAction.Equals(Program.MyActions.Turn))
 				{
-					bGravity	=true;
-					friction	=AirFriction;
+					yawAmount	=act.mMultiplier;
+				}
+				else if(act.mAction.Equals(Program.MyActions.Pitch))
+				{
+					pitchAmount	=act.mMultiplier;
 				}
 			}
 
-			bool	bCamJumped	=false;
+			Vector3	startPos	=mPCamMob.GetGroundPos();
+			Vector3	moveVec		=ps.Update(startPos, mGD.GCam.Forward, mGD.GCam.Left, mGD.GCam.Up, actions);
+
+			moveVec	*=SwimMoveForce;
+
+			mCamVelocity	+=moveVec * 0.5f;
+
+			Vector3	pos	=startPos;
+
+			if(bSwimUp)
+			{
+				Vector3	swimVec	=Vector3.Up * SwimUpMoveForce * 0.5f;
+				mCamVelocity	+=swimVec * 0.5f;
+			}
+
+			//friction / gravity / bouyancy
+			mCamVelocity	-=(SwimFriction * mCamVelocity * secDelta * 0.5f);
+			mCamVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
+			mCamVelocity	+=Vector3.Up * BouyancyForce * (secDelta * 0.5f);
+
+			pos	+=mCamVelocity * secDelta;
+
+			mCamVelocity	+=moveVec * 0.5f;
+
+			if(bSwimUp)
+			{
+				Vector3	swimVec	=Vector3.Up * SwimUpMoveForce * 0.5f;
+				mCamVelocity	+=swimVec * 0.5f;
+			}
+
+			//friction / gravity / bouyancy
+			mCamVelocity	-=(SwimFriction * mCamVelocity * secDelta * 0.5f);
+			mCamVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
+			mCamVelocity	+=Vector3.Up * BouyancyForce * (secDelta * 0.5f);
+
+			return	pos;
+		}
+
+
+		Vector3 UpdateFly(float secDelta, List<Input.InputAction> actions, PlayerSteering ps)
+		{
+			float	yawAmount	=0f;
+			float	pitchAmount	=0f;
+			bool	bFlyUp		=false;
 
 			foreach(Input.InputAction act in actions)
 			{
 				if(act.mAction.Equals(Program.MyActions.Jump))
 				{
-					if(mPCamMob.IsOnGround() && !mbFly)
+					//fly up
+					bFlyUp	=true;
+				}
+				else if(act.mAction.Equals(Program.MyActions.Turn))
+				{
+					yawAmount	=act.mMultiplier;
+				}
+				else if(act.mAction.Equals(Program.MyActions.Pitch))
+				{
+					pitchAmount	=act.mMultiplier;
+				}
+			}
+			Vector3	startPos	=mPCamMob.GetGroundPos();
+			Vector3	moveVec		=ps.Update(startPos, mGD.GCam.Forward, mGD.GCam.Left, mGD.GCam.Up, actions);
+
+			moveVec	*=FlyMoveForce;
+
+			mCamVelocity	+=moveVec * 0.5f;
+			mCamVelocity	-=(FlyFriction * mCamVelocity * secDelta * 0.5f);
+
+			Vector3	pos	=startPos;
+
+			if(bFlyUp)
+			{
+				mCamVelocity	+=Vector3.Up * FlyMoveForce * 0.5f;
+			}
+			pos	+=mCamVelocity * secDelta;
+
+			mCamVelocity	+=moveVec * 0.5f;
+			mCamVelocity	-=(FlyFriction * mCamVelocity * secDelta * 0.5f);
+
+			if(bFlyUp)
+			{
+				mCamVelocity	+=Vector3.Up * FlyMoveForce * 0.5f;
+			}
+
+			return	pos;
+		}
+
+
+		Vector3 UpdateGround(float secDelta, List<Input.InputAction> actions,
+							PlayerSteering ps, out bool bJumped)
+		{
+			float	yawAmount	=0f;
+			float	pitchAmount	=0f;
+			bool	bGravity	=false;
+			float	friction	=GroundFriction;
+
+			ps.Method	=PlayerSteering.SteeringMethod.FirstPerson;
+
+			if(mPCamMob.IsOnGround())
+			{
+				if(!mPCamMob.IsBadFooting())
+				{
+					friction	=GroundFriction;
+				}
+				else
+				{
+					friction	=AirFriction;
+				}
+			}
+			else
+			{
+				bGravity	=true;
+				friction	=AirFriction;
+			}
+
+			bJumped	=false;
+
+			foreach(Input.InputAction act in actions)
+			{
+				if(act.mAction.Equals(Program.MyActions.Jump))
+				{
+					if(mPCamMob.IsOnGround())
 					{
-						friction		=AirFriction;
-						bCamJumped		=true;
+						friction	=AirFriction;
+						bJumped		=true;
 					}
 				}
-				else if(act.mAction.Equals(Program.MyActions.SpawnTestParticles))
+				else if(act.mAction.Equals(Program.MyActions.Turn))
+				{
+					yawAmount	=act.mMultiplier;
+				}
+				else if(act.mAction.Equals(Program.MyActions.Pitch))
+				{
+					pitchAmount	=act.mMultiplier;
+				}
+			}
+
+			Vector3	startPos	=mPCamMob.GetGroundPos();
+			Vector3	moveVec		=ps.Update(startPos, mGD.GCam.Forward, mGD.GCam.Left, mGD.GCam.Up, actions);
+
+			if(mPCamMob.IsOnGround())
+			{
+				moveVec	*=JogMoveForce;
+			}
+			else if(mPCamMob.IsBadFooting())
+			{
+				moveVec	*=StumbleMoveForce;
+			}
+			else
+			{
+				moveVec	*=MidAirMoveForce;
+			}
+
+			mCamVelocity	+=moveVec * 0.5f;
+			mCamVelocity	-=(friction * mCamVelocity * secDelta * 0.5f);
+
+			Vector3	pos	=startPos;
+
+			if(bGravity)
+			{
+				mCamVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
+			}
+			if(bJumped)
+			{
+				mCamVelocity	+=Vector3.Up * JumpForce * 0.5f;
+
+				pos	+=mCamVelocity * (1f/60f);
+			}
+			else
+			{
+				pos	+=mCamVelocity * secDelta;
+			}
+
+			mCamVelocity	+=moveVec * 0.5f;
+			mCamVelocity	-=(friction * mCamVelocity * secDelta * 0.5f);
+			if(bGravity)
+			{
+				mCamVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
+			}
+			if(bJumped)
+			{
+				mCamVelocity	+=Vector3.Up * JumpForce * 0.5f;
+			}
+
+			return	pos;
+		}
+
+
+		void UpdateMiscKeys(List<Input.InputAction> actions, PlayerSteering ps)
+		{
+			foreach(Input.InputAction act in actions)
+			{
+				if(act.mAction.Equals(Program.MyActions.SpawnTestParticles))
 				{
 					SpawnTestParticles(mPMob.GetMiddlePos());
 				}
@@ -527,14 +706,6 @@ namespace TestZone
 					mbFly		=!mbFly;
 					ps.Method	=(mbFly)? PlayerSteering.SteeringMethod.Fly : PlayerSteering.SteeringMethod.FirstPerson;
 				}
-				else if(act.mAction.Equals(Program.MyActions.Turn))
-				{
-					yawAmount	=act.mMultiplier;
-				}
-				else if(act.mAction.Equals(Program.MyActions.Pitch))
-				{
-					pitchAmount	=act.mMultiplier;
-				}
 				else if(act.mAction.Equals(Program.MyActions.AccelTest))
 				{
 					mVelocity	+=Vector3.UnitX * act.mMultiplier * JogMoveForce;
@@ -544,62 +715,49 @@ namespace TestZone
 					mVelocity	+=-Vector3.UnitX * act.mMultiplier * JogMoveForce;
 				}
 			}
+		}
 
+
+		//if running on a fixed timestep, this might be called
+		//more often with a smaller delta time than RenderUpdate()
+		internal void Update(UpdateTimer time, List<Input.InputAction> actions, PlayerSteering ps)
+		{
+			//Thread.Sleep(30);
+
+			float	secDelta	=time.GetUpdateDeltaSeconds();
+
+			mZone.UpdateModels(secDelta);
+
+			Vector3	pos			=Vector3.Zero;
+			bool	bGroundMove	=false;
+
+			UInt32	contents	=mPCamMob.GetWorldContents();
+			if(Misc.bFlagSet(contents, (UInt32) GameContents.Lava)
+				|| Misc.bFlagSet(contents, (UInt32) GameContents.Water)
+				|| Misc.bFlagSet(contents, (UInt32) GameContents.Slime))
+			{
+				pos	=UpdateSwimming(secDelta, actions, ps);
+			}
+			else if(mbFly)
+			{
+				pos	=UpdateFly(secDelta, actions, ps);
+			}
+			else
+			{
+				pos	=UpdateGround(secDelta, actions, ps, out bGroundMove);
+
+				//flip ground move as it returns as a jump bool
+				bGroundMove	=!bGroundMove;
+			}
+
+			UpdateMiscKeys(actions, ps);
 			UpdateDynamicLights(actions);
-
-			Vector3	startPos	=mPCamMob.GetGroundPos();
-			Vector3	moveVec		=ps.Update(startPos, mGD.GCam.Forward, mGD.GCam.Left, mGD.GCam.Up, actions);
-
-			if(mPCamMob.IsOnGround() || mbFly)
-			{
-				moveVec	*=JogMoveForce;
-			}
-			else if(mPCamMob.IsBadFooting())
-			{
-				moveVec	*=StumbleForce;
-			}
-			else
-			{
-				moveVec	*=MidAirMoveForce;
-			}
-
-			mCamVelocity	+=moveVec * 0.5f;
-			mCamVelocity	-=(friction * mCamVelocity * secDelta * 0.5f);
-
-			Vector3	pos	=startPos;
-
-			if(bGravity)
-			{
-				mCamVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
-			}
-			if(bCamJumped)
-			{
-				mCamVelocity	+=Vector3.Up * JumpForce * 0.5f;
-
-				pos	+=mCamVelocity * (1f/60f);
-			}
-			else
-			{
-				pos	+=mCamVelocity * secDelta;
-			}
-
-			mCamVelocity	+=moveVec * 0.5f;
-			mCamVelocity	-=(friction * mCamVelocity * secDelta * 0.5f);
-			if(bGravity)
-			{
-				mCamVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
-			}
-			if(bCamJumped)
-			{
-				mCamVelocity	+=Vector3.Up * JumpForce * 0.5f;
-			}
-
 
 			Vector3	camPos	=Vector3.Zero;
 			Vector3	endPos	=pos;
 
 			mPCamMob.Move(endPos, time.GetUpdateDeltaMilliSeconds(), false,
-				mbFly, !bCamJumped, true, true, out endPos, out camPos);
+				mbFly, bGroundMove, true, true, out endPos, out camPos);
 
 			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
 
