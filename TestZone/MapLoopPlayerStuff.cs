@@ -45,12 +45,12 @@ namespace TestZone
 		//constants
 		const float	JogMoveForce		=2000f;	//Fig Newtons
 		const float	FlyMoveForce		=1000f;	//Fig Newtons
-		const float	FlyUpMoveForce		=30f;	//Fig Newtons
+		const float	FlyUpMoveForce		=300f;	//Fig Newtons
 		const float	MidAirMoveForce		=100f;	//Slight wiggle midair
 		const float	SwimMoveForce		=900f;	//Swimmery
-		const float	SwimUpMoveForce		=60f;	//Swimmery
+		const float	SwimUpMoveForce		=900f;	//Swimmery
 		const float	StumbleMoveForce	=700f;	//Fig Newtons
-		const float	JumpForce			=390;	//leapometers
+		const float	JumpForce			=20000;	//leapometers
 		const float	GravityForce		=980f;	//Gravitons
 		const float	BouyancyForce		=700f;	//Gravitons
 		const float	GroundFriction		=10f;	//Frictols
@@ -58,6 +58,24 @@ namespace TestZone
 		const float	AirFriction			=0.1f;	//Frictols
 		const float	FlyFriction			=2f;	//Frictols
 		const float	SwimFriction		=10f;	//Frictols
+
+
+		void AccumulateVelocity(Vector3 moveVec)
+		{
+			mCamVelocity	+=moveVec * 0.5f;
+		}
+
+
+		void ApplyFriction(float secDelta, float friction)
+		{
+			mCamVelocity	-=(friction * mCamVelocity * secDelta * 0.5f);
+		}
+
+
+		void ApplyForce(float force, Vector3 direction, float secDelta)
+		{
+			mCamVelocity	+=direction * force * (secDelta * 0.5f);
+		}
 
 
 		Vector3 UpdateSwimming(float secDelta, List<Input.InputAction> actions, PlayerSteering ps)
@@ -80,20 +98,19 @@ namespace TestZone
 
 			moveVec	*=SwimMoveForce;
 
-			mCamVelocity	+=moveVec * 0.5f;
+			AccumulateVelocity(moveVec);
 
 			Vector3	pos	=startPos;
 
 			if(bSwimUp)
 			{
-				Vector3	swimVec	=Vector3.Up * SwimUpMoveForce * 0.5f;
-				mCamVelocity	+=swimVec * 0.5f;
+				ApplyForce(SwimUpMoveForce, Vector3.Up, secDelta);
 			}
 
 			//friction / gravity / bouyancy
-			mCamVelocity	-=(SwimFriction * mCamVelocity * secDelta * 0.5f);
-			mCamVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
-			mCamVelocity	+=Vector3.Up * BouyancyForce * (secDelta * 0.5f);
+			ApplyFriction(secDelta, SwimFriction);
+			ApplyForce(GravityForce, Vector3.Down, secDelta);
+			ApplyForce(BouyancyForce, Vector3.Up, secDelta);
 
 			pos	+=mCamVelocity * secDelta;
 
@@ -101,14 +118,13 @@ namespace TestZone
 
 			if(bSwimUp)
 			{
-				Vector3	swimVec	=Vector3.Up * SwimUpMoveForce * 0.5f;
-				mCamVelocity	+=swimVec * 0.5f;
+				ApplyForce(SwimUpMoveForce, Vector3.Up, secDelta);
 			}
 
 			//friction / gravity / bouyancy
-			mCamVelocity	-=(SwimFriction * mCamVelocity * secDelta * 0.5f);
-			mCamVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
-			mCamVelocity	+=Vector3.Up * BouyancyForce * (secDelta * 0.5f);
+			ApplyFriction(secDelta, SwimFriction);
+			ApplyForce(GravityForce, Vector3.Down, secDelta);
+			ApplyForce(BouyancyForce, Vector3.Up, secDelta);
 
 			return	pos;
 		}
@@ -131,23 +147,23 @@ namespace TestZone
 
 			moveVec	*=FlyMoveForce;
 
-			mCamVelocity	+=moveVec * 0.5f;
-			mCamVelocity	-=(FlyFriction * mCamVelocity * secDelta * 0.5f);
+			AccumulateVelocity(moveVec);
+			ApplyFriction(secDelta, FlyFriction);
 
 			Vector3	pos	=startPos;
 
 			if(bFlyUp)
 			{
-				mCamVelocity	+=Vector3.Up * FlyUpMoveForce * 0.5f;
+				ApplyForce(FlyUpMoveForce, Vector3.Up, secDelta);
 			}
 			pos	+=mCamVelocity * secDelta;
 
-			mCamVelocity	+=moveVec * 0.5f;
-			mCamVelocity	-=(FlyFriction * mCamVelocity * secDelta * 0.5f);
+			AccumulateVelocity(moveVec);
+			ApplyFriction(secDelta, FlyFriction);
 
 			if(bFlyUp)
 			{
-				mCamVelocity	+=Vector3.Up * FlyUpMoveForce * 0.5f;
+				ApplyForce(FlyUpMoveForce, Vector3.Up, secDelta);
 			}
 
 			return	pos;
@@ -209,19 +225,21 @@ namespace TestZone
 				moveVec	*=MidAirMoveForce;
 			}
 
-			mCamVelocity	+=moveVec * 0.5f;
-			mCamVelocity	-=(friction * mCamVelocity * secDelta * 0.5f);
+			AccumulateVelocity(moveVec);
+			ApplyFriction(secDelta, friction);
 
 			Vector3	pos	=startPos;
 
 			if(bGravity)
 			{
-				mCamVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
+				ApplyForce(GravityForce, Vector3.Down, secDelta);
 			}
 			if(bJumped)
 			{
-				mCamVelocity	+=Vector3.Up * JumpForce * 0.5f;
+				//mCamVelocity	+=Vector3.Up * JumpForce * 0.5f;
+				ApplyForce(JumpForce, Vector3.Up, secDelta);
 
+				//jump use a 60fps delta time for consistency
 				pos	+=mCamVelocity * (1f/60f);
 			}
 			else
@@ -229,15 +247,15 @@ namespace TestZone
 				pos	+=mCamVelocity * secDelta;
 			}
 
-			mCamVelocity	+=moveVec * 0.5f;
-			mCamVelocity	-=(friction * mCamVelocity * secDelta * 0.5f);
+			AccumulateVelocity(moveVec);
+			ApplyFriction(secDelta, friction);
 			if(bGravity)
 			{
-				mCamVelocity	+=Vector3.Down * GravityForce * (secDelta * 0.5f);
+				ApplyForce(GravityForce, Vector3.Down, secDelta);
 			}
 			if(bJumped)
 			{
-				mCamVelocity	+=Vector3.Up * JumpForce * 0.5f;
+				ApplyForce(JumpForce, Vector3.Up, secDelta);
 			}
 
 			return	pos;
