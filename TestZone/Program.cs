@@ -26,7 +26,8 @@ namespace TestZone
 			NextAnim, NextLevel, ToggleFly,
 			PlaceDynamicLight, ClearDynamicLights,
 			AccelTest, AccelTest2, Exit,
-			Step, StepJump, SpawnTestParticles
+			Step, StepJump, SpawnTestParticles,
+			SensitivityUp, SensitivityDown
 		};
 
 		const float	MaxTimeDelta	=0.1f;
@@ -232,6 +233,26 @@ namespace TestZone
 					}
 				}
 			}
+
+			//sensitivity adjust
+			foreach(Input.InputAction act in actions)
+			{
+				float	sense	=sets.mTurnSensitivity;
+				if(act.mAction.Equals(MyActions.SensitivityUp))
+				{
+					sense	+=0.1f;
+				}
+				else if(act.mAction.Equals(MyActions.SensitivityDown))
+				{
+					sense	-=0.1f;
+				}
+				else
+				{
+					continue;
+				}
+				sets.mTurnSensitivity	=Math.Clamp(sense, 0.1f, 10f);
+			}
+
 			return	actions;
 		}
 
@@ -318,18 +339,23 @@ namespace TestZone
 			inp.MapAction(MyActions.NextLevel, ActionTypes.PressAndRelease,
 				Modifiers.None, System.Windows.Forms.Keys.L);
 
+			//test stuff
 			inp.MapAction(MyActions.AccelTest, ActionTypes.ContinuousHold,
 				Modifiers.None, System.Windows.Forms.Keys.T);
 			inp.MapAction(MyActions.AccelTest2, ActionTypes.ContinuousHold,
 				Modifiers.ShiftHeld, System.Windows.Forms.Keys.T);
-
 			inp.MapAction(MyActions.Step, ActionTypes.PressAndRelease,
 				Modifiers.None, System.Windows.Forms.Keys.Y);
 			inp.MapAction(MyActions.StepJump, ActionTypes.PressAndRelease,
 				Modifiers.None, System.Windows.Forms.Keys.U);
-
 			inp.MapAction(MyActions.SpawnTestParticles, ActionTypes.PressAndRelease,
 				Modifiers.None, System.Windows.Forms.Keys.P);
+
+			//sensitivity adjust
+			inp.MapAction(MyActions.SensitivityUp, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.Oemplus);
+			inp.MapAction(MyActions.SensitivityDown, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.OemMinus);
 
 			//exit
 			inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,
