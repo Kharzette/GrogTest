@@ -1,3 +1,4 @@
+#define	QuakeUnits
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -15,6 +16,7 @@ using SharpDX.DXGI;
 using SharpDX.Direct3D;
 
 using MatLib = MaterialLib.MaterialLib;
+using Collision = BSPZone.Collision;
 
 
 namespace TestZone
@@ -43,6 +45,28 @@ namespace TestZone
 		Vector3	mCamVelocity	=Vector3.Zero;
 
 		//constants
+		//player
+#if QuakeUnits
+		const float	PlayerBoxWidth		=32f;
+		const float	PlayerBoxStanding	=56f;
+		const float	PlayerBoxCrouching	=36f;
+		const float	PlayerEyeStanding	=48f;
+		const float	PlayerEyeCrouching	=32f;
+#elif ValveUnits
+		const float	PlayerBoxWidth		=32f;
+		const float	PlayerBoxStanding	=72f;
+		const float	PlayerBoxCrouching	=36f;
+		const float	PlayerEyeStanding	=64f;
+		const float	PlayerEyeCrouching	=28f;
+#elif GrogUnits
+		const float	PlayerBoxWidth		=32f;
+		const float	PlayerBoxStanding	=72f;
+		const float	PlayerBoxCrouching	=36f;
+		const float	PlayerEyeStanding	=64f;
+		const float	PlayerEyeCrouching	=28f;
+#endif
+
+		//physics
 		const float	JogMoveForce		=2000f;	//Fig Newtons
 		const float	FlyMoveForce		=1000f;	//Fig Newtons
 		const float	FlyUpMoveForce		=300f;	//Fig Newtons
@@ -104,7 +128,14 @@ namespace TestZone
 
 			if(bSwimUp)
 			{
-				ApplyForce(SwimUpMoveForce, Vector3.Up, secDelta);
+				if(bCanClimbOut())
+				{
+					ApplyForce(JumpForce, Vector3.Up, secDelta);
+				}
+				else
+				{
+					ApplyForce(SwimUpMoveForce, Vector3.Up, secDelta);
+				}
 			}
 
 			//friction / gravity / bouyancy
@@ -236,7 +267,6 @@ namespace TestZone
 			}
 			if(bJumped)
 			{
-				//mCamVelocity	+=Vector3.Up * JumpForce * 0.5f;
 				ApplyForce(JumpForce, Vector3.Up, secDelta);
 
 				//jump use a 60fps delta time for consistency
@@ -296,6 +326,76 @@ namespace TestZone
 					ps.Method	=(mbFly)? PlayerSteering.SteeringMethod.Fly : PlayerSteering.SteeringMethod.FirstPerson;
 				}
 			}
+		}
+
+
+		//check to see if a bipedal player can climb out of liquid
+		//onto some solid ground.  Assumes player in water
+		bool	bCanClimbOut()
+		{
+			Vector3	midPos	=mPCamMob.GetMiddlePos();
+			Vector3	eyePos	=mPCamMob.GetEyePos();
+
+			UInt32	contents	=mZone.GetWorldContents(eyePos);
+			if(contents != 0)
+			{
+				mST.ModifyStringText(mFonts[0], "Eye Contents: " + contents, "ClimbStatus");
+				return	false;
+			}
+
+			//noggin is in empty space
+			//Not to be confused with empty contents
+			BoundingBox	crouchBox	=Misc.MakeBox(PlayerBoxWidth,
+				PlayerBoxCrouching, PlayerBoxWidth);
+
+			//trace upward to about crouch height above the eye
+			Vector3	traceStart	=eyePos;
+			Vector3	traceTarget	=eyePos + Vector3.Up * PlayerBoxCrouching;
+
+			Collision	col;
+			bool	bHit	=mZone.TraceAll(null, crouchBox,
+				traceStart, traceTarget, out col);
+			if(bHit)
+			{
+				mST.ModifyStringText(mFonts[0], "Eye Contents: " + contents +
+					", Head hit something...", "ClimbStatus");
+				return	false;	//banged into something
+			}
+
+			//get a horizon leveled view direction
+			//cam direction backward
+			Vector3	flatLookVec	=-mGD.GCam.Forward;
+			flatLookVec.Y	=0f;
+			flatLookVec.Normalize();
+
+			//trace forward about 1.5 box widths
+			traceStart	=traceTarget;
+			traceTarget	+=flatLookVec * (PlayerBoxWidth * 1.5f);
+
+			bHit	=mZone.TraceAll(null, crouchBox,
+				traceStart, traceTarget, out col);
+			if(bHit)
+			{
+				mST.ModifyStringText(mFonts[0], "Eye Contents: " + contents +
+					", Forward trace hit something...", "ClimbStatus");
+				return	false;	//banged into something
+			}
+
+			//trace down to check for solid ground
+			traceStart	=traceTarget;
+			traceTarget	+=Vector3.Down * (PlayerBoxCrouching * 2f);
+
+			bHit	=mZone.TraceAll(null, crouchBox,
+				traceStart, traceTarget, out col);
+			if(!bHit)
+			{
+				mST.ModifyStringText(mFonts[0], "Eye Contents: " + contents +
+					", Down trace empty...", "ClimbStatus");
+				return	false;	//nothing to climb onto
+			}
+
+			//see if the ground is good
+			return	col.mPlaneHit.IsGround();
 		}
 	}
 }

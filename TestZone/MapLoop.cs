@@ -127,6 +127,8 @@ namespace TestZone
 			Vector4	color	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
 
 			//string indicators for various statusy things
+			mST.AddString(mFonts[0], "Stuffs", "ClimbStatus",
+				color, Vector2.UnitX * 20f + Vector2.UnitY * 600f, Vector2.One);
 			mST.AddString(mFonts[0], "Stuffs", "LevelStatus",
 				color, Vector2.UnitX * 20f + Vector2.UnitY * 620f, Vector2.One);
 			mST.AddString(mFonts[0], "Stuffs", "PosStatus",
@@ -269,8 +271,8 @@ namespace TestZone
 				}
 			}
 
-			mPMob		=new Mobile(mPChar, 16f, 50f, 45f, true, mTHelper);
-			mPCamMob	=new Mobile(mPChar, 16f, 50f, 45f, true, mTHelper);
+			mPMob		=new Mobile(mPChar, PlayerBoxWidth, PlayerBoxStanding, PlayerEyeStanding, true, mTHelper);
+			mPCamMob	=new Mobile(mPChar, PlayerBoxWidth, PlayerBoxStanding, PlayerEyeStanding, true, mTHelper);
 			mPLHelper	=new LightHelper();
 
 			mKeeper.AddLib(mZoneMats);
