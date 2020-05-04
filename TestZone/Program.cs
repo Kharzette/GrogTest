@@ -25,8 +25,7 @@ namespace TestZone
 			ToggleMouseLookOn, ToggleMouseLookOff,
 			NextAnim, NextLevel, ToggleFly,
 			PlaceDynamicLight, ClearDynamicLights,
-			AccelTest, AccelTest2, Exit,
-			Step, StepJump, SpawnTestParticles,
+			Exit, SpawnTestParticles,
 			SensitivityUp, SensitivityDown
 		};
 
@@ -340,14 +339,6 @@ namespace TestZone
 				Modifiers.None, System.Windows.Forms.Keys.L);
 
 			//test stuff
-			inp.MapAction(MyActions.AccelTest, ActionTypes.ContinuousHold,
-				Modifiers.None, System.Windows.Forms.Keys.T);
-			inp.MapAction(MyActions.AccelTest2, ActionTypes.ContinuousHold,
-				Modifiers.ShiftHeld, System.Windows.Forms.Keys.T);
-			inp.MapAction(MyActions.Step, ActionTypes.PressAndRelease,
-				Modifiers.None, System.Windows.Forms.Keys.Y);
-			inp.MapAction(MyActions.StepJump, ActionTypes.PressAndRelease,
-				Modifiers.None, System.Windows.Forms.Keys.U);
 			inp.MapAction(MyActions.SpawnTestParticles, ActionTypes.PressAndRelease,
 				Modifiers.None, System.Windows.Forms.Keys.P);
 
