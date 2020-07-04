@@ -343,10 +343,14 @@ namespace TestZone
 				Modifiers.None, System.Windows.Forms.Keys.P);
 
 			//sensitivity adjust
-			inp.MapAction(MyActions.SensitivityUp, ActionTypes.PressAndRelease,
-				Modifiers.None, System.Windows.Forms.Keys.Oemplus);
 			inp.MapAction(MyActions.SensitivityDown, ActionTypes.PressAndRelease,
 				Modifiers.None, System.Windows.Forms.Keys.OemMinus);
+			//for numpad
+			inp.MapAction(MyActions.SensitivityUp, ActionTypes.PressAndRelease,
+				Modifiers.None, System.Windows.Forms.Keys.Oemplus);
+			//non numpad will have shift held too
+			inp.MapAction(MyActions.SensitivityUp, ActionTypes.PressAndRelease,
+				Modifiers.ShiftHeld, System.Windows.Forms.Keys.Oemplus);
 
 			//exit
 			inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,

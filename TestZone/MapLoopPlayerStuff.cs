@@ -39,6 +39,8 @@ namespace TestZone
 		Mobile					mPMob, mPCamMob;
 		LightHelper				mPLHelper;
 		bool					mbFly	=true;
+		BoundingBox				mFatBox;
+		List<int>				mModelsHit	=new List<int>();
 
 		//physics stuffs
 		Vector3	mVelocity		=Vector3.Zero;

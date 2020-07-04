@@ -273,6 +273,7 @@ namespace TestZone
 
 			mPMob		=new Mobile(mPChar, PlayerBoxWidth, PlayerBoxStanding, PlayerEyeStanding, true, mTHelper);
 			mPCamMob	=new Mobile(mPChar, PlayerBoxWidth, PlayerBoxStanding, PlayerEyeStanding, true, mTHelper);
+			mFatBox		=Misc.MakeBox(PlayerBoxWidth + 1, PlayerBoxStanding);
 			mPLHelper	=new LightHelper();
 
 			mKeeper.AddLib(mZoneMats);
@@ -365,6 +366,14 @@ namespace TestZone
 			mPCamMob.Move(endPos, time.GetUpdateDeltaMilliSeconds(), false,
 				mbFly, bGroundMove, true, true, out endPos, out camPos);
 
+
+			//check a slightly expanded box to see if any interactives are being touched
+			mModelsHit.Clear();
+			if(mZone.TraceStaticBoxVsModels(mFatBox, endPos, mModelsHit))
+			{
+				//do stuff
+			}
+
 			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
 
 			if(!mbFly)
@@ -400,7 +409,8 @@ namespace TestZone
 				+ (int)mGD.GCam.Position.X + ", "
 				+ (int)mGD.GCam.Position.Y + ", "
 				+ (int)mGD.GCam.Position.Z + " (F)lyMode: " + mbFly
-				+ (mPCamMob.IsBadFooting()? " BadFooting!" : ""), "PosStatus");
+				+ (mPCamMob.IsBadFooting()? " BadFooting!" : "")
+				+ " ModelsHit: " + mModelsHit.Count, "PosStatus");
 
 			mST.Update(mGD.DC);
 		}
