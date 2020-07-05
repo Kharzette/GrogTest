@@ -348,15 +348,15 @@ namespace TestZone
 			bool	bGroundMove	=false;
 
 			UInt32	contents	=mPCamMob.GetWorldContents();
-			if(Misc.bFlagSet(contents, (UInt32) GameContents.Lava)
+			if(mbFly)
+			{
+				pos	=UpdateFly(secDelta, actions, ps);
+			}
+			else if(Misc.bFlagSet(contents, (UInt32) GameContents.Lava)
 				|| Misc.bFlagSet(contents, (UInt32) GameContents.Water)
 				|| Misc.bFlagSet(contents, (UInt32) GameContents.Slime))
 			{
 				pos	=UpdateSwimming(secDelta, actions, ps);
-			}
-			else if(mbFly)
-			{
-				pos	=UpdateFly(secDelta, actions, ps);
 			}
 			else
 			{
@@ -375,25 +375,27 @@ namespace TestZone
 			mPCamMob.Move(endPos, time.GetUpdateDeltaMilliSeconds(), false,
 				mbFly, bGroundMove, true, true, out endPos, out camPos);
 
-
 			//check a slightly expanded box to see if any interactives are being touched
 			mModelsHit.Clear();
-			if(mZone.TraceStaticBoxVsModels(mFatBox, endPos, mModelsHit))
+			if(!mbFly)
 			{
-				//do stuff
-				foreach(int model in mModelsHit)
+				if(mZone.TraceStaticBoxVsModels(mFatBox, endPos, mModelsHit))
 				{
-					foreach(BModelMover bmm in mBModelMovers)
+					//do stuff
+					foreach(int model in mModelsHit)
 					{
-						if(bmm.GetModelIndex() == model)
+						foreach(BModelMover bmm in mBModelMovers)
 						{
-							bmm.StateChange(BModelMover.States.Forward, 1);
-							bmm.StateChange(BModelMover.States.Idle, 1);
+							if(bmm.GetModelIndex() == model)
+							{
+								bmm.StateChange(BModelMover.States.Forward, 1);
+								bmm.StateChange(BModelMover.States.Idle, 1);
+							}
 						}
 					}
 				}
 			}
-
+			
 			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
 
 			if(!mbFly)
