@@ -9,6 +9,7 @@ using MaterialLib;
 using ParticleLib;
 using AudioLib;
 using InputLib;
+using EntityLib;
 
 using SharpDX;
 using SharpDX.DXGI;
@@ -22,11 +23,13 @@ namespace TestZone
 	internal partial class MapLoop
 	{
 		//data
-		Zone		mZone;
-		IndoorMesh	mZoneDraw;
-		MatLib		mZoneMats;
-		string		mGameRootDir;
-		StuffKeeper	mSKeeper;
+		Zone			mZone;
+		IndoorMesh		mZoneDraw;
+		MatLib			mZoneMats;
+		string			mGameRootDir;
+		StuffKeeper		mSKeeper;
+		EntityBoss		mEBoss	=new EntityBoss();
+		List<Component>	mBModelMovers;
 
 		//list of levels
 		List<string>	mLevels		=new List<string>();
@@ -335,6 +338,12 @@ namespace TestZone
 
 			mZone.UpdateModels(secDelta);
 
+			//update model movers
+			foreach(Component c in mBModelMovers)
+			{
+				c.Update(time);
+			}
+
 			Vector3	pos			=Vector3.Zero;
 			bool	bGroundMove	=false;
 
@@ -372,6 +381,17 @@ namespace TestZone
 			if(mZone.TraceStaticBoxVsModels(mFatBox, endPos, mModelsHit))
 			{
 				//do stuff
+				foreach(int model in mModelsHit)
+				{
+					foreach(BModelMover bmm in mBModelMovers)
+					{
+						if(bmm.GetModelIndex() == model)
+						{
+							bmm.StateChange(BModelMover.States.Forward, 1);
+							bmm.StateChange(BModelMover.States.Idle, 1);
+						}
+					}
+				}
 			}
 
 			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
@@ -684,6 +704,13 @@ namespace TestZone
 			mZoneMats.FinalizeMaterials();
 
 			mZoneMats.SetLightMapsToAtlas();
+
+			QuakeTranslator	qtrans	=new QuakeTranslator();
+
+			qtrans.TranslateModels(mEBoss, mZone);
+
+			//grab the model movers
+			mBModelMovers	=mEBoss.GetEntityComponents(typeof(BModelMover));
 
 			mTHelper.Initialize(mZone, mAudio, mZoneDraw.SwitchLight, OkToFire);
 			mPHelper.Initialize(mZone, mTHelper, mPB);

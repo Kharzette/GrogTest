@@ -32,5 +32,7 @@
     <ProjectReference Include="..\GrogLibs\SharedForms\SharedForms.csproj"/>
     <ProjectReference Include="..\GrogLibs\MaterialLib\MaterialLib.csproj"/>
     <ProjectReference Include="..\GrogLibs\UtilityLib\UtilityLib.csproj"/>
+    <ProjectReference Include="..\GrogLibs\EntityLib\EntityLib.csproj"/>
+    <ProjectReference Include="..\GrogLibs\EntityTranslators\QuakeTranslator\QuakeTranslator.csproj"/>
   </ItemGroup>
 </Project>
