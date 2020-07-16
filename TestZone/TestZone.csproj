@@ -34,5 +34,6 @@
     <ProjectReference Include="..\GrogLibs\UtilityLib\UtilityLib.csproj"/>
     <ProjectReference Include="..\GrogLibs\EntityLib\EntityLib.csproj"/>
     <ProjectReference Include="..\GrogLibs\EntityTranslators\QuakeTranslator\QuakeTranslator.csproj"/>
+	<ProjectReference Include="..\GrogLibs\GrogComponents\GrogComponents.csproj"/>
   </ItemGroup>
 </Project>

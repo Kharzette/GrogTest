@@ -1,19 +1,13 @@
 #define	QuakeUnits
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using BSPZone;
 using MeshLib;
 using UtilityLib;
-using MaterialLib;
-using ParticleLib;
-using AudioLib;
 using InputLib;
+using EntityLib;
 
 using SharpDX;
-using SharpDX.DXGI;
-using SharpDX.Direct3D;
 
 using MatLib = MaterialLib.MaterialLib;
 using Collision = BSPZone.Collision;
@@ -37,10 +31,11 @@ namespace TestZone
 		AnimLib					mPAnims;
 		ShadowHelper.Shadower	mPShad;
 		Mobile					mPMob, mPCamMob;
-		LightHelper				mPLHelper;
 		bool					mbFly	=true;
 		BoundingBox				mFatBox;
 		List<int>				mModelsHit	=new List<int>();
+		Entity					mPEntity;
+		MeshLighting			mPMeshLighting;
 
 		//physics stuffs
 		Vector3	mVelocity		=Vector3.Zero;

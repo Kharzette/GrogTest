@@ -28,8 +28,14 @@ namespace TestZone
 		MatLib			mZoneMats;
 		string			mGameRootDir;
 		StuffKeeper		mSKeeper;
+
+		//entities
 		EntityBoss		mEBoss	=new EntityBoss();
 		List<Component>	mBModelMovers;
+		List<Component>	mTriggers;
+		List<Component>	mPickUpCVs;
+		List<Component>	mStaticComps;
+		List<Component>	mVisibleSMC	=new List<Component>();
 
 		//list of levels
 		List<string>	mLevels		=new List<string>();
@@ -47,19 +53,18 @@ namespace TestZone
 		Random	mRand	=new Random();
 
 		//helpers
-		TriggerHelper		mTHelper		=new TriggerHelper();
 		ParticleHelper		mPHelper		=new ParticleHelper();
-		StaticHelper		mSHelper		=new StaticHelper();
 		IntermissionHelper	mIMHelper		=new IntermissionHelper();
 		ShadowHelper		mShadowHelper	=new ShadowHelper();
 		IDKeeper			mKeeper			=new IDKeeper();
 
 		//static stuff
-		MatLib											mStaticMats;
-		Dictionary<string, IArch>						mStatics		=new Dictionary<string, IArch>();
-		Dictionary<ZoneEntity, StaticMesh>				mStaticInsts	=new Dictionary<ZoneEntity, StaticMesh>();
-		Dictionary<ZoneEntity, LightHelper>				mSLHelpers		=new Dictionary<ZoneEntity, LightHelper>();
-		Dictionary<ZoneEntity, ShadowHelper.Shadower>	mStaticShads	=new Dictionary<ZoneEntity, ShadowHelper.Shadower>();
+		MatLib						mStaticMats;
+		Dictionary<string, IArch>	mStatics		=new Dictionary<string, IArch>();
+
+		//static shadows
+		Dictionary<StaticMeshComp, ShadowHelper.Shadower>	mStaticShads
+			=new Dictionary<StaticMeshComp, ShadowHelper.Shadower>();
 
 		//gpu
 		GraphicsDevice	mGD;
@@ -271,13 +276,18 @@ namespace TestZone
 
 					mPShad.mChar	=mPChar;
 					mPShad.mContext	=this;
+
+					mPEntity	=new Entity(true, mEBoss);
+
+					mPMeshLighting	=new MeshLighting(mPEntity, mZone, mZoneDraw.GetStyleStrength);
+
+					mPEntity.AddComponent(mPMeshLighting);
 				}
 			}
 
-			mPMob		=new Mobile(mPChar, PlayerBoxWidth, PlayerBoxStanding, PlayerEyeStanding, true, mTHelper);
-			mPCamMob	=new Mobile(mPChar, PlayerBoxWidth, PlayerBoxStanding, PlayerEyeStanding, true, mTHelper);
+			mPMob		=new Mobile(mPChar, PlayerBoxWidth, PlayerBoxStanding, PlayerEyeStanding, true);
+			mPCamMob	=new Mobile(mPChar, PlayerBoxWidth, PlayerBoxStanding, PlayerEyeStanding, true);
 			mFatBox		=Misc.MakeBox(PlayerBoxWidth + 1, PlayerBoxStanding);
-			mPLHelper	=new LightHelper();
 
 			mKeeper.AddLib(mZoneMats);
 
@@ -308,8 +318,6 @@ namespace TestZone
 //			skinMats.Add("Nails");
 			mKeeper.AddMaterialGroup("SkinGroup", skinMats);
 
-			mSHelper.ePickUp	+=OnPickUp;
-
 			if(Directory.Exists(mGameRootDir + "/Levels"))
 			{
 				DirectoryInfo	di	=new DirectoryInfo(mGameRootDir + "/Levels");
@@ -336,7 +344,7 @@ namespace TestZone
 
 			float	secDelta	=time.GetUpdateDeltaSeconds();
 
-			mZone.UpdateModels(secDelta);
+			mZone.ClearPushableVelocities(secDelta);
 
 			//update model movers
 			foreach(Component c in mBModelMovers)
@@ -371,9 +379,30 @@ namespace TestZone
 
 			Vector3	camPos	=Vector3.Zero;
 			Vector3	endPos	=pos;
+			float	msDelta	=time.GetUpdateDeltaMilliSeconds();
 
-			mPCamMob.Move(endPos, time.GetUpdateDeltaMilliSeconds(), false,
-				mbFly, bGroundMove, true, true, out endPos, out camPos);
+			mPCamMob.Move(endPos, msDelta, false, mbFly,
+				bGroundMove, true, out endPos, out camPos);
+
+			//check resulting move against triggers / pickups
+			if(!mbFly)
+			{
+				foreach(Trigger t in mTriggers)
+				{
+					t.BoxTriggerCheck(mPCamMob, mPCamMob.GetBounds(),
+						pos, endPos, msDelta);
+				}
+				foreach(ConvexVolume cv in mPickUpCVs)
+				{
+					if(cv.SphereMotionIntersects(PlayerBoxWidth, pos, endPos))
+					{
+						//do stuff
+						int	gack	=69;
+						gack++;
+					}
+				}
+			}
+
 
 			//check a slightly expanded box to see if any interactives are being touched
 			mModelsHit.Clear();
@@ -389,10 +418,25 @@ namespace TestZone
 							if(bmm.GetModelIndex() == model)
 							{
 								bmm.StateChange(BModelMover.States.Forward, 1);
-								bmm.StateChange(BModelMover.States.Idle, 1);
+								bmm.StateChange(BModelMover.States.Moving, 1);
 							}
 						}
 					}
+				}
+			}
+
+			//check pvs against entities
+			mVisibleSMC.Clear();
+			foreach(StaticMeshComp smc in mStaticComps)
+			{
+				Vector3	smPos	=smc.mMat.TranslationVector;
+
+				if(mZone.IsVisibleFrom(endPos, smPos))
+				{
+					mVisibleSMC.Add(smc);
+
+					//update the entity
+					smc.mOwner.Update(time);
 				}
 			}
 			
@@ -422,8 +466,6 @@ namespace TestZone
 			}
 
 			mPB.Update(mGD.DC, time.GetUpdateDeltaMilliSeconds());
-
-			mSHelper.HitCheck(mPMob, mGD.GCam.Position);
 
 			mAudio.Update(mGD.GCam);
 
@@ -458,17 +500,6 @@ namespace TestZone
 			if(mPMats != null)
 			{
 				mPMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
-			}
-
-			mSHelper.Update(msDelta);
-
-			foreach(KeyValuePair<ZoneEntity, LightHelper> shelp in mSLHelpers)
-			{
-				Vector3	pos;
-
-				shelp.Key.GetOrigin(out pos);
-
-				shelp.Value.Update(msDelta, pos, mDynLights);
 			}
 		}
 
@@ -585,11 +616,6 @@ namespace TestZone
 				mDynLights.FreeAll();
 			}
 
-			foreach(KeyValuePair<ZoneEntity, StaticMesh> stat in mStaticInsts)
-			{
-				stat.Value.FreeAll();
-			}
-
 			foreach(KeyValuePair<string, IArch> stat in mStatics)
 			{
 				stat.Value.FreeAll();
@@ -618,7 +644,19 @@ namespace TestZone
 
 		void RenderExternalDMN(GameCamera gcam)
 		{
-			mSHelper.Draw(DrawStaticDMN);
+			foreach(StaticMeshComp smc in mStaticComps)
+			{
+				StaticMesh	sm	=smc.mDrawObject as StaticMesh;
+				if(sm == null)
+				{
+					continue;
+				}
+				if(mVisibleSMC.Contains(smc))
+				{
+					sm.DrawDMN(mGD.DC, mStaticMats);
+				}
+
+			}
 
 			if(mPChar != null)
 			{
@@ -629,15 +667,57 @@ namespace TestZone
 		}
 
 
-		void RenderExternal(AlphaPool ap, GameCamera gcam)
+		void SetTriLightForSMC(StaticMeshComp smc)
 		{
-			mSHelper.Draw(DrawStatic);
+			MeshLighting	ml	=smc.mOwner.GetComponent(
+				typeof(MeshLighting)) as MeshLighting;
+			StaticMesh	sm	=smc.mDrawObject as StaticMesh;
+			
+			if(ml == null || sm == null)
+			{
+				return;
+			}
 
 			Vector4	lightCol0, lightCol1, lightCol2;
 			Vector3	lightPos, lightDir;
 			bool	bDir;
 			float	intensity;
-			mPLHelper.GetCurrentValues(
+
+			ml.GetCurrentValues(
+				out lightCol0, out lightCol1, out lightCol2,
+				out intensity, out lightPos, out lightDir, out bDir);
+
+			sm.SetTriLightValues(lightCol0, lightCol1, lightCol2, lightDir);
+		}
+
+
+		void RenderExternal(AlphaPool ap, GameCamera gcam)
+		{
+			foreach(StaticMeshComp smc in mStaticComps)
+			{
+				StaticMesh	sm	=smc.mDrawObject as StaticMesh;
+				if(sm == null)
+				{
+					continue;
+				}
+
+				if(!mVisibleSMC.Contains(smc))
+				{
+					continue;
+				}
+
+				SetTriLightForSMC(smc);
+
+				sm.SetTransform(smc.mMat);
+				sm.Draw(mGD.DC, mStaticMats);
+			}
+
+			Vector4	lightCol0, lightCol1, lightCol2;
+			Vector3	lightPos, lightDir;
+			bool	bDir;
+			float	intensity;
+
+			mPMeshLighting.GetCurrentValues(
 				out lightCol0, out lightCol1, out lightCol2,
 				out intensity, out lightPos, out lightDir, out bDir);
 
@@ -651,46 +731,11 @@ namespace TestZone
 		}
 
 
-		void DrawStatic(Matrix local, ZoneEntity ze, Vector3 pos)
-		{
-			if(!mStaticInsts.ContainsKey(ze))
-			{
-				return;
-			}
-
-			Vector4	lightCol0, lightCol1, lightCol2;
-			Vector3	lightPos, lightDir;
-			bool	bDir;
-			float	intensity;
-
-			mSLHelpers[ze].GetCurrentValues(
-				out lightCol0, out lightCol1, out lightCol2,
-				out intensity, out lightPos, out lightDir, out bDir);
-
-			StaticMesh	sm	=mStaticInsts[ze];
-
-			sm.SetTriLightValues(lightCol0, lightCol1, lightCol2, lightDir);
-
-			sm.SetTransform(local);
-			sm.Draw(mGD.DC, mStaticMats);
-		}
-
-
-		void DrawStaticDMN(Matrix local, ZoneEntity ze, Vector3 pos)
-		{
-			if(!mStaticInsts.ContainsKey(ze))
-			{
-				return;
-			}
-			StaticMesh	sm	=mStaticInsts[ze];
-
-			sm.SetTransform(local);
-			sm.DrawDMN(mGD.DC, mStaticMats);
-		}
-
-
 		void ChangeLevel(string level)
 		{
+			UpdateTimer	fakeUT	=new UpdateTimer(false, false);
+			fakeUT.Stamp();
+
 			string	lev	=mGameRootDir + "/Levels/" + level;
 
 			mZone	=new Zone();
@@ -710,13 +755,32 @@ namespace TestZone
 			QuakeTranslator	qtrans	=new QuakeTranslator();
 
 			qtrans.TranslateModels(mEBoss, mZone);
+			qtrans.TranslateTriggers(mEBoss, mZone);
+			qtrans.TranslateLights(mEBoss, mZone, mZoneDraw.SwitchLight);
+			qtrans.TranslateItems(mEBoss, mZone, GetDrawObject);
+			qtrans.TranslateWeapons(mEBoss, mZone, GetDrawObject);
+			fakeUT.Stamp();
 
 			//grab the model movers
 			mBModelMovers	=mEBoss.GetEntityComponents(typeof(BModelMover));
 
-			mTHelper.Initialize(mZone, mAudio, mZoneDraw.SwitchLight, OkToFire);
-			mPHelper.Initialize(mZone, mTHelper, mPB);
-			mSHelper.Initialize(mZone);
+			//grab triggers
+			mTriggers	=mEBoss.GetEntityComponents(typeof(Trigger));
+
+			//grab convex volumes for pickups
+			mPickUpCVs	=mEBoss.GetEntityComponents(typeof(ConvexVolume));
+
+			mStaticComps	=mEBoss.GetEntityComponents(typeof(StaticMeshComp));
+
+			//make meshlighting for statics
+			foreach(StaticMeshComp smc in mStaticComps)
+			{
+				MeshLighting	ml	=new MeshLighting(smc.mOwner, mZone, mZoneDraw.GetStyleStrength);
+
+				smc.mOwner.AddComponent(ml);
+			}
+
+			mPHelper.Initialize(mZone, mPB);
 			mIMHelper.Initialize(mZone);
 
 			List<ZoneEntity>	wEnt	=mZone.GetEntities("worldspawn");
@@ -731,35 +795,6 @@ namespace TestZone
 
 			mShadowHelper.Initialize(mGD, 512, mDirShadowAtten,
 				mZoneMats, mPost, GetCurShadowLightInfo, GetTransdBounds);
-
-			//make lighthelpers for statics
-			mSLHelpers	=mSHelper.MakeLightHelpers(mZone, mZoneDraw.GetStyleStrength);
-
-			//make static instances
-			List<ZoneEntity>	statEnts	=mSHelper.GetStaticEntities();
-			foreach(ZoneEntity ze in statEnts)
-			{
-				string	meshName	=ze.GetValue("meshname");
-				if(meshName == null || meshName == "")
-				{
-					continue;
-				}
-
-				if(!mStatics.ContainsKey(meshName))
-				{
-					continue;
-				}
-
-				StaticMesh	sm	=new StaticMesh(mStatics[meshName]);
-
-				sm.ReadFromFile(mGameRootDir + "\\Statics\\" + meshName + "Instance");
-
-				mStaticInsts.Add(ze, sm);
-
-				sm.SetMatLib(mStaticMats);
-			}
-
-			mPLHelper.Initialize(mZone, mZoneDraw.GetStyleStrength);
 
 //			mGraph.Load(lev + ".Pathing");
 //			mGraph.GenerateGraph(mZone.GetWalkableFaces, 32, 18f, CanPathReach);
@@ -787,10 +822,45 @@ namespace TestZone
 				mPChar.AssignMaterialIDs(mKeeper);
 			}
 
-			foreach(KeyValuePair<ZoneEntity, StaticMesh> instances in mStaticInsts)
+			foreach(StaticMeshComp smc in mStaticComps)
 			{
-				instances.Value.AssignMaterialIDs(mKeeper);
+				StaticMesh	sm	=smc.mDrawObject as StaticMesh;
+				if(sm == null)
+				{
+					continue;
+				}
+				sm.AssignMaterialIDs(mKeeper);
 			}
+
+			//update entities once
+			//holy crap this is slow
+			mEBoss.Update(fakeUT);
+		}
+
+
+		//grab static mesh instances for entities
+		void GetDrawObject(string meshPath, out object draw, out BoundingBox box)
+		{
+			draw	=null;
+			box		=mPMob.GetBounds();	//whateva
+
+			if(meshPath == null || meshPath == "")
+			{
+				return;
+			}
+
+			if(!mStatics.ContainsKey(meshPath))
+			{
+				return;
+			}
+
+			StaticMesh	sm	=new StaticMesh(mStatics[meshPath]);
+
+			sm.ReadFromFile(mGameRootDir + "\\Statics\\" + meshPath + "Instance");
+			sm.SetMatLib(mStaticMats);
+
+			draw	=sm;
+			box		=sm.GetBoxBound();
 		}
 
 
@@ -851,14 +921,34 @@ namespace TestZone
 		{
 			Vector4	col0, col1, col2;
 
-			if(shadower.mContext is ZoneEntity)
+			if(shadower.mContext is StaticMeshComp)
 			{
-				ZoneEntity	ze=shadower.mContext as ZoneEntity;
+				StaticMeshComp	smc=shadower.mContext as StaticMeshComp;
 
-				shadowerTransform	=mSHelper.GetTransform(ze);
+				shadowerTransform	=smc.mMat;
 
-				return	mSLHelpers[ze].GetCurrentValues(out col0, out col1, out col2,
-					out intensity, out lightPos, out lightDir, out bDirectional);
+				if(!mVisibleSMC.Contains(smc))
+				{
+					intensity		=0f;
+					lightPos		=lightDir	=Vector3.Zero;
+					bDirectional	=true;
+					return	false;
+				}
+
+				MeshLighting	ml	=smc.mOwner.GetComponent(
+					typeof(MeshLighting)) as MeshLighting;
+
+				if(ml == null || !ml.NeedsShadow())
+				{
+					intensity		=0f;
+					lightPos		=lightDir	=Vector3.Zero;
+					bDirectional	=true;
+					return	false;
+				}
+
+				ml.GetCurrentValues(out col0, out col1, out col2,
+						out intensity, out lightPos, out lightDir, out bDirectional);
+				return	true;
 			}
 
 			if(shadower.mChar == mPChar)
@@ -876,29 +966,22 @@ namespace TestZone
 				return	false;
 			}
 
-			return	mPLHelper.GetCurrentValues(out col0, out col1, out col2,
+			return	mPMeshLighting.GetCurrentValues(out col0, out col1, out col2,
 				out intensity, out lightPos, out lightDir, out bDirectional);
 		}
 
 
 		void MakeStaticShadowers()
 		{
-			List<ZoneEntity>	statics	=mSHelper.GetStaticEntities();
-
-			foreach(ZoneEntity ze in statics)
+			foreach(StaticMeshComp smc in mStaticComps)
 			{
-				if(!mStaticInsts.ContainsKey(ze))
-				{
-					continue;
-				}
-
 				ShadowHelper.Shadower	shad	=new ShadowHelper.Shadower();
 
 				shad.mChar		=null;
-				shad.mStatic	=mStaticInsts[ze];
-				shad.mContext	=ze;
+				shad.mStatic	=smc.mDrawObject as StaticMesh;
+				shad.mContext	=smc;
 
-				mStaticShads.Add(ze, shad);
+				mStaticShads.Add(smc, shad);
 
 				mShadowHelper.RegisterShadower(shad, mStaticMats);
 			}
@@ -917,30 +1000,6 @@ namespace TestZone
 					new Vector4(5f, -2f, 0f, 1f)/10000f,
 					new Vector4(7f, -3f, 0f, 1f)/10000f,
 					3000, 4000));
-		}
-
-
-		void OnPickUp(object sender, StaticHelper.PickUpEventArgs pea)
-		{
-			if(mStaticShads.ContainsKey(pea.mEntity))
-			{
-				ShadowHelper.Shadower	shad	=mStaticShads[pea.mEntity];
-
-				mShadowHelper.UnRegisterShadower(shad);
-
-				mStaticShads.Remove(pea.mEntity);
-			}
-		}
-
-
-		bool OkToFire(TriggerHelper.FuncEventArgs fea)
-		{
-			string	funcClass	=fea.mFuncEnt.GetValue("classname");
-
-			if(funcClass == "func_door")
-			{
-			}
-			return	true;
 		}
 	}
 }
