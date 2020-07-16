@@ -227,6 +227,12 @@ namespace TestZone
 					mStaticMats.SetCelTexture(0);
 				}
 				mStatics	=Mesh.LoadAllStaticMeshes(mGameRootDir + "\\Statics", gd.GD);
+
+				//gen bounds, they don't seem to save correctly
+				foreach(KeyValuePair<string, IArch> ia in mStatics)
+				{
+					ia.Value.UpdateBounds();
+				}
 			}
 
 			//load character stuff if any around
@@ -279,7 +285,7 @@ namespace TestZone
 
 					mPEntity	=new Entity(true, mEBoss);
 
-					mPMeshLighting	=new MeshLighting(mPEntity, mZone, mZoneDraw.GetStyleStrength);
+					mPMeshLighting	=new MeshLighting(mPEntity, mZone, PlayerBoxStanding / 2f, mZoneDraw.GetStyleStrength);
 
 					mPEntity.AddComponent(mPMeshLighting);
 				}
@@ -394,11 +400,14 @@ namespace TestZone
 				}
 				foreach(ConvexVolume cv in mPickUpCVs)
 				{
+					if(!cv.Active)
+					{
+						continue;
+					}
 					if(cv.SphereMotionIntersects(PlayerBoxWidth, pos, endPos))
 					{
-						//do stuff
-						int	gack	=69;
-						gack++;
+						PickUpThing(cv);
+						cv.StateChange(ConvexVolume.State.Active, 0);
 					}
 				}
 			}
@@ -775,7 +784,11 @@ namespace TestZone
 			//make meshlighting for statics
 			foreach(StaticMeshComp smc in mStaticComps)
 			{
-				MeshLighting	ml	=new MeshLighting(smc.mOwner, mZone, mZoneDraw.GetStyleStrength);
+				StaticMesh	sm	=smc.mDrawObject as StaticMesh;
+
+				float	baseToMiddle	=sm.GetBoxBound().Height / 2;
+
+				MeshLighting	ml	=new MeshLighting(smc.mOwner, mZone, baseToMiddle, mZoneDraw.GetStyleStrength);
 
 				smc.mOwner.AddComponent(ml);
 			}
@@ -839,28 +852,39 @@ namespace TestZone
 
 
 		//grab static mesh instances for entities
-		void GetDrawObject(string meshPath, out object draw, out BoundingBox box)
+		void GetDrawObject(string archPath, string instPath, out object draw, out BoundingBox box)
 		{
 			draw	=null;
 			box		=mPMob.GetBounds();	//whateva
 
-			if(meshPath == null || meshPath == "")
+			if(archPath == null || archPath == "")
+			{
+				return;
+			}
+			if(instPath == null || instPath == "")
 			{
 				return;
 			}
 
-			if(!mStatics.ContainsKey(meshPath))
+			if(!mStatics.ContainsKey(archPath))
 			{
 				return;
 			}
 
-			StaticMesh	sm	=new StaticMesh(mStatics[meshPath]);
+			StaticMesh	sm	=new StaticMesh(mStatics[archPath]);
 
-			sm.ReadFromFile(mGameRootDir + "\\Statics\\" + meshPath + "Instance");
+			sm.ReadFromFile(mGameRootDir + "\\Statics\\" + instPath);
 			sm.SetMatLib(mStaticMats);
 
 			draw	=sm;
 			box		=sm.GetBoxBound();
+
+			if(box.Size.IsZero)
+			{
+				//no bounds saved in the mesh?  Gen
+				sm.UpdateBounds();
+				box	=sm.GetBoxBound();
+			}
 		}
 
 
@@ -984,6 +1008,24 @@ namespace TestZone
 				mStaticShads.Add(smc, shad);
 
 				mShadowHelper.RegisterShadower(shad, mStaticMats);
+			}
+		}
+
+
+		void PickUpThing(ConvexVolume cv)
+		{
+			PickUp	pu	=cv.mOwner.GetComponent(typeof(PickUp)) as PickUp;
+
+			pu.StateChange(PickUp.State.WaitingRespawn, 1);
+
+			StaticMeshComp	smc	=pu.mOwner.GetComponent(typeof(StaticMeshComp)) as StaticMeshComp;
+
+			StaticMesh	sm	=smc.mDrawObject as StaticMesh;
+
+			int	numParts	=sm.GetNumParts();
+			for(int i=0;i < numParts;i++)
+			{
+				sm.SetPartVisible(i, false);
 			}
 		}
 
