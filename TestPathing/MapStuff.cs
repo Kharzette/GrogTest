@@ -45,19 +45,6 @@ namespace TestPathing
 		PickTarget	mPickTarget;
 		bool		mbAwaitingPath;
 
-		//helpers
-		TriggerHelper		mTHelper		=new TriggerHelper();
-		StaticHelper		mSHelper		=new StaticHelper();
-		IntermissionHelper	mIMHelper		=new IntermissionHelper();
-		IDKeeper			mKeeper			=new IDKeeper();
-
-		//static stuff
-		MatLib											mStaticMats;
-		Dictionary<string, IArch>						mStatics		=new Dictionary<string, IArch>();
-		Dictionary<ZoneEntity, StaticMesh>				mStaticInsts	=new Dictionary<ZoneEntity, StaticMesh>();
-		Dictionary<ZoneEntity, LightHelper>				mSLHelpers		=new Dictionary<ZoneEntity, LightHelper>();
-		Dictionary<ZoneEntity, ShadowHelper.Shadower>	mStaticShads	=new Dictionary<ZoneEntity, ShadowHelper.Shadower>();
-
 		//mobiles for movement and pathing
 		Mobile	mCamMob, mPathMob;
 		bool	mbFly	=true;
@@ -78,9 +65,9 @@ namespace TestPathing
 		internal event EventHandler	ePickReady;
 
 		//constants
-		const float	ShadowSlop				=12f;
 		const float	MaxGroundAdjust			=16f;
 		const int	MaxPathMoveIterations	=3;
+		const float	FlySpeed				=10f;
 
 
 		internal MapStuff(GraphicsDevice gd, string gameRootDir)
@@ -129,36 +116,8 @@ namespace TestPathing
 
 			mZoneDraw	=new IndoorMesh(gd, mZoneMats);
 
-			//see if any static stuff
-			if(Directory.Exists(mGameRootDir + "/Statics"))
-			{
-				DirectoryInfo	di	=new DirectoryInfo(mGameRootDir + "/Statics");
-
-				FileInfo[]	fi	=di.GetFiles("*.MatLib", SearchOption.TopDirectoryOnly);
-
-				if(fi.Length > 0)
-				{
-					mStaticMats	=new MatLib(gd, mSKeeper);
-					mStaticMats.ReadFromFile(fi[0].DirectoryName + "\\" + fi[0].Name);
-
-					mStaticMats.InitCelShading(1);
-					mStaticMats.GenerateCelTexturePreset(gd.GD,
-						(gd.GD.FeatureLevel == FeatureLevel.Level_9_3),
-						true, 0);
-					mStaticMats.SetCelTexture(0);
-				}
-				mStatics	=Mesh.LoadAllStaticMeshes(mGameRootDir + "\\Statics", gd.GD);
-			}
-
-			mCamMob		=new Mobile(this, 16f, 50f, 45f, true, mTHelper);
-			mPathMob	=new Mobile(this, 16f, 50f, 45f, false, mTHelper);
-
-			mKeeper.AddLib(mZoneMats);
-
-			if(mStaticMats != null)
-			{
-				mKeeper.AddLib(mStaticMats);
-			}
+			mCamMob		=new Mobile(this, 16f, 50f, 45f, true);
+			mPathMob	=new Mobile(this, 16f, 50f, 45f, false);
 
 			if(Directory.Exists(mGameRootDir + "/Levels"))
 			{
@@ -191,7 +150,7 @@ namespace TestPathing
 		{
 			//Thread.Sleep(30);
 
-			mZone.UpdateModels(time.GetUpdateDeltaSeconds());
+			mZone.ClearPushableVelocities(time.GetUpdateDeltaSeconds());
 
 			Vector3	impactPos	=Vector3.Zero;
 
@@ -279,11 +238,13 @@ namespace TestPathing
 			Vector3	startPos	=mCamMob.GetGroundPos();
 			Vector3	moveVec		=ps.Update(startPos, mGD.GCam.Forward, mGD.GCam.Left, mGD.GCam.Up, actions);
 
+			moveVec	*=FlySpeed;
+
 			Vector3	camPos	=Vector3.Zero;
 			Vector3	endPos	=mCamMob.GetGroundPos() + moveVec * 100f;
 
 			mCamMob.Move(endPos, time.GetUpdateDeltaMilliSeconds(),
-				false, mbFly, true, true, true, out endPos, out camPos);
+				false, mbFly, true, true, out endPos, out camPos);
 
 			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
 
@@ -310,22 +271,6 @@ namespace TestPathing
 			mZoneDraw.Update(msDelta);
 
 			mZoneMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
-
-			if(mStaticMats !=null)
-			{
-				mStaticMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
-			}
-
-			mSHelper.Update(msDelta);
-
-			foreach(KeyValuePair<ZoneEntity, LightHelper> shelp in mSLHelpers)
-			{
-				Vector3	pos;
-
-				shelp.Key.GetOrigin(out pos);
-
-				shelp.Value.Update(msDelta, pos, null);
-			}
 		}
 
 
@@ -347,23 +292,6 @@ namespace TestPathing
 		{
 			mZoneMats.FreeAll();
 			mZoneDraw.FreeAll();
-			mKeeper.Clear();
-			if(mStaticMats != null)
-			{
-				mStaticMats.FreeAll();
-			}
-
-			foreach(KeyValuePair<ZoneEntity, StaticMesh> stat in mStaticInsts)
-			{
-				stat.Value.FreeAll();
-			}
-
-			foreach(KeyValuePair<string, IArch> stat in mStatics)
-			{
-				stat.Value.FreeAll();
-			}
-
-			mStatics.Clear();
 
 			mSKeeper.FreeAll();
 		}
@@ -468,32 +396,11 @@ namespace TestPathing
 
 		void RenderExternal(AlphaPool ap, GameCamera gcam)
 		{
-			mSHelper.Draw(DrawStatic);
 		}
 
 
 		void DrawStatic(Matrix local, ZoneEntity ze, Vector3 pos)
 		{
-			if(!mStaticInsts.ContainsKey(ze))
-			{
-				return;
-			}
-
-			Vector4	lightCol0, lightCol1, lightCol2;
-			Vector3	lightPos, lightDir;
-			bool	bDir;
-			float	intensity;
-
-			mSLHelpers[ze].GetCurrentValues(
-				out lightCol0, out lightCol1, out lightCol2,
-				out intensity, out lightPos, out lightDir, out bDir);
-
-			StaticMesh	sm	=mStaticInsts[ze];
-
-			sm.SetTriLightValues(lightCol0, lightCol1, lightCol2, lightDir);
-
-			sm.SetTransform(local);
-			sm.Draw(mGD.DC, mStaticMats);
 		}
 
 
@@ -533,37 +440,6 @@ namespace TestPathing
 			mZoneMats.SetCelTexture(0);
 			mZoneMats.SetLightMapsToAtlas();
 
-			mTHelper.Initialize(mZone, null, mZoneDraw.SwitchLight, OkToFire);
-			mSHelper.Initialize(mZone);
-			mIMHelper.Initialize(mZone);
-
-			//make lighthelpers for statics
-			mSLHelpers	=mSHelper.MakeLightHelpers(mZone, mZoneDraw.GetStyleStrength);
-
-			//make static instances
-			List<ZoneEntity>	statEnts	=mSHelper.GetStaticEntities();
-			foreach(ZoneEntity ze in statEnts)
-			{
-				string	meshName	=ze.GetValue("meshname");
-				if(meshName == null || meshName == "")
-				{
-					continue;
-				}
-
-				if(!mStatics.ContainsKey(meshName))
-				{
-					continue;
-				}
-
-				StaticMesh	sm	=new StaticMesh(mStatics[meshName]);
-
-				sm.ReadFromFile(mGameRootDir + "\\Statics\\" + meshName + "Instance");
-
-				mStaticInsts.Add(ze, sm);
-
-				sm.SetMatLib(mStaticMats);
-			}
-
 			mPathMob.SetZone(mZone);
 			mCamMob.SetZone(mZone);
 
@@ -571,14 +447,6 @@ namespace TestPathing
 			Vector3	gpos	=mZone.GetPlayerStartPos(out ang);
 			mPathMob.SetGroundPos(gpos);
 			mCamMob.SetGroundPos(gpos);
-
-			mKeeper.Scan();
-			mKeeper.AssignIDsToEffectMaterials("BSP.fx");
-
-			foreach(KeyValuePair<ZoneEntity, StaticMesh> instances in mStaticInsts)
-			{
-				instances.Value.AssignMaterialIDs(mKeeper);
-			}
 		}
 
 
@@ -619,7 +487,7 @@ namespace TestPathing
 			for(int i=0;i < MaxPathMoveIterations;i++)
 			{
 				Vector3	madeItTo, donutCare;
-				mPathMob.Move(end, 1, true, false, true, false, false, out madeItTo, out donutCare);
+				mPathMob.Move(end, 1, true, false, true, false, out madeItTo, out donutCare);
 
 				float	dist	=madeItTo.Distance(end);
 
@@ -629,17 +497,6 @@ namespace TestPathing
 				}
 			}
 			return	false;
-		}
-
-
-		bool OkToFire(TriggerHelper.FuncEventArgs fea)
-		{
-			string	funcClass	=fea.mFuncEnt.GetValue("classname");
-
-			if(funcClass == "func_door")
-			{
-			}
-			return	true;
 		}
 
 

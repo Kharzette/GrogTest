@@ -29,6 +29,7 @@
     <ProjectReference Include="..\GrogLibs\AudioLib\AudioLib.csproj"/>
     <ProjectReference Include="..\GrogLibs\InputLib\InputLib.csproj"/>
     <ProjectReference Include="..\GrogLibs\MeshLib\MeshLib.csproj"/>
+    <ProjectReference Include="..\GrogLibs\ParticleLib\ParticleLib.csproj"/>
     <ProjectReference Include="..\GrogLibs\SharedForms\SharedForms.csproj"/>
     <ProjectReference Include="..\GrogLibs\MaterialLib\MaterialLib.csproj"/>
     <ProjectReference Include="..\GrogLibs\UtilityLib\UtilityLib.csproj"/>

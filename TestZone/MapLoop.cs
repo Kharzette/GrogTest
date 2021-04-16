@@ -594,12 +594,12 @@ namespace TestZone
 
 		internal void FreeAll()
 		{
+			FreeLevelData();
+
 			mShadowHelper.FreeAll();
 			mPost.FreeAll(mGD);
 			mFontMats.FreeAll();
 			mZoneMats.FreeAll();
-			mZoneDraw.FreeAll();
-			mPB.FreeAll();
 			mKeeper.Clear();
 			if(mStaticMats != null)
 			{
@@ -634,6 +634,31 @@ namespace TestZone
 			mAudio.FreeAll();
 
 			mSKeeper.FreeAll();
+		}
+
+
+		void FreeLevelData()
+		{
+			foreach(KeyValuePair<StaticMeshComp, ShadowHelper.Shadower> sh in mStaticShads)
+			{
+				mShadowHelper.UnRegisterShadower(sh.Value);
+			}
+			mStaticShads.Clear();
+
+			mZone.FreeAll();
+			mZoneDraw.FreeAll();
+			mPB.FreeAll();
+			mZoneMats.FreeAll();
+
+			if(mBModelMovers != null)
+			{
+				mBModelMovers.Clear();
+				mTriggers.Clear();
+				mPickUpCVs.Clear();
+				mStaticComps.Clear();
+			}
+
+			mEBoss.FreeAll();
 		}
 
 
@@ -747,10 +772,9 @@ namespace TestZone
 
 			string	lev	=mGameRootDir + "/Levels/" + level;
 
-			mZone	=new Zone();
+			FreeLevelData();
 
-			//clear particles
-			mPB.NukeAll();
+			mZone	=new Zone();
 
 			mZoneMats.ReadFromFile(lev + ".MatLib");
 			mZone.Read(lev + ".Zone", false);
