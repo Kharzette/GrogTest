@@ -34,6 +34,7 @@ namespace TestZone
 		List<Component>	mBModelMovers;
 		List<Component>	mTriggers;
 		List<Component>	mPickUpCVs;
+		List<Component>	mPickUps;
 		List<Component>	mStaticComps;
 		List<Component>	mVisibleSMC	=new List<Component>();
 
@@ -57,6 +58,7 @@ namespace TestZone
 		IntermissionHelper	mIMHelper		=new IntermissionHelper();
 		ShadowHelper		mShadowHelper	=new ShadowHelper();
 		IDKeeper			mKeeper			=new IDKeeper();
+		ShadowKeeper		mShadKeeper		=new ShadowKeeper();
 
 		//static stuff
 		MatLib						mStaticMats;
@@ -434,21 +436,6 @@ namespace TestZone
 				}
 			}
 
-			//check pvs against entities
-			mVisibleSMC.Clear();
-			foreach(StaticMeshComp smc in mStaticComps)
-			{
-				Vector3	smPos	=smc.mMat.TranslationVector;
-
-				if(mZone.IsVisibleFrom(endPos, smPos))
-				{
-					mVisibleSMC.Add(smc);
-
-					//update the entity
-					smc.mOwner.Update(time);
-				}
-			}
-			
 			mGD.GCam.Update(camPos, ps.Pitch, ps.Yaw, ps.Roll);
 
 			if(!mbFly)
@@ -471,6 +458,40 @@ namespace TestZone
 					{
 						mCamVelocity.Y	-=(StumbleFriction * mCamVelocity.Y * secDelta);
 					}
+				}
+			}
+
+			//update pickup entities
+			foreach(PickUp pu in mPickUps)
+			{
+				pu.Update(time);
+
+				StaticMeshComp	smc	=pu.GetSMC();
+				if(smc == null)
+				{
+					continue;
+				}
+				StaticMesh	sm	=smc.mDrawObject as StaticMesh;
+				if(sm == null)
+				{
+					continue;
+				}
+
+				float	yaw	=pu.GetYaw();
+
+				Matrix	mat	=smc.mPO.GetMatrix();
+
+				if(pu.mSpinningPart == -1)
+				{
+					smc.mPO.SetYaw(yaw);			
+					sm.SetTransform(mat);
+				}
+				else
+				{
+					sm.SetTransform(mat);
+
+					sm.SetPartTransform(pu.mSpinningPart,
+						Matrix.RotationY(yaw) * mat);
 				}
 			}
 
@@ -498,6 +519,27 @@ namespace TestZone
 				return;	//can happen if fixed time and no remainder
 			}
 
+			//check pvs against entities
+			mVisibleSMC.Clear();
+			foreach(StaticMeshComp smc in mStaticComps)
+			{
+				Vector3	smPos	=smc.mPO.GetPosition();
+
+				if(mZone.IsVisibleFrom(mGD.GCam.Position, smPos))
+				{
+					mVisibleSMC.Add(smc);
+				}
+			}
+
+			//update meshlighting for visible
+			foreach(StaticMeshComp smc in mVisibleSMC)
+			{
+				MeshLighting	ml	=smc.mOwner.GetComponent(typeof(MeshLighting)) as MeshLighting;
+				ConvexVolume	cv	=smc.mOwner.GetComponent(typeof(ConvexVolume)) as ConvexVolume;
+
+				ml.Update(msDelta / 1000f, smc.mPO.GetPosition() + cv.SizeY * 0.5f);
+			}
+
 			mZoneDraw.Update(msDelta);
 
 			mZoneMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
@@ -510,6 +552,9 @@ namespace TestZone
 			{
 				mPMats.UpdateWVP(Matrix.Identity, mGD.GCam.View, mGD.GCam.Projection, mGD.GCam.Position);
 			}
+
+			mShadKeeper.StartNewFrame();
+			mShadKeeper.ComputeBatch(mPMob.GetEyePos());
 		}
 
 
@@ -532,6 +577,8 @@ namespace TestZone
 			{
 				mDynLights.SetParameter();
 			}
+
+			mShadKeeper.BatchShadowRender(mGD, mStaticMats);
 
 			mZoneDraw.Draw(mGD, mShadowHelper.GetShadowCount(),
 				mZone.IsMaterialVisibleFromPos,
@@ -655,6 +702,7 @@ namespace TestZone
 				mBModelMovers.Clear();
 				mTriggers.Clear();
 				mPickUpCVs.Clear();
+				mPickUps.Clear();
 				mStaticComps.Clear();
 			}
 
@@ -742,7 +790,6 @@ namespace TestZone
 
 				SetTriLightForSMC(smc);
 
-				sm.SetTransform(smc.mMat);
 				sm.Draw(mGD.DC, mStaticMats);
 			}
 
@@ -803,6 +850,9 @@ namespace TestZone
 			//grab convex volumes for pickups
 			mPickUpCVs	=mEBoss.GetEntityComponents(typeof(ConvexVolume));
 
+			//grab pickups
+			mPickUps	=mEBoss.GetEntityComponents(typeof(PickUp));
+
 			mStaticComps	=mEBoss.GetEntityComponents(typeof(StaticMeshComp));
 
 			//make meshlighting for statics
@@ -832,6 +882,20 @@ namespace TestZone
 
 			mShadowHelper.Initialize(mGD, 512, mDirShadowAtten,
 				mZoneMats, mPost, GetCurShadowLightInfo, GetTransdBounds);
+
+			mShadKeeper.Initialize(mGD, 512);
+
+			List<Component>	lights	=mEBoss.GetEntityComponents(typeof(Light));
+			foreach(Component c in lights)
+			{
+				Light	lt	=c as Light;
+				if(lt == null)
+				{
+					continue;
+				}
+
+				mShadKeeper.AddShadowCastingLight(lt.mPosition, lt.GetStrength());
+			}
 
 //			mGraph.Load(lev + ".Pathing");
 //			mGraph.GenerateGraph(mZone.GetWalkableFaces, 32, 18f, CanPathReach);
@@ -973,7 +1037,7 @@ namespace TestZone
 			{
 				StaticMeshComp	smc=shadower.mContext as StaticMeshComp;
 
-				shadowerTransform	=smc.mMat;
+				shadowerTransform	=smc.mPO.GetMatrix();
 
 				if(!mVisibleSMC.Contains(smc))
 				{
@@ -1032,6 +1096,8 @@ namespace TestZone
 				mStaticShads.Add(smc, shad);
 
 				mShadowHelper.RegisterShadower(shad, mStaticMats);
+
+				mShadKeeper.RegisterShadower(shad.mStatic);
 			}
 		}
 
