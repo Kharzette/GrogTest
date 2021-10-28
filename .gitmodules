@@ -1,3 +1,6 @@
 [submodule "GrogLibs"]
 	path = GrogLibs
 	url = git@github.com:Kharzette/GrogLibs.git
+[submodule "UserCodeLib"]
+	path = UserCodeLib
+	url = git@github.com:Kharzette/UserCodeLib.git
