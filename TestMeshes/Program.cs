@@ -1,312 +1,341 @@
-﻿using System;
-using System.Threading;
+﻿using System.Numerics;
 using System.Diagnostics;
-using System.Collections.Generic;
-using InputLib;
 using UtilityLib;
+using Vortice.Direct3D;
+using Vortice.Direct3D11;
+using Vortice.Mathematics;
+using InputLib;
+using MaterialLib;
+using MeshLib;
 
-using SharpDX;
-using SharpDX.Direct3D;
+//renderform and renderloop
 using SharpDX.Windows;
 
+using MatLib	=MaterialLib.MaterialLib;
+using Color		=Vortice.Mathematics.Color;
 
-namespace TestMeshes
+namespace TestMeshes;
+
+internal static class Program
 {
-	internal static class Program
+	internal enum MyActions
 	{
-		internal enum MyActions
-		{
-			MoveForwardBack, MoveForward, MoveBack,
-			MoveLeftRight, MoveLeft, MoveRight,
-			MoveForwardFast, MoveBackFast,
-			MoveLeftFast, MoveRightFast,
-			Turn, TurnLeft, TurnRight,
-			Pitch, PitchUp, PitchDown,
-			ToggleMouseLookOn, ToggleMouseLookOff,
-			NextCharacter, NextAnim,
-			IncreaseInvertInterval,
-			DecreaseInvertInterval,
-			NextStatic, RandRotateStatic,
-			RandScaleStatic, Exit
-		};
+		MoveForwardBack, MoveForward, MoveBack,
+		MoveLeftRight, MoveLeft, MoveRight,
+		MoveForwardFast, MoveBackFast,
+		MoveLeftFast, MoveRightFast,
+		Turn, TurnLeft, TurnRight,
+		Pitch, PitchUp, PitchDown,
+		ToggleMouseLookOn, ToggleMouseLookOff,
+		NextCharacter, NextAnim,
+		IncreaseInvertInterval,
+		DecreaseInvertInterval,
+		NextStatic, RandRotateStatic,
+		RandScaleStatic, Exit
+	};
 
-		const float	MaxTimeDelta	=0.1f;
+	const float	MaxTimeDelta	=0.1f;
 
 
-		[STAThread]
-		static void Main()
-		{
-			GraphicsDevice	gd	=new GraphicsDevice("Test Meshes",
-				FeatureLevel.Level_11_0, 0.1f, 3000f);
+	[STAThread]
+	static void Main()
+	{
+		Application.EnableVisualStyles();
+		Application.SetCompatibleTextRenderingDefault(false);
 
-			//save renderform position
-			gd.RendForm.DataBindings.Add(new System.Windows.Forms.Binding("Location",
-					Settings.Default,
-					"MainWindowPos", true,
-					System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+		Icon	testIcon	=new Icon("1281737606553.ico");
 
-			gd.RendForm.Location	=Settings.Default.MainWindowPos;
+		//turn this on for help with leaky stuff
+		//Configuration.EnableObjectTracking	=true;
 
-			//set title of progress window
-			SharedForms.ShaderCompileHelper.mTitle	="Compiling Shaders...";
+		GraphicsDevice	gd	=new GraphicsDevice("Test Meshes",
+			testIcon, FeatureLevel.Level_11_0, 0.1f, 3000f);
 
-			//used to have a hard coded path here for #debug
-			//but now can just use launch.json to provide it
-			string	rootDir	=".";
+		//save renderform position
+		gd.RendForm.DataBindings.Add(new System.Windows.Forms.Binding("Location",
+				Settings.Default,
+				"MainWindowPos", true,
+				System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
 
-			Game	theGame	=new Game(gd, rootDir);
-			
-			PlayerSteering	pSteering		=SetUpSteering();
-			Input			inp				=SetUpInput();
-			Random			rand			=new Random();
-			bool			bMouseLookOn	=false;
+		gd.RendForm.Location	=Settings.Default.MainWindowPos;
 
-			EventHandler	actHandler	=new EventHandler(
-				delegate(object s, EventArgs ea)
-				{	inp.ClearInputs();	});
+		SharedForms.ShaderCompileHelper.mTitle	="Compiling Shaders...";
 
-			EventHandler<EventArgs>	deActHandler	=new EventHandler<EventArgs>(
-				delegate(object s, EventArgs ea)
-				{
-					gd.SetCapture(false);
-					bMouseLookOn	=false;
-				});
+		StuffKeeper	sk		=new StuffKeeper();
 
-			gd.RendForm.Activated		+=actHandler;
-			gd.RendForm.AppDeactivated	+=deActHandler;
+		sk.eCompileNeeded	+=SharedForms.ShaderCompileHelper.CompileNeededHandler;
+		sk.eCompileDone		+=SharedForms.ShaderCompileHelper.CompileDoneHandler;
 
-			Vector3		pos			=Vector3.One * 5f;
-			Vector3		lightDir	=-Vector3.UnitY;
-			UpdateTimer	time		=new UpdateTimer(true, false);
+		sk.Init(gd, ".");
 
-			time.SetFixedTimeStepSeconds(1f / 60f);	//60fps update rate
-			time.SetMaxDeltaSeconds(MaxTimeDelta);
 
-			List<Input.InputAction>	acts	=new List<Input.InputAction>();
+		//set title of progress window
+		SharedForms.ShaderCompileHelper.mTitle	="Compiling Shaders...";
 
-			RenderLoop.Run(gd.RendForm, () =>
+		//used to have a hard coded path here for #debug
+		//but now can just use launch.json to provide it
+		string	rootDir	=".";
+
+		Game	theGame	=new Game(gd, rootDir);
+		
+		PlayerSteering	pSteering		=SetUpSteering();
+		Input			inp				=SetUpInput(gd.RendForm);
+		Random			rand			=new Random();
+		bool			bMouseLookOn	=false;
+
+		EventHandler	actHandler	=new EventHandler(
+			delegate(object ?s, EventArgs ea)
+			{	inp.ClearInputs();	});
+
+		EventHandler<EventArgs>	deActHandler	=new EventHandler<EventArgs>(
+			delegate(object ?s, EventArgs ea)
 			{
-				if(!gd.RendForm.Focused)
-				{
-					Thread.Sleep(33);
-				}
+				gd.SetCapture(false);
+				bMouseLookOn	=false;
+			});
 
-				gd.CheckResize();
-
-				if(bMouseLookOn && gd.RendForm.Focused)
-				{
-					gd.ResetCursorPos();
-				}
-
-				//Clear views
-				gd.ClearViews();
-
-				time.Stamp();
-				while(time.GetUpdateDeltaSeconds() > 0f)
-				{
-					acts	=UpdateInput(inp, gd,
-						time.GetUpdateDeltaSeconds(), ref bMouseLookOn);
-					if(!gd.RendForm.Focused)
-					{
-						acts.Clear();
-						bMouseLookOn	=false;
-						gd.SetCapture(false);
-						inp.UnMapAxisAction(Input.MoveAxis.MouseYAxis);
-						inp.UnMapAxisAction(Input.MoveAxis.MouseXAxis);
-					}
-
-					Vector3	moveDelta	=pSteering.Update(pos, gd.GCam.Forward, gd.GCam.Left, gd.GCam.Up, acts);
-
-					moveDelta	*=200f;
-
-					pos	-=moveDelta;
-				
-					gd.GCam.Update(pos, pSteering.Pitch, pSteering.Yaw, pSteering.Roll);
-
-					theGame.Update(time, acts);
-
-					time.UpdateDone();
-				}
-				theGame.Render(gd.DC);
-
-				gd.Present();
-
-				acts.Clear();
-			}, true);
-
-			Settings.Default.Save();
-
-			gd.RendForm.Activated		-=actHandler;
-			gd.RendForm.AppDeactivated	-=deActHandler;
-
-			theGame.FreeAll();
-
-			inp.FreeAll();
-			
-			//Release all resources
-			gd.ReleaseAll();
-		}
-
-		static List<Input.InputAction> UpdateInput(Input inp,
-			GraphicsDevice gd, float delta, ref bool bMouseLookOn)
-		{
-			List<Input.InputAction>	actions	=inp.GetAction();
-
-			//check for exit
-			foreach(Input.InputAction act in actions)
+		EventHandler	lostHandler	=new EventHandler(
+			delegate(object ?s, EventArgs ea)
 			{
-				if(act.mAction.Equals(MyActions.Exit))
-				{
-					gd.RendForm.Close();
-					return	actions;
-				}
+//				post.FreeAll(gd);
+//				post	=new PostProcess(gd, sk);
+			});
+
+		gd.eDeviceLost				+=lostHandler;
+		gd.RendForm.Activated		+=actHandler;
+		gd.RendForm.AppDeactivated	+=deActHandler;
+
+		Vector3		pos			=Vector3.One * 5f;
+		Vector3		lightDir	=-Vector3.UnitY;
+		UpdateTimer	time		=new UpdateTimer(true, false);
+
+		time.SetFixedTimeStepSeconds(1f / 60f);	//60fps update rate
+		time.SetMaxDeltaSeconds(MaxTimeDelta);
+
+		List<Input.InputAction>	acts	=new List<Input.InputAction>();
+
+		RenderLoop.Run(gd.RendForm, () =>
+		{
+			if(!gd.RendForm.Focused)
+			{
+				Thread.Sleep(33);
 			}
 
-			foreach(Input.InputAction act in actions)
+			gd.CheckResize();
+
+			if(bMouseLookOn && gd.RendForm.Focused)
 			{
-				if(act.mAction.Equals(MyActions.ToggleMouseLookOn))
+				gd.ResetCursorPos();
+			}
+
+			//Clear views
+			gd.ClearViews();
+
+			time.Stamp();
+			while(time.GetUpdateDeltaSeconds() > 0f)
+			{
+				acts	=UpdateInput(inp, gd,
+					time.GetUpdateDeltaSeconds(), ref bMouseLookOn);
+				if(!gd.RendForm.Focused)
 				{
-					bMouseLookOn	=true;
-					gd.SetCapture(true);
-					inp.MapAxisAction(MyActions.Pitch, Input.MoveAxis.MouseYAxis);
-					inp.MapAxisAction(MyActions.Turn, Input.MoveAxis.MouseXAxis);
-				}
-				else if(act.mAction.Equals(MyActions.ToggleMouseLookOff))
-				{
+					acts.Clear();
 					bMouseLookOn	=false;
 					gd.SetCapture(false);
 					inp.UnMapAxisAction(Input.MoveAxis.MouseYAxis);
 					inp.UnMapAxisAction(Input.MoveAxis.MouseXAxis);
 				}
-			}
 
-			//delta scale analogs, since there's no timestamp stuff in gamepad code
-			foreach(Input.InputAction act in actions)
-			{
-				if(!act.mbTime && act.mDevice == Input.InputAction.DeviceType.ANALOG)
-				{
-					//analog needs a time scale applied
-					act.mMultiplier	*=delta;
-				}
-			}
+				Vector3	moveDelta	=pSteering.Update(pos, gd.GCam.Forward, gd.GCam.Left, gd.GCam.Up, acts);
 
-			//scale inputs to user prefs
-			foreach(Input.InputAction act in actions)
-			{
-				if(act.mAction.Equals(MyActions.Turn)
-					|| act.mAction.Equals(MyActions.TurnLeft)
-					|| act.mAction.Equals(MyActions.TurnRight)
-					|| act.mAction.Equals(MyActions.Pitch)
-					|| act.mAction.Equals(MyActions.PitchDown)
-					|| act.mAction.Equals(MyActions.PitchUp))
-				{
-					if(act.mDevice == Input.InputAction.DeviceType.MOUSE)
-					{
-						act.mMultiplier	*=UserSettings.MouseTurnMultiplier;
-					}
-					else if(act.mDevice == Input.InputAction.DeviceType.ANALOG)
-					{
-						act.mMultiplier	*=UserSettings.AnalogTurnMultiplier;
-					}
-					else if(act.mDevice == Input.InputAction.DeviceType.KEYS)
-					{
-						act.mMultiplier	*=UserSettings.KeyTurnMultiplier;
-					}
-				}
-			}
-			return	actions;
-		}
+				moveDelta	*=200f;
 
-		static Input SetUpInput()
-		{
-			Input	inp	=new InputLib.Input(1f / Stopwatch.Frequency);
+				pos	-=moveDelta;
 			
-			inp.MapAction(MyActions.MoveForward, ActionTypes.ContinuousHold,
-				Modifiers.None, System.Windows.Forms.Keys.W);
-			inp.MapAction(MyActions.MoveLeft, ActionTypes.ContinuousHold,
-				Modifiers.None, System.Windows.Forms.Keys.A);
-			inp.MapAction(MyActions.MoveBack, ActionTypes.ContinuousHold,
-				Modifiers.None, System.Windows.Forms.Keys.S);
-			inp.MapAction(MyActions.MoveRight, ActionTypes.ContinuousHold,
-				Modifiers.None, System.Windows.Forms.Keys.D);
-			inp.MapAction(MyActions.MoveForwardFast, ActionTypes.ContinuousHold,
-				Modifiers.ShiftHeld, System.Windows.Forms.Keys.W);
-			inp.MapAction(MyActions.MoveBackFast, ActionTypes.ContinuousHold,
-				Modifiers.ShiftHeld, System.Windows.Forms.Keys.S);
-			inp.MapAction(MyActions.MoveLeftFast, ActionTypes.ContinuousHold,
-				Modifiers.ShiftHeld, System.Windows.Forms.Keys.A);
-			inp.MapAction(MyActions.MoveRightFast, ActionTypes.ContinuousHold,
-				Modifiers.ShiftHeld, System.Windows.Forms.Keys.D);
+				gd.GCam.Update(pos, pSteering.Pitch, pSteering.Yaw, pSteering.Roll);
 
-			//arrow keys
-			inp.MapAction(MyActions.MoveForward, ActionTypes.ContinuousHold,
-				Modifiers.None, System.Windows.Forms.Keys.Up);
-			inp.MapAction(MyActions.MoveBack, ActionTypes.ContinuousHold,
-				Modifiers.None, System.Windows.Forms.Keys.Down);
-			inp.MapAction(MyActions.MoveForwardFast, ActionTypes.ContinuousHold,
-				Modifiers.ShiftHeld, System.Windows.Forms.Keys.Up);
-			inp.MapAction(MyActions.MoveBackFast, ActionTypes.ContinuousHold,
-				Modifiers.ShiftHeld, System.Windows.Forms.Keys.Down);
-			inp.MapAction(MyActions.TurnLeft, ActionTypes.ContinuousHold,
-				Modifiers.None, System.Windows.Forms.Keys.Left);
-			inp.MapAction(MyActions.TurnRight, ActionTypes.ContinuousHold,
-				Modifiers.None, System.Windows.Forms.Keys.Right);
-			inp.MapAction(MyActions.PitchUp, ActionTypes.ContinuousHold,
-				Modifiers.None, System.Windows.Forms.Keys.Q);
-			inp.MapAction(MyActions.PitchDown, ActionTypes.ContinuousHold,
-				Modifiers.None, System.Windows.Forms.Keys.E);
+				theGame.Update(time, acts);
 
-			inp.MapToggleAction(MyActions.ToggleMouseLookOn,
-				MyActions.ToggleMouseLookOff, Modifiers.None,
-				Input.VariousButtons.RightMouseButton);
+				time.UpdateDone();
+			}
+			theGame.Render();
 
-			inp.MapAxisAction(MyActions.Pitch, Input.MoveAxis.GamePadRightYAxis);
-			inp.MapAxisAction(MyActions.Turn, Input.MoveAxis.GamePadRightXAxis);
-			inp.MapAxisAction(MyActions.MoveLeftRight, Input.MoveAxis.GamePadLeftXAxis);
-			inp.MapAxisAction(MyActions.MoveForwardBack, Input.MoveAxis.GamePadLeftYAxis);
+			gd.Present();
 
-			inp.MapAction(MyActions.NextCharacter, ActionTypes.PressAndRelease,
-				Modifiers.None, System.Windows.Forms.Keys.C);
-			inp.MapAction(MyActions.NextAnim, ActionTypes.PressAndRelease,
-				Modifiers.None, System.Windows.Forms.Keys.N);
+			acts.Clear();
+		}, true);
 
-			inp.MapAction(MyActions.IncreaseInvertInterval, ActionTypes.PressAndRelease,
-				Modifiers.None, System.Windows.Forms.Keys.PageUp);
-			inp.MapAction(MyActions.DecreaseInvertInterval, ActionTypes.PressAndRelease,
-				Modifiers.None, System.Windows.Forms.Keys.PageDown);
+		Settings.Default.Save();
 
-			inp.MapAction(MyActions.NextStatic, ActionTypes.PressAndRelease,
-				Modifiers.None, System.Windows.Forms.Keys.Oemcomma);
-			inp.MapAction(MyActions.RandRotateStatic, ActionTypes.PressAndRelease,
-				Modifiers.None, System.Windows.Forms.Keys.Y);
-			inp.MapAction(MyActions.RandScaleStatic, ActionTypes.PressAndRelease,
-				Modifiers.None, System.Windows.Forms.Keys.U);
+		gd.RendForm.Activated		-=actHandler;
+		gd.RendForm.AppDeactivated	-=deActHandler;
 
-			//exit
-			inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,
-				Modifiers.None, System.Windows.Forms.Keys.Escape);
-			inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,
-				Modifiers.None, Input.VariousButtons.GamePadBack);
+		theGame.FreeAll();
 
-			return	inp;
-		}
+		inp.FreeAll(gd.RendForm);
+		
+		//Release all resources
+		gd.ReleaseAll();
+	}
 
-		static PlayerSteering SetUpSteering()
+	static List<Input.InputAction> UpdateInput(Input inp,
+		GraphicsDevice gd, float delta, ref bool bMouseLookOn)
+	{
+		List<Input.InputAction>	actions	=inp.GetAction();
+
+		//check for exit
+		foreach(Input.InputAction act in actions)
 		{
-			PlayerSteering	pSteering	=new PlayerSteering();
-			pSteering.Method			=PlayerSteering.SteeringMethod.Fly;
-
-			pSteering.SetMoveEnums(MyActions.MoveForwardBack, MyActions.MoveLeftRight,
-				MyActions.MoveForward, MyActions.MoveBack,
-				MyActions.MoveLeft, MyActions.MoveRight,
-				MyActions.MoveForwardFast, MyActions.MoveBackFast,
-				MyActions.MoveLeftFast, MyActions.MoveRightFast);
-
-			pSteering.SetTurnEnums(MyActions.Turn, MyActions.TurnLeft, MyActions.TurnRight);
-
-			pSteering.SetPitchEnums(MyActions.Pitch, MyActions.PitchUp, MyActions.PitchDown);
-
-			return	pSteering;
+			if(act.mAction.Equals(MyActions.Exit))
+			{
+				gd.RendForm.Close();
+				return	actions;
+			}
 		}
+
+		foreach(Input.InputAction act in actions)
+		{
+			if(act.mAction.Equals(MyActions.ToggleMouseLookOn))
+			{
+				bMouseLookOn	=true;
+				gd.SetCapture(true);
+				inp.MapAxisAction(MyActions.Pitch, Input.MoveAxis.MouseYAxis);
+				inp.MapAxisAction(MyActions.Turn, Input.MoveAxis.MouseXAxis);
+			}
+			else if(act.mAction.Equals(MyActions.ToggleMouseLookOff))
+			{
+				bMouseLookOn	=false;
+				gd.SetCapture(false);
+				inp.UnMapAxisAction(Input.MoveAxis.MouseYAxis);
+				inp.UnMapAxisAction(Input.MoveAxis.MouseXAxis);
+			}
+		}
+
+		//delta scale analogs, since there's no timestamp stuff in gamepad code
+		foreach(Input.InputAction act in actions)
+		{
+			if(!act.mbTime && act.mDevice == Input.InputAction.DeviceType.ANALOG)
+			{
+				//analog needs a time scale applied
+				act.mMultiplier	*=delta;
+			}
+		}
+
+		//scale inputs to user prefs
+		foreach(Input.InputAction act in actions)
+		{
+			if(act.mAction.Equals(MyActions.Turn)
+				|| act.mAction.Equals(MyActions.TurnLeft)
+				|| act.mAction.Equals(MyActions.TurnRight)
+				|| act.mAction.Equals(MyActions.Pitch)
+				|| act.mAction.Equals(MyActions.PitchDown)
+				|| act.mAction.Equals(MyActions.PitchUp))
+			{
+				if(act.mDevice == Input.InputAction.DeviceType.MOUSE)
+				{
+					act.mMultiplier	*=UserSettings.MouseTurnMultiplier;
+				}
+				else if(act.mDevice == Input.InputAction.DeviceType.ANALOG)
+				{
+					act.mMultiplier	*=UserSettings.AnalogTurnMultiplier;
+				}
+				else if(act.mDevice == Input.InputAction.DeviceType.KEYS)
+				{
+					act.mMultiplier	*=UserSettings.KeyTurnMultiplier;
+				}
+			}
+		}
+		return	actions;
+	}
+
+	static Input SetUpInput(RenderForm hwnd)
+	{
+		Input	inp	=new InputLib.Input(1f / Stopwatch.Frequency, hwnd);
+		
+		inp.MapAction(MyActions.MoveForward, ActionTypes.ContinuousHold,
+			Modifiers.None, System.Windows.Forms.Keys.W);
+		inp.MapAction(MyActions.MoveLeft, ActionTypes.ContinuousHold,
+			Modifiers.None, System.Windows.Forms.Keys.A);
+		inp.MapAction(MyActions.MoveBack, ActionTypes.ContinuousHold,
+			Modifiers.None, System.Windows.Forms.Keys.S);
+		inp.MapAction(MyActions.MoveRight, ActionTypes.ContinuousHold,
+			Modifiers.None, System.Windows.Forms.Keys.D);
+		inp.MapAction(MyActions.MoveForwardFast, ActionTypes.ContinuousHold,
+			Modifiers.ShiftHeld, System.Windows.Forms.Keys.W);
+		inp.MapAction(MyActions.MoveBackFast, ActionTypes.ContinuousHold,
+			Modifiers.ShiftHeld, System.Windows.Forms.Keys.S);
+		inp.MapAction(MyActions.MoveLeftFast, ActionTypes.ContinuousHold,
+			Modifiers.ShiftHeld, System.Windows.Forms.Keys.A);
+		inp.MapAction(MyActions.MoveRightFast, ActionTypes.ContinuousHold,
+			Modifiers.ShiftHeld, System.Windows.Forms.Keys.D);
+
+		//arrow keys
+		inp.MapAction(MyActions.MoveForward, ActionTypes.ContinuousHold,
+			Modifiers.None, System.Windows.Forms.Keys.Up);
+		inp.MapAction(MyActions.MoveBack, ActionTypes.ContinuousHold,
+			Modifiers.None, System.Windows.Forms.Keys.Down);
+		inp.MapAction(MyActions.MoveForwardFast, ActionTypes.ContinuousHold,
+			Modifiers.ShiftHeld, System.Windows.Forms.Keys.Up);
+		inp.MapAction(MyActions.MoveBackFast, ActionTypes.ContinuousHold,
+			Modifiers.ShiftHeld, System.Windows.Forms.Keys.Down);
+		inp.MapAction(MyActions.TurnLeft, ActionTypes.ContinuousHold,
+			Modifiers.None, System.Windows.Forms.Keys.Left);
+		inp.MapAction(MyActions.TurnRight, ActionTypes.ContinuousHold,
+			Modifiers.None, System.Windows.Forms.Keys.Right);
+		inp.MapAction(MyActions.PitchUp, ActionTypes.ContinuousHold,
+			Modifiers.None, System.Windows.Forms.Keys.Q);
+		inp.MapAction(MyActions.PitchDown, ActionTypes.ContinuousHold,
+			Modifiers.None, System.Windows.Forms.Keys.E);
+
+		inp.MapToggleAction(MyActions.ToggleMouseLookOn,
+			MyActions.ToggleMouseLookOff, Modifiers.None,
+			Input.VariousButtons.RightMouseButton);
+
+		inp.MapAxisAction(MyActions.Pitch, Input.MoveAxis.GamePadRightYAxis);
+		inp.MapAxisAction(MyActions.Turn, Input.MoveAxis.GamePadRightXAxis);
+		inp.MapAxisAction(MyActions.MoveLeftRight, Input.MoveAxis.GamePadLeftXAxis);
+		inp.MapAxisAction(MyActions.MoveForwardBack, Input.MoveAxis.GamePadLeftYAxis);
+
+		inp.MapAction(MyActions.NextCharacter, ActionTypes.PressAndRelease,
+			Modifiers.None, System.Windows.Forms.Keys.C);
+		inp.MapAction(MyActions.NextAnim, ActionTypes.PressAndRelease,
+			Modifiers.None, System.Windows.Forms.Keys.N);
+
+		inp.MapAction(MyActions.IncreaseInvertInterval, ActionTypes.PressAndRelease,
+			Modifiers.None, System.Windows.Forms.Keys.PageUp);
+		inp.MapAction(MyActions.DecreaseInvertInterval, ActionTypes.PressAndRelease,
+			Modifiers.None, System.Windows.Forms.Keys.PageDown);
+
+		inp.MapAction(MyActions.NextStatic, ActionTypes.PressAndRelease,
+			Modifiers.None, System.Windows.Forms.Keys.Oemcomma);
+		inp.MapAction(MyActions.RandRotateStatic, ActionTypes.PressAndRelease,
+			Modifiers.None, System.Windows.Forms.Keys.Y);
+		inp.MapAction(MyActions.RandScaleStatic, ActionTypes.PressAndRelease,
+			Modifiers.None, System.Windows.Forms.Keys.U);
+
+		//exit
+		inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,
+			Modifiers.None, System.Windows.Forms.Keys.Escape);
+		inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,
+			Modifiers.None, Input.VariousButtons.GamePadBack);
+
+		return	inp;
+	}
+
+	static PlayerSteering SetUpSteering()
+	{
+		PlayerSteering	pSteering	=new PlayerSteering();
+		pSteering.Method			=PlayerSteering.SteeringMethod.Fly;
+
+		pSteering.SetMoveEnums(MyActions.MoveForwardBack, MyActions.MoveLeftRight,
+			MyActions.MoveForward, MyActions.MoveBack,
+			MyActions.MoveLeft, MyActions.MoveRight,
+			MyActions.MoveForwardFast, MyActions.MoveBackFast,
+			MyActions.MoveLeftFast, MyActions.MoveRightFast);
+
+		pSteering.SetTurnEnums(MyActions.Turn, MyActions.TurnLeft, MyActions.TurnRight);
+
+		pSteering.SetPitchEnums(MyActions.Pitch, MyActions.PitchUp, MyActions.PitchDown);
+
+		return	pSteering;
 	}
 }
