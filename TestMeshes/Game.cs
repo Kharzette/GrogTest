@@ -106,7 +106,7 @@ class Game
 
 		mST	=new ScreenText(gd, mSKeeper, mFonts[0], mFonts[0], 1000);
 
-		Matrix4x4	textProj	=Matrix4x4.CreateOrthographicOffCenter(
+		mTextProj	=Matrix4x4.CreateOrthographicOffCenter(
 			0, gd.RendForm.Width, gd.RendForm.Height, 0, 0f, 1f);
 
 		//create some gumpey materials
@@ -316,11 +316,11 @@ class Game
 	}
 
 
-	internal void Update(UpdateTimer time, List<Input.InputAction> actions)
+	internal void Update(UpdateTimer time, List<Input.InputAction> actions, Vector3 pos)
 	{
 		mFrameCheck++;
 
-		Vector3	startPos	=mGD.GCam.Position;
+		Vector3	startPos	=pos;
 		Vector3	endPos		=startPos + mGD.GCam.Forward * -2000f;
 
 		float	deltaMS		=time.GetUpdateDeltaMilliSeconds();
@@ -441,7 +441,7 @@ class Game
 			}
 		}*/
 		
-		mCPrims.Update(mGD.GCam, -Vector3.UnitY);
+		mCPrims.Update(mGD.GCam, -Vector3.UnitY, pos);
 		
 		//this attempts ray hit to characters
 		/*
@@ -465,7 +465,7 @@ class Game
 			UpdateThreadStatus();
 		}
 
-		UpdatePosStatus();
+		UpdatePosStatus(pos);
 		UpdateHitStatus();
 
 		//this has to behind any text changes
@@ -475,8 +475,17 @@ class Game
 	}
 
 
-	internal void Render()
+	internal void Render(Vector3 eyePos)
 	{
+		CBKeeper	cbk	=mSKeeper.GetCBKeeper();
+
+		//set the frame / camera stuff
+		cbk.SetView(mGD.GCam.ViewTransposed, eyePos);
+		//set projection to 3D
+		cbk.SetProjection(mGD.GCam.ProjectionTransposed);
+
+		cbk.UpdateFrame(mGD.DC);
+
 		foreach(Character c in mCharacters)
 		{
 			c.Draw(mCharMats);
@@ -532,8 +541,12 @@ class Game
 
 		mCPrims.DrawAxis();
 
+		//change projection to 2D
+		cbk.SetProjection(Matrix4x4.Transpose(mTextProj));
+		cbk.UpdateFrame(mGD.DC);
+
 //		mSUI.Draw(dc, Matrix.Identity, mTextProj);
-		mST.Draw(Matrix4x4.Identity, mTextProj);
+		mST.Draw();
 	}
 
 
@@ -606,12 +619,12 @@ class Game
 	}
 
 
-	void UpdatePosStatus()
+	void UpdatePosStatus(Vector3 pos)
 	{
 		mST.ModifyStringText("(WASD) :"
-			+ (int)mGD.GCam.Position.X + ", "
-			+ (int)mGD.GCam.Position.Y + ", "
-			+ (int)mGD.GCam.Position.Z, "PosStatus");
+			+ (int)pos.X + ", "
+			+ (int)pos.Y + ", "
+			+ (int)pos.Z, "PosStatus");
 	}
 
 

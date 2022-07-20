@@ -148,16 +148,15 @@ internal static class Program
 				Vector3	moveDelta	=pSteering.Update(pos, gd.GCam.Forward, gd.GCam.Left, gd.GCam.Up, acts);
 
 				moveDelta	*=200f;
-
-				pos	-=moveDelta;
+				pos			+=moveDelta;
 			
-				gd.GCam.Update(pos, pSteering.Pitch, pSteering.Yaw, pSteering.Roll);
-
-				theGame.Update(time, acts);
+				theGame.Update(time, acts, pos);
 
 				time.UpdateDone();
 			}
-			theGame.Render();
+
+			gd.GCam.Update(pos, pSteering.Pitch, pSteering.Yaw, pSteering.Roll);
+			theGame.Render(pos);
 
 			gd.Present();
 
