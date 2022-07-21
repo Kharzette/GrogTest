@@ -38,9 +38,6 @@ class Game
 	List<Vector3>	mMeshRotations	=new List<Vector3>();
 	List<Vector3>	mMeshScales		=new List<Vector3>();
 
-	//submesh bounds
-	List<Dictionary<Mesh, BoundingBox>>	mMeshBounds	=new List<Dictionary<Mesh, BoundingBox>>();
-
 	//test characters
 	Dictionary<string, IArch>		mCharArchs	=new Dictionary<string, IArch>();
 	Dictionary<Character, IArch>	mCharToArch	=new Dictionary<Character,IArch>();
@@ -51,7 +48,6 @@ class Game
 	MatLib							mCharMats;
 	AnimLib							mCharAnims;
 	int								mCurChar;
-	float							mInvertInterval	=0.15f;	//default 150ms
 
 	//fontery
 	ScreenText		mST;
@@ -74,9 +70,6 @@ class Game
 	int[]		mCBone;
 	Mesh		mPartHit;
 	StaticMesh	mMeshHit;
-
-	//collision bones
-	Dictionary<int, Matrix4x4>[]	mCBones;
 
 	//constants
 
@@ -217,16 +210,14 @@ class Game
 				arch.ReadFromFile(f.DirectoryName + "\\" + f.Name, mGD.GD, true);
 
 				mCharArchs.Add(FileUtil.StripExtension(f.Name), arch);
+
+				mCPrims.SetAxisScale(arch.GetSkin().GetScaleFactor());
 			}
 
 			fi	=di.GetFiles("*.CharacterInstance", SearchOption.TopDirectoryOnly);
 			foreach(FileInfo f in fi)
 			{
-				string	archName	=f.Name;
-				if(archName.Contains('_'))
-				{
-					archName	=f.Name.Substring(0, f.Name.IndexOf('_'));
-				}
+				string	archName	=FileUtil.StripExtension(f.Name);
 
 				if(!mCharArchs.ContainsKey(archName))
 				{
@@ -297,8 +288,6 @@ class Game
 		//string indicators for various statusy things
 		mST.AddString("", "StaticStatus",
 			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 460f, Vector2.One);
-		mST.AddString("", "InvertStatus",
-			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 480f, Vector2.One);
 		mST.AddString("", "AnimStatus",
 			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 500f, Vector2.One);
 		mST.AddString("", "CharStatus",
@@ -307,11 +296,8 @@ class Game
 			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 540f, Vector2.One);
 		mST.AddString("", "HitStatus",
 			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 560f, Vector2.One);
-		mST.AddString("", "ThreadStatus",
-			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 580f, Vector2.One);
 
 		UpdateCAStatus();
-		UpdateInvertStatus();
 		UpdateStaticStatus();
 	}
 
@@ -345,7 +331,7 @@ class Game
 
 			c.Animate(mAnims[mCurAnims[i]], mAnimTimes[i]);
 
-			mCBones[i]	=(mCharToArch[c] as CharacterArch).GetBoneTransforms(mCharAnims.GetSkeleton());
+//			mCBones[i]	=(mCharToArch[c] as CharacterArch).GetBoneTransforms(mCharAnims.GetSkeleton());
 		}
 
 		//check for keys
@@ -441,7 +427,7 @@ class Game
 			}
 		}*/
 		
-		mCPrims.Update(mGD.GCam, -Vector3.UnitY, pos);
+		mCPrims.Update(mGD.GCam, -Vector3.UnitY);
 		
 		//this attempts ray hit to characters
 		/*
@@ -459,12 +445,6 @@ class Game
 			}
 		}*/
 
-		if(mFrameCheck == 10)
-		{
-			mFrameCheck	=0;
-			UpdateThreadStatus();
-		}
-
 		UpdatePosStatus(pos);
 		UpdateHitStatus();
 
@@ -480,10 +460,10 @@ class Game
 		CBKeeper	cbk	=mSKeeper.GetCBKeeper();
 
 		//set the frame / camera stuff
-		cbk.SetView(mGD.GCam.ViewTransposed, eyePos);
-		//set projection to 3D
-		cbk.SetProjection(mGD.GCam.ProjectionTransposed);
+		cbk.SetTransposedView(mGD.GCam.ViewTransposed, eyePos);
 
+		//set projection to 3D
+		cbk.SetTransposedProjection(mGD.GCam.ProjectionTransposed);
 		cbk.UpdateFrame(mGD.DC);
 
 		foreach(Character c in mCharacters)
@@ -542,7 +522,7 @@ class Game
 		mCPrims.DrawAxis();
 
 		//change projection to 2D
-		cbk.SetProjection(Matrix4x4.Transpose(mTextProj));
+		cbk.SetProjection(mTextProj);
 		cbk.UpdateFrame(mGD.DC);
 
 //		mSUI.Draw(dc, Matrix.Identity, mTextProj);
@@ -595,8 +575,6 @@ class Game
 			{
 				mCPrims.AddBox(statIndex++, box.Value);
 			}
-
-			mMeshBounds.Add(bd);
 		}
 	}
 
@@ -633,10 +611,10 @@ class Game
 		bool	bAnyHit	=false;
 		for(int i=0;i < mCharacters.Count;i++)
 		{
-			if(mCBone[i] > 0)
-			{
-				bAnyHit	=true;
-			}
+//			if(mCBone[i] > 0)
+//			{
+//				bAnyHit	=true;
+//			}
 		}
 
 		if(!bAnyHit)
@@ -661,22 +639,5 @@ class Game
 		}
 
 		mST.ModifyStringText(hitString, "HitStatus");
-	}
-
-
-	void UpdateThreadStatus()
-	{
-		string	threadString	="Thread Misses: ";
-		for(int i=0;i < mCharacters.Count;i++)
-		{
-			threadString	+="Char" + i + ": ???" + " ";
-		}
-		mST.ModifyStringText(threadString, "ThreadStatus");
-	}
-
-
-	void UpdateInvertStatus()
-	{
-		mST.ModifyStringText("(PGUP/PGDN) Invert Interval: " + mInvertInterval, "InvertStatus");
 	}
 }
