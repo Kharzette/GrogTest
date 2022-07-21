@@ -55,6 +55,7 @@ class Game
 	Matrix4x4		mTextProj;
 	int				mResX, mResY;
 	List<string>	mFonts	=new List<string>();
+	float			mLazyScale;	//scale projection matrix to make text bigger
 
 	//2d stuff
 	//ScreenUI	mSUI;
@@ -72,6 +73,7 @@ class Game
 	StaticMesh	mMeshHit;
 
 	//constants
+	const float	TextScale	=1.5f;
 
 
 	internal Game(GraphicsDevice gd, string gameRootDir)
@@ -97,10 +99,13 @@ class Game
 		mFontMats.SetMaterialVShader("Text", "TextVS");
 		mFontMats.SetMaterialPShader("Text", "TextPS");
 
+		mLazyScale	=1f / TextScale;
+
 		mST	=new ScreenText(gd, mSKeeper, mFonts[0], mFonts[0], 1000);
 
+		//scale this a bit to embiggen text
 		mTextProj	=Matrix4x4.CreateOrthographicOffCenter(
-			0, gd.RendForm.Width, gd.RendForm.Height, 0, 0f, 1f);
+			0, gd.RendForm.Width * mLazyScale, gd.RendForm.Height * mLazyScale, 0, 0f, 1f);
 
 		//create some gumpey materials
 //		mUIMats	=new MatLib(gd, mSKeeper);
@@ -276,7 +281,7 @@ class Game
 		skinMats.Add("Nails");
 		mKeeper.AddMaterialGroup("SkinGroup", skinMats);
 
-		mTextColor	=Vector4.UnitY + (Vector4.UnitW * 0.15f);
+		mTextColor	=Vector4.UnitY + (Vector4.UnitW * 0.75f);
 		mHitColor	=Vector4.One * 0.9f;
 		mHitColor.Y	=mHitColor.Z	=0f;
 
@@ -287,15 +292,15 @@ class Game
 
 		//string indicators for various statusy things
 		mST.AddString("", "StaticStatus",
-			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 460f, Vector2.One);
+			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 460f * mLazyScale, Vector2.One);
 		mST.AddString("", "AnimStatus",
-			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 500f, Vector2.One);
+			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 480f * mLazyScale, Vector2.One);
 		mST.AddString("", "CharStatus",
-			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 520f, Vector2.One);
+			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 500f * mLazyScale, Vector2.One);
 		mST.AddString("", "PosStatus",
-			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 540f, Vector2.One);
+			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 520f * mLazyScale, Vector2.One);
 		mST.AddString("", "HitStatus",
-			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 560f, Vector2.One);
+			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 540f * mLazyScale, Vector2.One);
 
 		UpdateCAStatus();
 		UpdateStaticStatus();
