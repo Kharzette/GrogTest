@@ -31,10 +31,12 @@ internal static class Program
 		CharacterYawInc, CharacterYawDec,
 		NextStatic, RandRotateStatic,
 		SensitivityUp, SensitivityDown,
+		RandLightDirection,
 		RandScaleStatic, Exit
 	};
 
 	const float	MaxTimeDelta	=0.1f;
+	const float	MoveScalar		=1.25f;
 
 
 	[STAThread]
@@ -107,7 +109,6 @@ internal static class Program
 		gd.RendForm.AppDeactivated	+=deActHandler;
 
 		Vector3		pos			=Vector3.One * 5f;
-		Vector3		lightDir	=-Vector3.UnitY;
 		UpdateTimer	time		=new UpdateTimer(true, false);
 
 		time.SetFixedTimeStepSeconds(1f / 60f);	//60fps update rate
@@ -148,7 +149,7 @@ internal static class Program
 
 				Vector3	moveDelta	=pSteering.Update(pos, gd.GCam.Forward, gd.GCam.Left, gd.GCam.Up, acts);
 
-				moveDelta	*=200f;
+				moveDelta	*=MoveScalar * theGame.GetScaleFactor();
 				pos			+=moveDelta;
 			
 				theGame.Update(time, acts, pos);
@@ -246,7 +247,7 @@ internal static class Program
 				}
 			}
 		}
-		
+
 		//sensitivity adjust
 		foreach(Input.InputAction act in actions)
 		{
@@ -342,6 +343,10 @@ internal static class Program
 		//non numpad will have shift held too
 		inp.MapAction(MyActions.SensitivityUp, ActionTypes.PressAndRelease,
 			Modifiers.ShiftHeld, System.Windows.Forms.Keys.Oemplus);
+
+		//random light direction
+		inp.MapAction(MyActions.RandLightDirection, ActionTypes.PressAndRelease,
+			Modifiers.None, System.Windows.Forms.Keys.L);
 
 		//exit
 		inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,

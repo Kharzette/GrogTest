@@ -20,10 +20,10 @@ namespace TestMeshes;
 class Game
 {
 	//data
-	string		mGameRootDir;
-	StuffKeeper	mSKeeper;
-
-	Random	mRand	=new Random();
+	string			mGameRootDir;
+	StuffKeeper		mSKeeper;
+	Random			mRand		=new Random();
+	Vector3			mLightDir	=-Vector3.UnitY;
 
 	//helpers
 	IDKeeper	mKeeper	=new IDKeeper();
@@ -380,6 +380,13 @@ class Game
 			{
 				mCharYaws[mCurChar]	-=deltaSec;
 			}
+			else if(act.mAction.Equals(Program.MyActions.RandLightDirection))
+			{
+				mLightDir	=Mathery.RandomDirection(mRand);
+
+				mStaticMats.SetLightDirection(mLightDir);
+				mCharMats.SetLightDirection(mLightDir);
+			}
 			else if(act.mAction.Equals(Program.MyActions.RandRotateStatic))
 			{
 				if(mMeshes.Count > 0)
@@ -555,6 +562,18 @@ class Game
 		}
 
 		mSKeeper.FreeAll();
+	}
+
+
+	internal float GetScaleFactor()
+	{
+		Character	c	=mCharacters[mCurChar];
+
+		IArch	ca	=mCharToArch[c];
+
+		Skin	sk	=ca.GetSkin();
+
+		return	sk.GetScaleFactor();
 	}
 
 
