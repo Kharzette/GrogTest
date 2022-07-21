@@ -28,9 +28,9 @@ internal static class Program
 		Pitch, PitchUp, PitchDown,
 		ToggleMouseLookOn, ToggleMouseLookOff,
 		NextCharacter, NextAnim,
-		IncreaseInvertInterval,
-		DecreaseInvertInterval,
+		CharacterYawInc, CharacterYawDec,
 		NextStatic, RandRotateStatic,
+		SensitivityUp, SensitivityDown,
 		RandScaleStatic, Exit
 	};
 
@@ -79,6 +79,7 @@ internal static class Program
 		Game	theGame	=new Game(gd, rootDir);
 		
 		PlayerSteering	pSteering		=SetUpSteering();
+		UserSettings	sets			=new UserSettings();
 		Input			inp				=SetUpInput(gd.RendForm);
 		Random			rand			=new Random();
 		bool			bMouseLookOn	=false;
@@ -134,7 +135,7 @@ internal static class Program
 			time.Stamp();
 			while(time.GetUpdateDeltaSeconds() > 0f)
 			{
-				acts	=UpdateInput(inp, gd,
+				acts	=UpdateInput(inp, sets, gd,
 					time.GetUpdateDeltaSeconds(), ref bMouseLookOn);
 				if(!gd.RendForm.Focused)
 				{
@@ -164,6 +165,7 @@ internal static class Program
 		}, true);
 
 		Settings.Default.Save();
+		sets.SaveSettings();
 
 		gd.RendForm.Activated		-=actHandler;
 		gd.RendForm.AppDeactivated	-=deActHandler;
@@ -176,7 +178,7 @@ internal static class Program
 		gd.ReleaseAll();
 	}
 
-	static List<Input.InputAction> UpdateInput(Input inp,
+	static List<Input.InputAction> UpdateInput(Input inp, UserSettings sets,
 		GraphicsDevice gd, float delta, ref bool bMouseLookOn)
 	{
 		List<Input.InputAction>	actions	=inp.GetAction();
@@ -231,7 +233,8 @@ internal static class Program
 			{
 				if(act.mDevice == Input.InputAction.DeviceType.MOUSE)
 				{
-					act.mMultiplier	*=UserSettings.MouseTurnMultiplier;
+					act.mMultiplier	*=UserSettings.MouseTurnMultiplier
+						* sets.mTurnSensitivity;
 				}
 				else if(act.mDevice == Input.InputAction.DeviceType.ANALOG)
 				{
@@ -242,6 +245,25 @@ internal static class Program
 					act.mMultiplier	*=UserSettings.KeyTurnMultiplier;
 				}
 			}
+		}
+		
+		//sensitivity adjust
+		foreach(Input.InputAction act in actions)
+		{
+			float	sense	=sets.mTurnSensitivity;
+			if(act.mAction.Equals(MyActions.SensitivityUp))
+			{
+				sense	+=0.025f;
+			}
+			else if(act.mAction.Equals(MyActions.SensitivityDown))
+			{
+				sense	-=0.025f;
+			}
+			else
+			{
+				continue;
+			}
+			sets.mTurnSensitivity	=Math.Clamp(sense, 0.025f, 10f);
 		}
 		return	actions;
 	}
@@ -299,10 +321,10 @@ internal static class Program
 		inp.MapAction(MyActions.NextAnim, ActionTypes.PressAndRelease,
 			Modifiers.None, System.Windows.Forms.Keys.N);
 
-		inp.MapAction(MyActions.IncreaseInvertInterval, ActionTypes.PressAndRelease,
-			Modifiers.None, System.Windows.Forms.Keys.PageUp);
-		inp.MapAction(MyActions.DecreaseInvertInterval, ActionTypes.PressAndRelease,
-			Modifiers.None, System.Windows.Forms.Keys.PageDown);
+		inp.MapAction(MyActions.CharacterYawInc, ActionTypes.ContinuousHold,
+			Modifiers.None, System.Windows.Forms.Keys.J);
+		inp.MapAction(MyActions.CharacterYawDec, ActionTypes.ContinuousHold,
+			Modifiers.None, System.Windows.Forms.Keys.K);
 
 		inp.MapAction(MyActions.NextStatic, ActionTypes.PressAndRelease,
 			Modifiers.None, System.Windows.Forms.Keys.Oemcomma);
@@ -310,6 +332,16 @@ internal static class Program
 			Modifiers.None, System.Windows.Forms.Keys.Y);
 		inp.MapAction(MyActions.RandScaleStatic, ActionTypes.PressAndRelease,
 			Modifiers.None, System.Windows.Forms.Keys.U);
+
+		//sensitivity adjust
+		inp.MapAction(MyActions.SensitivityDown, ActionTypes.PressAndRelease,
+			Modifiers.None, System.Windows.Forms.Keys.OemMinus);
+		//for numpad
+		inp.MapAction(MyActions.SensitivityUp, ActionTypes.PressAndRelease,
+			Modifiers.None, System.Windows.Forms.Keys.Oemplus);
+		//non numpad will have shift held too
+		inp.MapAction(MyActions.SensitivityUp, ActionTypes.PressAndRelease,
+			Modifiers.ShiftHeld, System.Windows.Forms.Keys.Oemplus);
 
 		//exit
 		inp.MapAction(MyActions.Exit, ActionTypes.PressAndRelease,

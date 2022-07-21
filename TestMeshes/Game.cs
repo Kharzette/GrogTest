@@ -49,6 +49,10 @@ class Game
 	AnimLib							mCharAnims;
 	int								mCurChar;
 
+	//character transforms
+	List<float>		mCharYaws	=new List<float>();
+	List<Vector3>	mCharPoss	=new List<Vector3>();
+
 	//fontery
 	ScreenText		mST;
 	MatLib			mFontMats;
@@ -237,16 +241,12 @@ class Game
 				c.ReadFromFile(f.DirectoryName + "\\" + f.Name);
 
 //				c.SetMatLib(mCharMats);
-
-				c.SetTransform(Matrix4x4.CreateTranslation(
-					Mathery.RandomPosition(mRand,
-						Vector3.UnitX * 100f +
-						Vector3.UnitZ * 100f)));
-
 //				c.ComputeBoneBounds(skipMats);
 //				c.AutoInvert(true, mInvertInterval);
 
 				mCharacters.Add(c);
+				mCharYaws.Add(0);
+				mCharPoss.Add(Mathery.RandomPosition(mRand,	Vector3.UnitX * 100f + Vector3.UnitZ * 100f));
 			}
 
 			if(mCharacters.Count > 0)
@@ -372,11 +372,13 @@ class Game
 					UpdateCAStatus();
 				}
 			}
-			else if(act.mAction.Equals(Program.MyActions.IncreaseInvertInterval))
+			else if(act.mAction.Equals(Program.MyActions.CharacterYawInc))
 			{
+				mCharYaws[mCurChar]	+=deltaSec;
 			}
-			else if(act.mAction.Equals(Program.MyActions.DecreaseInvertInterval))
+			else if(act.mAction.Equals(Program.MyActions.CharacterYawDec))
 			{
+				mCharYaws[mCurChar]	-=deltaSec;
 			}
 			else if(act.mAction.Equals(Program.MyActions.RandRotateStatic))
 			{
@@ -473,6 +475,11 @@ class Game
 
 		foreach(Character c in mCharacters)
 		{
+			Matrix4x4	t	=Matrix4x4.CreateTranslation(mCharPoss[mCurChar]);
+			Matrix4x4	rot	=Matrix4x4.CreateFromYawPitchRoll(mCharYaws[mCurChar], 0f, 0f);
+
+			c.SetTransform(rot * t);
+
 			c.Draw(mCharMats);
 		}
 
