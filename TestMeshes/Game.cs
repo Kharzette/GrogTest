@@ -540,6 +540,10 @@ class Game
 
 		mCPrims.DrawAxis();
 
+		Matrix4x4	lightArrowXForm	=Mathery.MatrixFromDirection(mLightDir);
+
+		mCPrims.DrawLightArrow(lightArrowXForm, Vector4.One);
+
 		//change projection to 2D
 		cbk.SetProjection(mTextProj);
 		cbk.UpdateFrame(mGD.DC);
