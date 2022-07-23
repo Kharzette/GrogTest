@@ -62,8 +62,7 @@ class Game
 	float			mLazyScale;	//scale projection matrix to make text bigger
 
 	//2d stuff
-	//ScreenUI	mSUI;
-	//MatLib		mUIMats;
+	ScreenUI	mSUI;
 
 	//gpu
 	GraphicsDevice	mGD;
@@ -121,7 +120,7 @@ class Game
 //		mUIMats.SetMaterialEffect("KeyedGump", "2D.fx");
 //		mUIMats.SetMaterialTechnique("KeyedGump", "KeyedGump");
 
-//		mSUI	=new ScreenUI(gd.GD, mUIMats, 100);
+		mSUI	=new ScreenUI(gd, mSKeeper, 100);
 
 
 		//load avail static stuff
@@ -285,10 +284,10 @@ class Game
 		mHitColor	=Vector4.One * 0.9f;
 		mHitColor.Y	=mHitColor.Z	=0f;
 
-//		mSUI.AddGump("Gump", "UI\\CrossHair", null, "CrossHair",
-//			Vector4.One, Vector2.UnitX * ((mResX / 2) - 16)
-//			+ Vector2.UnitY * ((mResY / 2) - 16),
-//			Vector2.One);
+		mSUI.AddGump("UI\\CrossHair", null, "CrossHair",
+			Vector4.One, Vector2.UnitX * ((mResX / 2) - 16) * mLazyScale
+			+ Vector2.UnitY * ((mResY / 2) - 16) * mLazyScale,
+			Vector2.One);
 
 		//string indicators for various statusy things
 		mST.AddString("", "StaticStatus",
@@ -465,7 +464,7 @@ class Game
 		//this has to behind any text changes
 		//otherwise the offsets will be messed up
 		mST.Update();
-//		mSUI.Update(mGD.DC);
+		mSUI.Update(mGD.DC);
 	}
 
 
@@ -548,7 +547,7 @@ class Game
 		cbk.SetProjection(mTextProj);
 		cbk.UpdateFrame(mGD.DC);
 
-//		mSUI.Draw(dc, Matrix.Identity, mTextProj);
+		mSUI.Draw(Matrix4x4.Identity, mTextProj);
 		mST.Draw();
 	}
 
