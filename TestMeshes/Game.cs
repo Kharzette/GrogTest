@@ -443,23 +443,20 @@ class Game
 		mCPrims.Update(mGD.GCam, -Vector3.UnitY);
 		
 		//this attempts ray hit to characters
-		/*
+		int		boneHit	=-1;
+		Vector3	hitPos	=Vector3.Zero;
 		for(int i=0;i < mCharacters.Count;i++)
 		{
 			Character	c	=mCharacters[i];
-			float?	bHit	=c.RayIntersect(startPos, endPos);
-			if(bHit != null)
+
+			if(c.RayIntersectBones(startPos, endPos, 0f, out boneHit, out hitPos))
 			{
-				c.RayIntersectBones(startPos, endPos, false, out mCBone[i]);
+
 			}
-			else
-			{
-				mCBone[i]	=0;
-			}
-		}*/
+		}
 
 		UpdatePosStatus(pos);
-		UpdateHitStatus();
+		UpdateHitStatus(boneHit, hitPos);
 
 		//this has to behind any text changes
 		//otherwise the offsets will be messed up
@@ -640,18 +637,9 @@ class Game
 	}
 
 
-	void UpdateHitStatus()
+	void UpdateHitStatus(int hitBone, Vector3 hitPos)
 	{
-		bool	bAnyHit	=false;
-		for(int i=0;i < mCharacters.Count;i++)
-		{
-//			if(mCBone[i] > 0)
-//			{
-//				bAnyHit	=true;
-//			}
-		}
-
-		if(!bAnyHit)
+		if(hitBone == -1)
 		{
 			mST.ModifyStringText("No Collisions", "HitStatus");
 			mST.ModifyStringColor("HitStatus", mTextColor);
@@ -660,17 +648,8 @@ class Game
 
 		mST.ModifyStringColor("HitStatus", mHitColor);
 
-		string	hitString	="Hit";
-		for(int i=0;i < mCharacters.Count;i++)
-		{
-			if(mCBone[i] <= 0)
-			{
-				continue;
-			}
-
-			hitString	+=" Character " + i + " in bone " +
-				mCharAnims.GetSkeleton().GetBoneName(mCBone[i]);
-		}
+		string	hitString	="Hit Character in bone " +
+				mCharAnims.GetSkeleton().GetBoneName(hitBone);
 
 		mST.ModifyStringText(hitString, "HitStatus");
 	}
