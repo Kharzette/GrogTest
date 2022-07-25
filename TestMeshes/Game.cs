@@ -71,9 +71,9 @@ class Game
 	CommonPrims	mCPrims;
 	Vector4		mHitColor, mTextColor;
 	int			mFrameCheck, mCurStatic;
-	int[]		mCBone;
 	Mesh		mPartHit;
 	StaticMesh	mMeshHit;
+	int			mBoneHit;
 
 	//constants
 	const float	TextScale	=1.5f;
@@ -110,18 +110,7 @@ class Game
 		mTextProj	=Matrix4x4.CreateOrthographicOffCenter(
 			0, gd.RendForm.Width * mLazyScale, gd.RendForm.Height * mLazyScale, 0, 0f, 1f);
 
-		//create some gumpey materials
-//		mUIMats	=new MatLib(gd, mSKeeper);
-//		mUIMats.CreateMaterial("Gump");
-//		mUIMats.SetMaterialEffect("Gump", "2D.fx");
-//		mUIMats.SetMaterialTechnique("Gump", "Gump");
-
-//		mUIMats.CreateMaterial("KeyedGump");
-//		mUIMats.SetMaterialEffect("KeyedGump", "2D.fx");
-//		mUIMats.SetMaterialTechnique("KeyedGump", "KeyedGump");
-
 		mSUI	=new ScreenUI(gd, mSKeeper, 100);
-
 
 		//load avail static stuff
 		if(Directory.Exists(mGameRootDir + "/Statics"))
@@ -220,6 +209,10 @@ class Game
 				mCharArchs.Add(FileUtil.StripExtension(f.Name), arch);
 
 				mCPrims.SetAxisScale(arch.GetSkin().GetScaleFactor());
+
+				CharacterArch	?ca	=arch as CharacterArch;
+
+				ca?.BuildDebugBoundDrawData(mCPrims);
 			}
 
 			fi	=di.GetFiles("*.CharacterInstance", SearchOption.TopDirectoryOnly);
@@ -252,14 +245,6 @@ class Game
 			{
 				mAnimTimes	=new float[mCharacters.Count];
 				mCurAnims	=new int[mCharacters.Count];
-//				mCBone		=new int[mCharacters.Count];
-//				mCBones		=new Dictionary<int,Matrix>[mCharacters.Count];
-			}
-
-			foreach(KeyValuePair<string, IArch> arch in mCharArchs)
-			{
-				//build draw data for bone bounds
-				(arch.Value as CharacterArch).BuildDebugBoundDrawData(mCPrims);
 			}
 		}
 
@@ -334,8 +319,6 @@ class Game
 			}
 
 			c.Animate(mAnims[mCurAnims[i]], mAnimTimes[i]);
-
-//			mCBones[i]	=(mCharToArch[c] as CharacterArch).GetBoneTransforms(mCharAnims.GetSkeleton());
 		}
 
 		//check for keys
@@ -443,20 +426,20 @@ class Game
 		mCPrims.Update(mGD.GCam, -Vector3.UnitY);
 		
 		//this attempts ray hit to characters
-		int		boneHit	=-1;
+		mBoneHit		=-1;
 		Vector3	hitPos	=Vector3.Zero;
 		for(int i=0;i < mCharacters.Count;i++)
 		{
 			Character	c	=mCharacters[i];
 
-			if(c.RayIntersectBones(startPos, endPos, 0f, out boneHit, out hitPos))
+			if(c.RayIntersectBones(startPos, endPos, 0f, out mBoneHit, out hitPos))
 			{
 
 			}
 		}
 
 		UpdatePosStatus(pos);
-		UpdateHitStatus(boneHit, hitPos);
+		UpdateHitStatus(mBoneHit, hitPos);
 
 		//this has to behind any text changes
 		//otherwise the offsets will be messed up
@@ -484,6 +467,37 @@ class Game
 			c.SetTransform(rot * t);
 
 			c.Draw(mCharMats);
+
+			Skin		?sk		=mCharToArch[c].GetSkin();
+			Skeleton	skel	=mCharAnims.GetSkeleton();
+
+			for(int i=0;i < skel.GetNumIndexedBones();i++)
+			{
+				int			choice	=sk.GetBoundChoice(i);
+				Matrix4x4	mat		=sk.GetBoneByIndexNoBind(i, skel);
+
+				mat	*=c.GetTransform();
+
+				Vector4	boneColour	=Vector4.One * 0.5f;
+
+				if(i == mBoneHit)
+				{
+					boneColour	=mHitColor;
+				}
+
+				if(choice == Skin.Box)
+				{
+					mCPrims.DrawBox(i, mat, boneColour);
+				}
+				if(choice == Skin.Sphere)
+				{
+					mCPrims.DrawSphere(i, mat, boneColour);
+				}
+				if(choice == Skin.Capsule)
+				{
+					mCPrims.DrawCapsule(i, mat, boneColour);
+				}
+			}
 		}
 
 		foreach(StaticMesh sm in mMeshes)
@@ -491,24 +505,6 @@ class Game
 			sm.Draw(mStaticMats);
 		}
 
-		//this section seems to draw the bounds
-		/*
-		for(int i=0;i < mCharacters.Count;i++)
-		{
-			foreach(KeyValuePair<int, Matrix> bone in mCBones[i])
-			{
-				Matrix	boneTrans	=bone.Value;
-
-				if(bone.Key == mCBone[i])
-				{
-					mCPrims.DrawBox(dc, bone.Key, boneTrans * mCharacters[i].GetTransform(), mHitColor);
-				}
-				else
-				{
-					mCPrims.DrawBox(dc, bone.Key, boneTrans * mCharacters[i].GetTransform(), Vector4.One * 0.5f);
-				}
-			}
-		}*/
 
 		//this bit seems to draw hit bounds in red
 		/*
