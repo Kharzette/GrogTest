@@ -74,9 +74,11 @@ class Game
 	Mesh		mPartHit;
 	StaticMesh	mMeshHit;
 	int			mBoneHit;
+	Vector3		mHitPos;
 
 	//constants
-	const float	TextScale	=1.5f;
+	const float	TextScale		=1.5f;
+	const int	HitSphereIndex	=6969;	//for finding the sphere used for hit indicator
 
 
 	internal Game(GraphicsDevice gd, string gameRootDir)
@@ -288,6 +290,9 @@ class Game
 
 		UpdateCAStatus();
 		UpdateStaticStatus();
+
+		//add a sphere to cprims for hits
+		mCPrims.AddSphere(HitSphereIndex, new BoundingSphere(Vector3.Zero, 1f));
 	}
 
 
@@ -426,20 +431,19 @@ class Game
 		mCPrims.Update(mGD.GCam, -Vector3.UnitY);
 		
 		//this attempts ray hit to characters
-		mBoneHit		=-1;
-		Vector3	hitPos	=Vector3.Zero;
+		mBoneHit	=-1;
+		mHitPos		=Vector3.Zero;
 		for(int i=0;i < mCharacters.Count;i++)
 		{
 			Character	c	=mCharacters[i];
 
-			if(c.RayIntersectBones(startPos, endPos, 0f, out mBoneHit, out hitPos))
+			if(c.RayIntersectBones(startPos, endPos, 0f, out mBoneHit, out mHitPos))
 			{
-
 			}
 		}
 
 		UpdatePosStatus(pos);
-		UpdateHitStatus(mBoneHit, hitPos);
+		UpdateHitStatus(mBoneHit, mHitPos);
 
 		//this has to behind any text changes
 		//otherwise the offsets will be messed up
@@ -535,6 +539,12 @@ class Game
 		Matrix4x4	lightArrowXForm	=Mathery.MatrixFromDirection(mLightDir);
 
 		mCPrims.DrawLightArrow(lightArrowXForm, Vector4.One);
+
+		if(mBoneHit != -1)
+		{
+			Matrix4x4	hitMat	=Matrix4x4.CreateTranslation(mHitPos);
+			mCPrims.DrawSphere(HitSphereIndex, hitMat, Vector4.UnitY + Vector4.UnitW);
+		}
 
 		//change projection to 2D
 		cbk.SetProjection(mTextProj);
