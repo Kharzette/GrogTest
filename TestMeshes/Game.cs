@@ -301,7 +301,7 @@ class Game
 		mFrameCheck++;
 
 		Vector3	startPos	=pos;
-		Vector3	endPos		=startPos + mGD.GCam.Forward * -2000f;
+		Vector3	endPos		=startPos + mGD.GCam.Forward * 2000f;
 
 		float	deltaMS		=time.GetUpdateDeltaMilliSeconds();
 		float	deltaSec	=time.GetUpdateDeltaSeconds();
