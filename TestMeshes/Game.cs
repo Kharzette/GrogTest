@@ -436,8 +436,9 @@ class Game
 		for(int i=0;i < mCharacters.Count;i++)
 		{
 			Character	c	=mCharacters[i];
+			Vector3		n;
 
-			if(c.RayIntersectBones(startPos, endPos, 0f, out mBoneHit, out mHitPos))
+			if(c.RayIntersectBones(startPos, endPos, 0f, out mBoneHit, out mHitPos, out n))
 			{
 			}
 		}
