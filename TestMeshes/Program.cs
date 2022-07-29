@@ -32,6 +32,7 @@ internal static class Program
 		NextStatic, RandRotateStatic,
 		SensitivityUp, SensitivityDown,
 		RandLightDirection,
+		FreezeRay, PauseAnim,
 		RandScaleStatic, Exit
 	};
 
@@ -321,6 +322,10 @@ internal static class Program
 			Modifiers.None, System.Windows.Forms.Keys.C);
 		inp.MapAction(MyActions.NextAnim, ActionTypes.PressAndRelease,
 			Modifiers.None, System.Windows.Forms.Keys.N);
+		inp.MapAction(MyActions.PauseAnim, ActionTypes.PressAndRelease,
+			Modifiers.None, System.Windows.Forms.Keys.P);
+		inp.MapAction(MyActions.FreezeRay, ActionTypes.PressAndRelease,
+			Modifiers.None, System.Windows.Forms.Keys.F);
 
 		inp.MapAction(MyActions.CharacterYawInc, ActionTypes.ContinuousHold,
 			Modifiers.None, System.Windows.Forms.Keys.J);

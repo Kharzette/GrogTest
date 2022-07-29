@@ -45,6 +45,7 @@ class Game
 	List<string>					mAnims		=new List<string>();
 	float[]							mAnimTimes;
 	int[]							mCurAnims;
+	bool[]							mbCharAnimPause;
 	MatLib							mCharMats;
 	AnimLib							mCharAnims;
 	int								mCurChar;
@@ -74,6 +75,7 @@ class Game
 	StaticMesh	mMeshHit;
 	int			mBoneHit;
 	Vector3		mHitPos, mHitNorm;
+	bool		mbFreezeRay;		//pause to check out a collision
 
 	//constants
 	const float	TextScale		=1.5f;
@@ -242,8 +244,9 @@ class Game
 
 			if(mCharacters.Count > 0)
 			{
-				mAnimTimes	=new float[mCharacters.Count];
-				mCurAnims	=new int[mCharacters.Count];
+				mAnimTimes		=new float[mCharacters.Count];
+				mCurAnims		=new int[mCharacters.Count];
+				mbCharAnimPause	=new bool[mCharacters.Count];
 			}
 		}
 
@@ -296,6 +299,9 @@ class Game
 
 		//add a sphere to cprims for hits
 		mCPrims.AddSphere(HitSphereIndex, new BoundingSphere(Vector3.Zero, 1f));
+
+		mStaticMats.SetLightDirection(mLightDir);
+		mCharMats.SetLightDirection(mLightDir);
 	}
 
 
@@ -315,6 +321,11 @@ class Game
 			Character	c	=mCharacters[i];
 
 			c.Update(deltaSec);
+
+			if(mbCharAnimPause[i])
+			{
+				continue;
+			}
 
 			float	totTime	=mCharAnims.GetAnimTime(mAnims[mCurAnims[i]]);
 			float	strTime	=mCharAnims.GetAnimStartTime(mAnims[mCurAnims[i]]);
@@ -362,6 +373,14 @@ class Game
 					UpdateCAStatus();
 				}
 			}
+			else if(act.mAction.Equals(Program.MyActions.PauseAnim))
+			{
+				if(mCharacters.Count > 0)
+				{
+					mbCharAnimPause[mCurChar]	=!mbCharAnimPause[mCurChar];
+					UpdateCAStatus();
+				}
+			}
 			else if(act.mAction.Equals(Program.MyActions.CharacterYawInc))
 			{
 				mCharYaws[mCurChar]	+=deltaSec;
@@ -401,12 +420,18 @@ class Game
 					UpdateStaticTransform(mCurStatic);
 				}
 			}
+			else if(act.mAction.Equals(Program.MyActions.FreezeRay))
+			{
+				mbFreezeRay	=!mbFreezeRay;
+			}
 		}
-		
-		mPartHit	=null;
-		mMeshHit	=null;
 
-		float		bestDist	=float.MaxValue;
+		if(!mbFreezeRay)
+		{
+			mPartHit	=null;
+			mMeshHit	=null;
+
+			float		bestDist	=float.MaxValue;
 
 		//this section attempts ray collide with statics
 /*		for(int i=0;i < mMeshes.Count;i++)
@@ -431,22 +456,23 @@ class Game
 			}
 		}*/
 		
-		mCPrims.Update(mGD.GCam, -Vector3.UnitY);
 
-		//this attempts ray hit to characters
-		mBoneHit	=-1;
-		mHitPos		=mHitNorm	=Vector3.Zero;
-		for(int i=0;i < mCharacters.Count;i++)
-		{
-			Character	c	=mCharacters[i];
-
-			if(c.RayIntersectBones(startPos, endPos, 0f, out mBoneHit, out mHitPos, out mHitNorm))
+			//this attempts ray hit to characters
+			mBoneHit	=-1;
+			mHitPos		=mHitNorm	=Vector3.Zero;
+			for(int i=0;i < mCharacters.Count;i++)
 			{
-			}
-		}
+				Character	c	=mCharacters[i];
 
+				if(c.RayIntersectBones(startPos, endPos, 0f, out mBoneHit, out mHitPos, out mHitNorm))
+				{
+				}
+			}
+
+			UpdateHitStatus(mBoneHit, mHitPos);
+		}
+		mCPrims.Update(mGD.GCam, -Vector3.UnitY);
 		UpdatePosStatus(pos);
-		UpdateHitStatus(mBoneHit, mHitPos);
 
 		//this has to behind any text changes
 		//otherwise the offsets will be messed up
@@ -633,7 +659,8 @@ class Game
 			return;
 		}
 		mST.ModifyStringText("(C) CurCharacter: " + mCurChar, "CharStatus");
-		mST.ModifyStringText("(N) CurAnim: " + mAnims[mCurAnims[mCurChar]], "AnimStatus");
+		mST.ModifyStringText("(N) CurAnim: " + mAnims[mCurAnims[mCurChar]]
+			+ (mbCharAnimPause[mCurChar]? ":Paused" : ":Playing"), "AnimStatus");
 	}
 
 
