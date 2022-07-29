@@ -56,10 +56,9 @@ class Game
 	//fontery
 	ScreenText		mST;
 	MatLib			mFontMats;
-	Matrix4x4		mTextProj;
+	Matrix4x4		mGumpProj;
 	int				mResX, mResY;
 	List<string>	mFonts	=new List<string>();
-	float			mLazyScale;	//scale projection matrix to make text bigger
 
 	//2d stuff
 	ScreenUI	mSUI;
@@ -74,7 +73,7 @@ class Game
 	Mesh		mPartHit;
 	StaticMesh	mMeshHit;
 	int			mBoneHit;
-	Vector3		mHitPos;
+	Vector3		mHitPos, mHitNorm;
 
 	//constants
 	const float	TextScale		=1.5f;
@@ -104,13 +103,11 @@ class Game
 		mFontMats.SetMaterialVShader("Text", "TextVS");
 		mFontMats.SetMaterialPShader("Text", "TextPS");
 
-		mLazyScale	=1f / TextScale;
-
 		mST	=new ScreenText(gd, mSKeeper, mFonts[0], mFonts[0], 1000);
 
-		//scale this a bit to embiggen text
-		mTextProj	=Matrix4x4.CreateOrthographicOffCenter(
-			0, gd.RendForm.Width * mLazyScale, gd.RendForm.Height * mLazyScale, 0, 0f, 1f);
+		//full size
+		mGumpProj	=Matrix4x4.CreateOrthographicOffCenter(
+			0, mResX, mResY, 0, 0f, 1f);
 
 		mSUI	=new ScreenUI(gd, mSKeeper, 100);
 
@@ -272,21 +269,27 @@ class Game
 		mHitColor.Y	=mHitColor.Z	=0f;
 
 		mSUI.AddGump("UI\\CrossHair", null, "CrossHair",
-			Vector4.One, Vector2.UnitX * ((mResX / 2) - 16) * mLazyScale
-			+ Vector2.UnitY * ((mResY / 2) - 16) * mLazyScale,
+			Vector4.One, Vector2.UnitX * ((mResX / 2) - 16)
+			+ Vector2.UnitY * ((mResY / 2) - 16),
 			Vector2.One);
 
 		//string indicators for various statusy things
 		mST.AddString("", "StaticStatus",
-			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 460f * mLazyScale, Vector2.One);
+			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 460f, Vector2.One);
 		mST.AddString("", "AnimStatus",
-			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 480f * mLazyScale, Vector2.One);
+			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 480f, Vector2.One);
 		mST.AddString("", "CharStatus",
-			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 500f * mLazyScale, Vector2.One);
+			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 500f, Vector2.One);
 		mST.AddString("", "PosStatus",
-			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 520f * mLazyScale, Vector2.One);
+			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 520f, Vector2.One);
 		mST.AddString("", "HitStatus",
-			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 540f * mLazyScale, Vector2.One);
+			mTextColor, Vector2.UnitX * 20f + Vector2.UnitY * 540f, Vector2.One);
+
+		mST.ModifyStringScale("StaticStatus", TextScale * Vector2.One);
+		mST.ModifyStringScale("AnimStatus", TextScale * Vector2.One);
+		mST.ModifyStringScale("CharStatus", TextScale * Vector2.One);
+		mST.ModifyStringScale("PosStatus", TextScale * Vector2.One);
+		mST.ModifyStringScale("HitStatus", TextScale * Vector2.One);
 
 		UpdateCAStatus();
 		UpdateStaticStatus();
@@ -429,16 +432,15 @@ class Game
 		}*/
 		
 		mCPrims.Update(mGD.GCam, -Vector3.UnitY);
-		
+
 		//this attempts ray hit to characters
 		mBoneHit	=-1;
-		mHitPos		=Vector3.Zero;
+		mHitPos		=mHitNorm	=Vector3.Zero;
 		for(int i=0;i < mCharacters.Count;i++)
 		{
 			Character	c	=mCharacters[i];
-			Vector3		n;
 
-			if(c.RayIntersectBones(startPos, endPos, 0f, out mBoneHit, out mHitPos, out n))
+			if(c.RayIntersectBones(startPos, endPos, 0f, out mBoneHit, out mHitPos, out mHitNorm))
 			{
 			}
 		}
@@ -545,13 +547,13 @@ class Game
 		{
 			Matrix4x4	hitMat	=Matrix4x4.CreateTranslation(mHitPos);
 			mCPrims.DrawSphere(HitSphereIndex, hitMat, Vector4.UnitY + Vector4.UnitW);
+
+			Matrix4x4	normXForm	=Mathery.MatrixFromDirection(mHitNorm);
+			Matrix4x4	normScale	=Matrix4x4.CreateScale(0.15f);
+			mCPrims.DrawLightArrow(normXForm * normScale * hitMat, Vector4.UnitZ + Vector4.UnitW);
 		}
 
-		//change projection to 2D
-		cbk.SetProjection(mTextProj);
-		cbk.UpdateFrame(mGD.DC);
-
-		mSUI.Draw(Matrix4x4.Identity, mTextProj);
+		mSUI.Draw(Matrix4x4.Identity, mGumpProj);
 		mST.Draw();
 	}
 
