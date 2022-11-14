@@ -1,18 +1,18 @@
-using System;
-using System.Text;
-using System.Collections.Generic;
+using System.Numerics;
 using System.Diagnostics;
-using System.IO;
 using UtilityLib;
-using MaterialLib;
-using AudioLib;
+using Vortice.Direct3D;
+using Vortice.Direct3D11;
+using Vortice.Mathematics;
 using InputLib;
+using MaterialLib;
+using MeshLib;
 
-using SharpDX;
-using SharpDX.DXGI;
-using SharpDX.Direct3D;
+//renderform and renderloop
+using SharpDX.Windows;
 
-using MatLib = MaterialLib.MaterialLib;
+using Color		=Vortice.Mathematics.Color;
+using Screen	=MaterialLib.Screen;
 
 
 namespace TestScreens
@@ -25,15 +25,18 @@ namespace TestScreens
 
 		Random	mRand	=new Random();
 
+		Matrix4x4	mGumpProj, mWorldMat;
+
 		//gpu
 		GraphicsDevice	mGD;
 
 		//screen (Thing being tested)
 		Screen	mScreen;
-		MatLib	mScreenMatLib;
 
 		//screen contents
 		byte	[]mScreenJunx;
+
+		//user code compiler
 
 
 		internal RunLoop(GraphicsDevice gd, string gameRootDir)
@@ -51,14 +54,16 @@ namespace TestScreens
 
 			mSKeeper.Init(mGD, gameRootDir);
 
-			mScreenMatLib	=new MatLib(gd, mSKeeper);
-			mScreenMatLib.CreateMaterial("TextMode");
-			mScreenMatLib.SetMaterialEffect("TextMode", "TextMode.fx");
-			mScreenMatLib.SetMaterialTechnique("TextMode", "TextMode");
-
-			mScreen	=new Screen(gd, mSKeeper, mScreenMatLib);
+			mScreen	=new Screen(gd, mSKeeper);
 
 			mScreenJunx	=new byte[40 * 25];
+
+//			mWorldMat	=Matrix4x4.CreateTranslation(Vector3.UnitZ);
+			mWorldMat	=Matrix4x4.Identity;
+
+			//full size
+			mGumpProj	=Matrix4x4.CreateOrthographicOffCenter(
+				0, resX, resY, 0, 0f, 1.5f);
 		}
 
 
@@ -85,8 +90,6 @@ namespace TestScreens
 				return;	//can happen if fixed time and no remainder
 			}
 
-			mScreen.UpdateWVP(mGD.GCam);
-
 			mRand.NextBytes(mScreenJunx);
 
 			mScreen.SetScreenContents(mGD, mScreenJunx);
@@ -95,7 +98,19 @@ namespace TestScreens
 
 		internal void Render()
 		{
-			mScreen.DrawStage(mGD, "TextMode");
+			CBKeeper	cbk	=mSKeeper.GetCBKeeper();
+
+			cbk.SetWorldMat(mWorldMat);
+			cbk.SetView(Matrix4x4.Identity, Vector3.Zero);
+			cbk.SetProjection(mGumpProj);
+			cbk.SetTransposedView(mGD.GCam.ViewTransposed, mGD.GCam.Position);
+
+			cbk.UpdateFrame(mGD.DC);
+			cbk.UpdateObject(mGD.DC);
+
+			cbk.SetCommonCBToShaders(mGD.DC);
+
+			mScreen.DrawStage(mGD);
 		}
 
 
@@ -104,8 +119,21 @@ namespace TestScreens
 		}
 
 
+		internal void DeviceLost(string gameRootDir)
+		{
+			mScreen.FreeAll(mGD);
+			mSKeeper.FreeAll();
+
+			mSKeeper	=new StuffKeeper();
+
+			mSKeeper.Init(mGD, gameRootDir);
+			mScreen	=new Screen(mGD, mSKeeper);
+		}
+
+
 		internal void FreeAll()
 		{
+			mScreen.FreeAll(mGD);
 			mSKeeper.FreeAll();
 		}
 	}
